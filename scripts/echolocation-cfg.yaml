@@ -1,0 +1,95 @@
+# DEPENDENCIES: 
+# - PHAST: http://compgen.cshl.edu/phast/index.php ; https://anaconda.org/bioconda/phast
+# - NCBI datasets: https://www.ncbi.nlm.nih.gov/datasets/docs/v2/download-and-install/ ; https://anaconda.org/conda-forge/ncbi-datasets-cli
+# - samtools: https://www.htslib.org/ ; https://anaconda.org/bioconda/samtools
+
+sample_file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/summary-data/241-mammalian-2020v2b.csv
+# This is a csv file that at minimum must have a column called "accession" for each sample in the MAF
+# The accession should be an NCBI Assembly accession number and will be used to look up the GC content of the genome
+# for modFreqs
+# Alternatively, if a column called "gc" is present, the GC content will be taken from that column
+
+chromes: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X"]
+# The chromosomes listed in the gff file that you want to run phyloFit on
+
+project_dir: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/
+# The root directory of the project
+
+mafdir: /n/holyscratch01/informatics/gwct/
+mafoutdir: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/
+maf_ref_prefix: "Homo_sapiens.chr"
+maf: 241-mammalian-2020v2b.maf
+# The multiple alignment file
+# https://cglgenomics.ucsc.edu/data/cactus/
+# Accessed Sep. 1, 2023
+
+maf_ref_id: "Homo_sapiens"
+maf_chr_prefix: "chr"
+maf_ref_chr_joiner: "."
+# The chromosome IDs in the split gffs must match those in the maf
+# In case the chromosomes are labeled differently in the gff and the maf, use the maf_ref_chr_joiner and maf_chr_prefix
+# Chromosome IDs in the split gffs will be maf_ref_id + maf_ref_chr_joiner + maf_chr_prefix
+# If the chromosomes are labeled the same, just set maf_chr_prefix to an empty string, ""
+
+filter_threshold_4d: 0.5
+# The fraction of sequences in the MAF required for a 4d site pattern to be filtered for phyloFit
+# e.g. if num_seqs = 10 and threshold = 0.2, then all sites that have missing data in 10 * 0.2 sequences (2) will be filtered
+
+maf_split_size_mb: 1
+# For estimating rho, the MAF will need to be split into small chunks that can be read into memory
+# Specify the size of these chunks in megabases here
+
+tree_file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/summary-data/241-mammalian-2020v2.phast-242.nh
+# The species tree in Newick format
+# https://cglgenomics.ucsc.edu/data/cactus/
+# Accessed Sep. 1, 2023
+
+ref_dir: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/00-human-ref-ensembl/
+ref_gff: Homo_sapiens.GRCh38.110.chr.gff3
+# The GFF annotation of the reference genome in the MAF
+# http://ftp.ensembl.org/pub/current_gff3/homo_sapiens/Homo_sapiens.GRCh38.110.chr.gff3.gz
+# Ensembl, release 110, Sep. 6, 2023
+
+ref_gff_chr: Homo_sapiens.GRCh38.110.chr.chromosomes.gff3
+# The GFF containing only chromosome length features
+# awk '/^#/ && !/^###/ || $3 ~ /chromosome/' <ref_gff>
+
+ref_fasta: Homo_sapiens.GRCh38.dna.primary_assembly.fa
+ref_fasta_index: Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai
+# The FASTA of the reference genome in the MAF
+# http://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+# Ensembl, release 110, Oct. 11, 2023
+## NOTE: Ensemble files must be de-compressed because they are not compressed with bgzip
+
+ref_split_bed: Homo_sapiens.GRCh38.dna.primary_assembly.chr.1Mb.bed
+# A bed file with the MAF reference genome scaffold ids and coordinates split into windows to use
+# to split the MAF file
+# bedtools makewindows -g {ref_fasta_index} -w 1000000 > {ref_split_bed}
+# bedtools makewindows -g Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai -w 1000000 | grep '^[0-9XYMT]' | sed '/^[^XYMT]/s/^/chr/' > Homo_sapiens.GRCh38.dna.primary_assembly.chr.1Mb.bed
+
+prefix: 241-mammalian-2020v2b
+# A prefix for some of the output files
+
+##########################################
+
+# For window-based conservation scores
+# DEPENDENCIES
+# bigWigToBedGraph, in its own environment: http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/ ; https://anaconda.org/bioconda/ucsc-bigwigtobedgraph 
+# mafSplit, in its own environment: http://hgdownload.cse.ucsc.edu/admin/exe/linux.x86_64/ ; https://anaconda.org/bioconda/ucsc-mafsplit 
+
+phylop_bigwig: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/241-mammalian-2020v2.bigWig
+# To calculate conservation scores in the alignment
+# Prodived with the zoonomia alignment, but would need to add a phylop rule on a new alignment
+
+alpha: 0.05
+
+tmp_dir: /n/holylfs05/LABS/informatics/Users/gthomas/tmp/
+
+element_size_bed: Homo_sapiens.GRCh38.dna.primary_assembly.200bp-windows.bed
+# Check each region of some size in the genome for overlaps with conserved sites
+# bedtools makewindows -g Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai -w 200 | grep '^[0-9XYMT]' | sed '/^[^MT]/s/^/chr/' > Homo_sapiens.GRCh38.dna.primary_assembly.200bp-windows.bed
+# 
+
+
+aln_depth_threshold: [80, 100, 120, 140]
+conserved_threshold: [40, 60, 80, 100, 120, 140, 160, 180]

@@ -1,0 +1,5 @@
+data/
+scripts/test*
+scripts/.snakemake/
+scripts/slurm-logs/
+scripts/full-maf-depth.wig

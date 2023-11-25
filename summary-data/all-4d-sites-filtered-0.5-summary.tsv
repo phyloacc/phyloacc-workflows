@@ -1,0 +1,20 @@
+# input file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-sicb/data/01-zoonomia-aln/01-4d-sites/all-4d-sites.ss
+# missing threshold: 0.5
+# output file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-sicb/data/01-zoonomia-aln/01-4d-sites/all-4d-sites-filtered-0.5.ss
+var	filter.cat	value
+num.seqs	pre.filter	241
+aln.len	pre.filter	535570
+num.sites	pre.filter	142455
+avg.site.count	pre.filter	3.7595731985539294
+max.site.count	pre.filter	33825
+num.singletons	pre.filter	124248
+total.missing.cols	pre.filter	103475331
+avg.missing.per.site	pre.filter	193.20598801277143
+num.seqs	post.filter	241
+aln.len	post.filter	78758
+num.sites	post.filter	73649
+avg.site.count	post.filter	1.0693695773194476
+max.site.count	post.filter	397
+num.singletons	post.filter	71141
+total.missing.cols	post.filter	272416
+avg.missing.per.site	post.filter	3.458899413392925

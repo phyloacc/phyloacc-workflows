@@ -1,0 +1,7 @@
+name: ucsc-mafsplit
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - ucsc-mafsplit=366=h5eb252a_0

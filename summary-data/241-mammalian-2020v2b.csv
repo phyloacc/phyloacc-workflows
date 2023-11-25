@@ -1,0 +1,243 @@
+# This is Supplementary Table 2 with some extra information from https://cgl.gi.ucsc.edu/data/cactus/Zoonomia-Supplemental-tables.xlsx,,,,,,,,
+Order,Family,Species,Common Name,label,Source,Accession,IUCN,Echolocating
+AFROSORICIDA,Chrysochloridae,Chrysochloris asiatica,Cape golden mole,Chrysochloris_asiatica,1. Zoonomia,GCA_004027935.1,LC,N
+AFROSORICIDA,Tenrecidae,Echinops telfairi,Small madagascar hedgehog,Echinops_telfairi,2. Existing assembly,GCF_000313985.1,LC,N
+AFROSORICIDA,Tenrecidae,Microgale talazaci,Talazac's shrew tenrec,Microgale_talazaci,1. Zoonomia,GCA_004026705.1,LC,N
+CARNIVORA,Ailuridae,Ailurus fulgens,Lesser panda,Ailurus_fulgens,2. Existing assembly,GCA_002007465.1,EN,N
+CARNIVORA,Canidae,Canis lupus familiaris,Domestic dog (village dog),Canis_lupus,1. Zoonomia,GCA_004027395.1,LC,N
+CARNIVORA,Canidae,Canis lupus familiaris,Domestic dog,Canis_lupus_familiaris,2. Existing assembly,GCF_000002285.3,LC,N
+CARNIVORA,Canidae,Lycaon pictus,African hunting dog,Lycaon_pictus,2. Existing assembly,GCA_001887905.1,EN,N
+CARNIVORA,Canidae,Vulpes lagopus,Arctic fox,Vulpes_lagopus,1. Zoonomia,GCA_004023825.1,LC,N
+CARNIVORA,Eupleridae,Cryptoprocta ferox,Fossa,Cryptoprocta_ferox,1. Zoonomia,GCA_004023885.1,VU,N
+CARNIVORA,Felidae,Acinonyx jubatus,Cheetah,Acinonyx_jubatus,2. Existing assembly,GCF_001443585.1,CR,N
+CARNIVORA,Felidae,Felis catus,Domestic cat,Felis_catus,2. Existing assembly,GCF_000181335.2,LC,N
+CARNIVORA,Felidae,Felis nigripes,Black-footed cat,Felis_nigripes,1. Zoonomia,GCA_004023925.1,VU,N
+CARNIVORA,Felidae,Panthera onca,Jaguar,Panthera_onca,1. Zoonomia,GCA_004023805.1,NT,N
+CARNIVORA,Felidae,Panthera pardus,Leopard,Panthera_pardus,2. Existing assembly,GCA_001857705.1,VU,N
+CARNIVORA,Felidae,Panthera tigris,Amur tiger,Panthera_tigris,2. Existing assembly,GCF_000464555.1,EN,N
+CARNIVORA,Felidae,Puma concolor,Puma,Puma_concolor,2. Existing assembly,GCF_003327715.1,LC,N
+CARNIVORA,Herpestidae,Helogale parvula,Dwarf mongoose,Helogale_parvula,1. Zoonomia,GCA_004023845.1,LC,N
+CARNIVORA,Herpestidae,Mungos mungo,South African banded mongoose,Mungos_mungo,1. Zoonomia,GCA_004023785.1,LC,N
+CARNIVORA,Herpestidae,Suricata suricatta,Meerkat,Suricata_suricatta,1. Zoonomia,GCA_004023905.1,LC,N
+CARNIVORA,Hyaenidae,Hyaena hyaena,Striped hyena,Hyaena_hyaena,1. Zoonomia,GCA_004023945.1,NT,N
+CARNIVORA,Mephitidae,Spilogale gracilis,Western spotted skunk,Spilogale_gracilis,1. Zoonomia,GCA_004023965.1,LC,N
+CARNIVORA,Mustelidae,Enhydra lutris,Sea otter,Enhydra_lutris,2. Existing assembly,GCF_002288905.1,EN,N
+CARNIVORA,Mustelidae,Mellivora capensis,Honey badger,Mellivora_capensis,1. Zoonomia,GCA_004024625.1,LC,N
+CARNIVORA,Mustelidae,Mustela putorius,Domestic ferret,Mustela_putorius,2. Existing assembly,GCF_000239315.1,LC,N
+CARNIVORA,Mustelidae,Pteronura brasiliensis,Giant otter,Pteronura_brasiliensis,1. Zoonomia,GCA_004024605.1,EN,N
+CARNIVORA,Odobenidae,Odobenus rosmarus,Pacific walrus,Odobenus_rosmarus,2. Existing assembly,GCF_000321225.1,DD,N
+CARNIVORA,Otariidae,Zalophus californianus,California sea lion,Zalophus_californianus,1. Zoonomia,GCA_004024565.1,LC,N
+CARNIVORA,Phocidae,Leptonychotes weddellii,Weddell seal,Leptonychotes_weddellii,2. Existing assembly,GCF_000349705.1,LC,N
+CARNIVORA,Phocidae,Mirounga angustirostris,Northern elephant seal,Mirounga_angustirostris,1. Zoonomia,GCA_004023865.1,LC,N
+CARNIVORA,Phocidae,Neomonachus schauinslandi,Hawaiian monk seal,Neomonachus_schauinslandi,2. Existing assembly,GCA_002201575.1,EN,N
+CARNIVORA,Ursidae,Ailuropoda melanoleuca,Giant panda,Ailuropoda_melanoleuca,2. Existing assembly,GCA_002007445.1,VU,N
+CARNIVORA,Ursidae,Ursus maritimus,Polar bear,Ursus_maritimus,2. Existing assembly,GCF_000687225.1,VU,N
+CARNIVORA,Viverridae,Paradoxurus hermaphroditus,Asian palm civet,Paradoxurus_hermaphroditus,1. Zoonomia,GCA_004024585.1,LC,N
+CETARTIODACTYLA,Antilocapridae,Antilocapra americana,Pronghorn,Antilocapra_americana,1. Zoonomia,GCA_004027515.1,LC,N
+CETARTIODACTYLA,Balaenidae,Eubalaena japonica,North Pacific right whale,Eubalaena_japonica,1. Zoonomia,GCA_004363455.1,EN,N
+CETARTIODACTYLA,Balaenopteridae,Balaenoptera acutorostrata,Minke whale,Balaenoptera_acutorostrata,2. Existing assembly,GCF_000493695.1,LC,N
+CETARTIODACTYLA,Balaenopteridae,Balaenoptera bonaerensis,Antarctic minke whale,Balaenoptera_bonaerensis,2. Existing assembly,GCA_000978805.1,DD,N
+CETARTIODACTYLA,Bovidae,Ammotragus lervia,Aoudad,Ammotragus_lervia,2. Existing assembly,GCA_002201775.1,VU,N
+CETARTIODACTYLA,Bovidae,Beatragus hunteri,Hirola,Beatragus_hunteri,1. Zoonomia,GCA_004027495.1,CR,N
+CETARTIODACTYLA,Bovidae,Bison bison,American bison,Bison_bison,2. Existing assembly,GCF_000754665.1,NT,N
+CETARTIODACTYLA,Bovidae,Bos indicus,Zebu cattle,Bos_indicus,2. Existing assembly,GCA_000247795.2,LC,N
+CETARTIODACTYLA,Bovidae,Bos mutus,Wild yak,Bos_mutus,2. Existing assembly,GCF_000298355.1,VU,N
+CETARTIODACTYLA,Bovidae,Bos taurus,Cattle,Bos_taurus,2. Existing assembly,GCF_000003205.7,LC,N
+CETARTIODACTYLA,Bovidae,Bubalus bubalis,Water buffalo,Bubalus_bubalis,2. Existing assembly,GCF_000471725.1,LC,N
+CETARTIODACTYLA,Bovidae,Capra aegagrus,Wild goat,Capra_aegagrus,2. Existing assembly,GCA_000978405.1,VU,N
+CETARTIODACTYLA,Bovidae,Capra hircus,Goat,Capra_hircus,2. Existing assembly,GCF_001704415.1,LC,N
+CETARTIODACTYLA,Bovidae,Hemitragus hylocrius,Nilgiri tahr,Hemitragus_hylocrius,1. Zoonomia,GCA_004026825.1,EN,N
+CETARTIODACTYLA,Bovidae,Ovis aries,Sheep,Ovis_aries,2. Existing assembly,GCF_000298735.2,LC,N
+CETARTIODACTYLA,Bovidae,Ovis canadensis cremnobates,Peninsular bighorn sheep,Ovis_canadensis_cremnobates,1. Zoonomia,GCA_004026945.1,EN,N
+CETARTIODACTYLA,Bovidae,Pantholops hodgsonii,Chiru,Pantholops_hodgsonii,2. Existing assembly,GCF_000400835.1,NT,N
+CETARTIODACTYLA,Bovidae,Saiga tatarica tatarica,Russian saiga,Saiga_tatarica_tatarica,1. Zoonomia,GCA_004024985.1,CR,N
+CETARTIODACTYLA,Camelidae,Camelus bactrianus,Bactrian camel,Camelus_bactrianus,2. Existing assembly,GCF_000767855.1,LC,N
+CETARTIODACTYLA,Camelidae,Camelus dromedarius,Arabian camel,Camelus_dromedarius,2. Existing assembly,GCF_000767585.1,LC,N
+CETARTIODACTYLA,Camelidae,Camelus ferus,Wild bactrian camel,Camelus_ferus,2. Existing assembly,GCF_000311805.1,CR,N
+CETARTIODACTYLA,Camelidae,Vicugna pacos,Alpaca,Vicugna_pacos,2. Existing assembly,GCA_000767525.1,LC,N
+CETARTIODACTYLA,Cervidae,Elaphurus davidianus,Pere david's deer,Elaphurus_davidianus,2. Existing assembly,GCA_002443075.1,CR,N
+CETARTIODACTYLA,Cervidae,Odocoileus virginianus,White-tailed deer,Odocoileus_virginianus,2. Existing assembly,GCA_002102435.1,LC,N
+CETARTIODACTYLA,Cervidae,Rangifer tarandus,Siberian reindeer,Rangifer_tarandus,1. Zoonomia,GCA_004026565.1,VU,N
+CETARTIODACTYLA,Delphinidae,Orcinus orca,Killer whale,Orcinus_orca,2. Existing assembly,GCF_000331955.2,DD,Y
+CETARTIODACTYLA,Delphinidae,Tursiops truncatus,Bottlenose dolphin,Tursiops_truncatus,2. Existing assembly,GCA_001922835.1,LC,Y
+CETARTIODACTYLA,Eschrichtiidae,Eschrichtius robustus,Grey whale,Eschrichtius_robustus,1. Zoonomia,GCA_004363415.1,LC,?
+CETARTIODACTYLA,Giraffidae,Giraffa tippelskirchi,Giraffe,Giraffa_tippelskirchi,2. Existing assembly,GCA_001651235.1,VU,N
+CETARTIODACTYLA,Giraffidae,Okapia johnstoni,Okapi,Okapia_johnstoni,2. Existing assembly,GCA_001660835.1,EN,N
+CETARTIODACTYLA,Hippopotamidae,Hippopotamus amphibius,Hippopotamus,Hippopotamus_amphibius,1. Zoonomia,GCA_004027065.1,VU,N
+CETARTIODACTYLA,Iniidae,Inia geoffrensis,Amazon river dolphin,Inia_geoffrensis,1. Zoonomia,GCA_004363515.1,DD,Y
+CETARTIODACTYLA,Iniidae,Lipotes vexillifer,Yangtze river dolphin,Lipotes_vexillifer,2. Existing assembly,GCF_000442215.1,CR,Y
+CETARTIODACTYLA,Monodontidae,Delphinapterus leucas,Beluga whale,Delphinapterus_leucas,2. Existing assembly,GCF_002288925.1,LC,Y
+CETARTIODACTYLA,Monodontidae,Monodon monoceros,Narwhal,Monodon_monoceros,1. Zoonomia,GCA_004026685.1,LC,Y
+CETARTIODACTYLA,Moschidae,Moschus moschiferus,Siberian musk deer,Moschus_moschiferus,1. Zoonomia,GCA_004024705.1,VU,N
+CETARTIODACTYLA,Phocoenidae,Neophocaena asiaeorientalis,Yangtze finless porpoise,Neophocaena_asiaeorientalis,2. Existing assembly,GCA_003031525.1,EN,N
+CETARTIODACTYLA,Phocoenidae,Phocoena phocoena,Harbor porpoise,Phocoena_phocoena,1. Zoonomia,GCA_004363495.1,LC,N
+CETARTIODACTYLA,Physeteridae,Kogia breviceps,Pygmy sperm whale,Kogia_breviceps,1. Zoonomia,GCA_004363705.1,DD,Y
+CETARTIODACTYLA,Platanistidae,Platanista gangetica minor,Indus river dolphin,Platanista_gangetica_minor,1. Zoonomia,GCA_004363435.1,EN,Y
+CETARTIODACTYLA,Suidae,Sus scrofa,Pig,Sus_scrofa,2. Existing assembly,GCF_000003025.5,LC,N
+CETARTIODACTYLA,Tayassuidae,Catagonus wagneri,Chacoan peccary,Catagonus_wagneri,1. Zoonomia,GCA_004024745.1,EN,N
+CETARTIODACTYLA,Tragulidae,Tragulus javanicus,Java lesser chevrotain,Tragulus_javanicus,1. Zoonomia,GCA_004024965.1,DD,N
+CETARTIODACTYLA,Ziphiidae,Mesoplodon bidens,Sowerby�s beaked whale,Mesoplodon_bidens,1. Zoonomia,GCA_004027085.1,DD,Y
+CETARTIODACTYLA,Ziphiidae,Ziphius cavirostris,Cuvier's beaked whale,Ziphius_cavirostris,1. Zoonomia,GCA_004364475.1,LC,Y
+CHIROPTERA,Craseonycteridae,Craseonycteris thonglongyai,Bumblebee bat,Craseonycteris_thonglongyai,1. Zoonomia,GCA_004027555.1,VU,Y
+CHIROPTERA,Hipposideridae,Hipposideros armiger,Great roundleaf bat,Hipposideros_armiger,2. Existing assembly,GCA_001890085.1,LC,Y
+CHIROPTERA,Hipposideridae,Hipposideros galeritus,Cantor's leaf-nosed bat,Hipposideros_galeritus,1. Zoonomia,GCA_004027415.1,LC,Y
+CHIROPTERA,Megadermatidae,Megaderma lyra,Greater false vampire bat,Megaderma_lyra,1. Zoonomia,GCA_004026885.1,LC,Y
+CHIROPTERA,Molossidae,Tadarida brasiliensis,Mexican free-tailed bat,Tadarida_brasiliensis,1. Zoonomia,GCA_004025005.1,LC,Y
+CHIROPTERA,Mormoopidae,Mormoops blainvillei,Ghost-faced bat,Mormoops_blainvillei,1. Zoonomia,GCA_004026545.1,LC,Y
+CHIROPTERA,Mormoopidae,Pteronotus parnellii,Parnell's mustached bat,Pteronotus_parnellii,2. Existing assembly,GCA_000465405.1,LC,Y
+CHIROPTERA,Noctilionidae,Noctilio leporinus,Greater bulldog bat,Noctilio_leporinus,1. Zoonomia,GCA_004026585.1,LC,Y
+CHIROPTERA,Phyllostomidae,Anoura caudifer,Tailed tailless bat,Anoura_caudifer,1. Zoonomia,GCA_004027475.1,LC,Y
+CHIROPTERA,Phyllostomidae,Artibeus jamaicensis,Jamacian fruit-eating bat,Artibeus_jamaicensis,1. Zoonomia,GCA_004027435.1,LC,Y
+CHIROPTERA,Phyllostomidae,Carollia perspicillata,Seba's short-tailed bat,Carollia_perspicillata,1. Zoonomia,GCA_004027735.1,LC,Y
+CHIROPTERA,Phyllostomidae,Desmodus rotundus,Common vampire bat,Desmodus_rotundus,2. Existing assembly,GCA_002940915.2,LC,Y
+CHIROPTERA,Phyllostomidae,Micronycteris hirsuta,Hairy big-eared bat,Micronycteris_hirsuta,1. Zoonomia,GCA_004026765.1,LC,Y
+CHIROPTERA,Phyllostomidae,Tonatia saurophila,Stripe-headed round-eared bat,Tonatia_saurophila,1. Zoonomia,GCA_004024845.1,LC,Y
+CHIROPTERA,Pteropodidae,Eidolon helvum,Straw-colored fruit bat,Eidolon_helvum,2. Existing assembly,GCA_000465285.1,NT,N
+CHIROPTERA,Pteropodidae,Macroglossus sobrinus,Long-tongued fruit bat,Macroglossus_sobrinus,1. Zoonomia,GCA_004027375.1,LC,N
+CHIROPTERA,Pteropodidae,Pteropus alecto,Black flying fox,Pteropus_alecto,2. Existing assembly,GCF_000325575.1,LC,N
+CHIROPTERA,Pteropodidae,Pteropus vampyrus,Large flying fox,Pteropus_vampyrus,2. Existing assembly,GCF_000151845.1,NT,N
+CHIROPTERA,Pteropodidae,Rousettus aegyptiacus,Egyptian fruit bat,Rousettus_aegyptiacus,1. Zoonomia,GCA_004024865.1,LC,N
+CHIROPTERA,Rhinolophidae,Rhinolophus sinicus,Chinese rufous horseshoe bat,Rhinolophus_sinicus,2. Existing assembly,GCA_001888835.1,LC,Y
+CHIROPTERA,Vespertilionidae,Eptesicus fuscus,Big brown bat,Eptesicus_fuscus,2. Existing assembly,GCF_000308155.1,LC,Y
+CHIROPTERA,Vespertilionidae,Lasiurus borealis,Eastern red bat,Lasiurus_borealis,1. Zoonomia,GCA_004026805.1,LC,Y
+CHIROPTERA,Vespertilionidae,Miniopterus natalensis,Bats,Miniopterus_natalensis,2. Existing assembly,GCF_001595765.1,LC,Y
+CHIROPTERA,Vespertilionidae,Miniopterus schreibersii,Common bent-wing bat,Miniopterus_schreibersii,1. Zoonomia,GCA_004026525.1,NT,Y
+CHIROPTERA,Vespertilionidae,Murina feae,Ashy-gray tube-nosed bat,Murina_feae,1. Zoonomia,GCA_004026665.1,LC,Y
+CHIROPTERA,Vespertilionidae,Myotis brandtii,Brandt's bat,Myotis_brandtii,2. Existing assembly,GCF_000412655.1,LC,Y
+CHIROPTERA,Vespertilionidae,Myotis davidii,Bats,Myotis_davidii,2. Existing assembly,GCF_000327345.1,LC,Y
+CHIROPTERA,Vespertilionidae,Myotis lucifugus,Little brown bat,Myotis_lucifugus,2. Existing assembly,GCF_000147115.1,LC,Y
+CHIROPTERA,Vespertilionidae,Myotis myotis,Greater mouse-eared bat,Myotis_myotis,1. Zoonomia,GCA_004026985.1,LC,Y
+CHIROPTERA,Vespertilionidae,Pipistrellus pipistrellus,Common pipistrelle,Pipistrellus_pipistrellus,1. Zoonomia,GCA_004026625.1,LC,Y
+CINGULATA,Dasypodidae,Chaetophractus vellerosus,Screaming hairy armadillo,Chaetophractus_vellerosus,1. Zoonomia,GCA_004027955.1,LC,N
+CINGULATA,Dasypodidae,Dasypus novemcinctus,Nine-banded armadillo,Dasypus_novemcinctus,2. Existing assembly,GCF_000208655.1,LC,N
+CINGULATA,Dasypodidae,Tolypeutes matacus,Southern three-banded armadillo,Tolypeutes_matacus,1. Zoonomia,GCA_004025125.1,NT,N
+DERMOPTERA,Cynocephalidae,Galeopterus variegatus,Sunda flying lemur,Galeopterus_variegatus,1. Zoonomia,GCA_004027255.1,LC,N
+EULIPOTYPHLA,Erinaceidae,Erinaceus europaeus,Western european hedgehog,Erinaceus_europaeus,2. Existing assembly,GCF_000296755.1,LC,N
+EULIPOTYPHLA,Solenodontidae,Solenodon paradoxus,Hispaniolan solenodon,Solenodon_paradoxus,1. Zoonomia,GCA_004363575.1,EN,N
+EULIPOTYPHLA,Soricidae,Crocidura indochinensis,Indochinese shrew,Crocidura_indochinensis,1. Zoonomia,GCA_004027635.1,LC,N
+EULIPOTYPHLA,Soricidae,Sorex araneus,European shrew,Sorex_araneus,2. Existing assembly,GCF_000181275.1,LC,N
+EULIPOTYPHLA,Talpidae,Condylura cristata,Star-nosed mole,Condylura_cristata,2. Existing assembly,GCF_000260355.1,LC,N
+EULIPOTYPHLA,Talpidae,Scalopus aquaticus,Eastern mole,Scalopus_aquaticus,1. Zoonomia,GCA_004024925.1,LC,N
+EULIPOTYPHLA,Talpidae,Uropsilus gracilis,Gracile shrew-like mole,Uropsilus_gracilis,1. Zoonomia,GCA_004024945.1,LC,N
+HYRACOIDEA,Procaviidae,Heterohyrax brucei,African yellow-spotted rock hyrax,Heterohyrax_brucei,1. Zoonomia,GCA_004026845.1,LC,N
+HYRACOIDEA,Procaviidae,Procavia capensis,South African rock hyrax,Procavia_capensis,1. Zoonomia,GCA_004026925.1,LC,N
+LAGOMORPHA,Leporidae,Lepus americanus,Snowshoe hare,Lepus_americanus,1. Zoonomia,GCA_004026855.1,LC,N
+LAGOMORPHA,Leporidae,Oryctolagus cuniculus,Rabbit,Oryctolagus_cuniculus,2. Existing assembly,GCF_000003625.3,NT,N
+LAGOMORPHA,Ochotonidae,Ochotona princeps,American pika,Ochotona_princeps,2. Existing assembly,GCF_000292845.1,LC,N
+MACROSCELIDEA,Macroscelididae,Elephantulus edwardii,Cape elephant shrew,Elephantulus_edwardii,1. Zoonomia,GCA_004027355.1,LC,N
+PERISSODACTYLA,Equidae,Equus asinus,Ass,Equus_asinus,2. Existing assembly,GCF_001305755.1,LC,N
+PERISSODACTYLA,Equidae,Equus caballus,Horse,Equus_caballus,2. Existing assembly,GCF_000002305.2,LC,N
+PERISSODACTYLA,Equidae,Equus przewalskii,Przewalski's horse,Equus_przewalskii,2. Existing assembly,GCF_000696695.1,EN,N
+PERISSODACTYLA,Rhinocerotidae,Ceratotherium simum,Southern white rhinoceros,Ceratotherium_simum,2. Existing assembly,GCF_000283155.1,NT,N
+PERISSODACTYLA,Rhinocerotidae,Ceratotherium simum cottoni,Northern white rhino,Ceratotherium_simum_cottoni,1. Zoonomia,GCA_004027795.1,CR,N
+PERISSODACTYLA,Rhinocerotidae,Dicerorhinus sumatrensis,Sumatran rhinoceros,Dicerorhinus_sumatrensis,2. Existing assembly,GCA_002844835.1,CR,N
+PERISSODACTYLA,Rhinocerotidae,Diceros bicornis,Black rhinocerous,Diceros_bicornis,1. Zoonomia,GCA_004027315.1,CR,N
+PERISSODACTYLA,Tapiridae,Tapirus indicus,Malayan tapir,Tapirus_indicus,1. Zoonomia,GCA_004024905.1,EN,N
+PERISSODACTYLA,Tapiridae,Tapirus terrestris,South American tapir,Tapirus_terrestris,1. Zoonomia,GCA_004025025.1,VU,N
+PHOLIDOTA,Manidae,Manis javanica,Malayan pangolin,Manis_javanica,2. Existing assembly,GCF_001685135.1,CR,N
+PHOLIDOTA,Manidae,Manis pentadactyla,Chinese pangolin,Manis_pentadactyla,2. Existing assembly,GCA_000738955.1,CR,N
+PILOSA,Megalonychidae,Choloepus didactylus,Linnaeus's two toed sloth,Choloepus_didactylus,1. Zoonomia,GCA_004027855.1,LC,N
+PILOSA,Megalonychidae,Choloepus hoffmanni,Hoffmann's two-fingered sloth,Choloepus_hoffmanni,2. Existing assembly,GCA_000164785.2,LC,N
+PILOSA,Myrmecophagidae,Myrmecophaga tridactyla,Giant anteater,Myrmecophaga_tridactyla,1. Zoonomia,GCA_004026745.1,VU,N
+PILOSA,Myrmecophagidae,Tamandua tetradactyla,Southern tamandua,Tamandua_tetradactyla,1. Zoonomia,GCA_004025105.1,LC,N
+PRIMATES,Aotidae,Aotus nancymaae,Ma's night monkey,Aotus_nancymaae,2. Existing assembly,GCA_000952055.2,VU,N
+PRIMATES,Atelidae,Alouatta palliata mexicana,Mexican howler monkey,Alouatta_palliata_mexicana,1. Zoonomia,GCA_004027835.1,CR,N
+PRIMATES,Atelidae,Ateles geoffroyi,Geoffroy's spider monkey,Ateles_geoffroyi,1. Zoonomia,GCA_004024785.1,EN,N
+PRIMATES,Cebidae,Callithrix jacchus,White-tufted-ear marmoset,Callithrix_jacchus,2. Existing assembly,GCA_002754865.1,LC,N
+PRIMATES,Cebidae,Cebus albifrons,White-fronted capuchin,Cebus_albifrons,1. Zoonomia,GCA_004027755.1,LC,N
+PRIMATES,Cebidae,Cebus capucinus,White-faced sapajou,Cebus_capucinus,2. Existing assembly,GCF_001604975.1,LC,N
+PRIMATES,Cebidae,Saguinus imperator,Emperor tamarin,Saguinus_imperator,1. Zoonomia,GCA_004024885.1,LC,N
+PRIMATES,Cebidae,Saimiri boliviensis,Bolivian squirrel monkey,Saimiri_boliviensis,2. Existing assembly,GCF_000235385.1,LC,N
+PRIMATES,Cercopithecidae,Cercocebus atys,Sooty mangabey,Cercocebus_atys,2. Existing assembly,GCF_000955945.1,NT,N
+PRIMATES,Cercopithecidae,Cercopithecus neglectus,De brazza's monkey,Cercopithecus_neglectus,1. Zoonomia,GCA_004027615.1,LC,N
+PRIMATES,Cercopithecidae,Chlorocebus sabaeus,Green monkey,Chlorocebus_sabaeus,2. Existing assembly,GCF_000409795.2,LC,N
+PRIMATES,Cercopithecidae,Colobus angolensis,Angolan colobus,Colobus_angolensis,2. Existing assembly,GCF_000951035.1,VU,N
+PRIMATES,Cercopithecidae,Erythrocebus patas,Patas monkey,Erythrocebus_patas,1. Zoonomia,GCA_004027335.1,LC,N
+PRIMATES,Cercopithecidae,Macaca fascicularis,Crab-eating macaque,Macaca_fascicularis,2. Existing assembly,GCF_000364345.1,DD,N
+PRIMATES,Cercopithecidae,Macaca mulatta,Rhesus monkey,Macaca_mulatta,2. Existing assembly,GCF_000772875.2,LC,N
+PRIMATES,Cercopithecidae,Macaca nemestrina,Pig-tailed macaque,Macaca_nemestrina,2. Existing assembly,GCF_000956065.1,VU,N
+PRIMATES,Cercopithecidae,Mandrillus leucophaeus,Drill,Mandrillus_leucophaeus,2. Existing assembly,GCF_000951045.1,EN,N
+PRIMATES,Cercopithecidae,Nasalis larvatus,Proboscis monkey,Nasalis_larvatus,1. Zoonomia,GCA_004027105.1,EN,N
+PRIMATES,Cercopithecidae,Papio anubis,Olive baboon,Papio_anubis,2. Existing assembly,GCA_000264685.2,LC,N
+PRIMATES,Cercopithecidae,Piliocolobus tephrosceles,Ugandan red colobus,Piliocolobus_tephrosceles,2. Existing assembly,GCA_002776525.1,EN,N
+PRIMATES,Cercopithecidae,Pygathrix nemaeus,Red-shanked douc,Pygathrix_nemaeus,1. Zoonomia,GCA_004024825.1,EN,N
+PRIMATES,Cercopithecidae,Rhinopithecus bieti,Black snub-nosed monkey,Rhinopithecus_bieti,2. Existing assembly,GCF_001698545.1,EN,N
+PRIMATES,Cercopithecidae,Rhinopithecus roxellana,Golden snub-nosed monkey,Rhinopithecus_roxellana,2. Existing assembly,GCF_000769185.1,EN,N
+PRIMATES,Cercopithecidae,Semnopithecus entellus,Northern Plains gray langur,Semnopithecus_entellus,1. Zoonomia,GCA_004025065.1,LC,N
+PRIMATES,Cheirogaleidae,Cheirogaleus medius,Fat-tailed dwarf lemur,Cheirogaleus_medius,1. Zoonomia,GCA_004024725.1,LC,N
+PRIMATES,Cheirogaleidae,Microcebus murinus,Gray mouse lemur,Microcebus_murinus,2. Existing assembly,GCA_000165445.3,LC,N
+PRIMATES,Cheirogaleidae,Mirza coquereli,Coquerel's giant mouse lemur,Mirza_coquereli,1. Zoonomia,GCA_004024645.1,EN,N
+PRIMATES,Daubentoniidae,Daubentonia madagascariensis,Aye-aye,Daubentonia_madagascariensis,1. Zoonomia,GCA_004027145.1,EN,N
+PRIMATES,Galagidae,Otolemur garnettii,Small-eared galago,Otolemur_garnettii,2. Existing assembly,GCF_000181295.1,LC,N
+PRIMATES,Hominidae,Gorilla gorilla,Western lowland gorilla,Gorilla_gorilla,2. Existing assembly,GCA_900006655.3,CR,N
+PRIMATES,Hominidae,Homo sapiens,Human,Homo_sapiens,2. Existing assembly,GCA_000001405.27,LC,N
+PRIMATES,Hominidae,Pan paniscus,Pygmy chimpanzee,Pan_paniscus,2. Existing assembly,GCF_000258655.2,EN,N
+PRIMATES,Hominidae,Pan troglodytes,Chimpanzee,Pan_troglodytes,2. Existing assembly,GCA_002880755.3,EN,N
+PRIMATES,Hominidae,Pongo abelii,Sumatran orangutan,Pongo_abelii,2. Existing assembly,GCA_002880775.3,CR,N
+PRIMATES,Hylobatidae,Nomascus leucogenys,Northern white-cheeked gibbon,Nomascus_leucogenys,2. Existing assembly,GCF_000146795.2,CR,N
+PRIMATES,Indridae,Indri indri,Indri,Indri_indri,1. Zoonomia,GCA_004363605.1,CR,N
+PRIMATES,Indridae,Propithecus coquereli,Coquerel's sifaka,Propithecus_coquereli,2. Existing assembly,GCF_000956105.1,EN,N
+PRIMATES,Lemuridae,Eulemur flavifrons,Sclater's lemur,Eulemur_flavifrons,2. Existing assembly,GCA_001262665.1,CR,N
+PRIMATES,Lemuridae,Eulemur fulvus,Common brown lemur,Eulemur_fulvus,1. Zoonomia,GCA_004027275.1,NT,N
+PRIMATES,Lemuridae,Lemur catta,Ring tailed lemur,Lemur_catta,1. Zoonomia,GCA_004024665.1,EN,N
+PRIMATES,Lorisidae,Nycticebus coucang,Sunda slow loris,Nycticebus_coucang,1. Zoonomia,GCA_004027815.1,VU,N
+PRIMATES,Pitheciidae,Callicebus donacophilus,White-eared titi,Callicebus_donacophilus,1. Zoonomia,GCA_004027715.1,LC,N
+PRIMATES,Pitheciidae,Pithecia pithecia,White-faced saki,Pithecia_pithecia,1. Zoonomia,GCA_004026645.1,LC,N
+PROBOSCIDEA,Elephantidae,Loxodonta Africana,African savanna elephant,Loxodonta_Africana,2. Existing assembly,GCF_000001905.1,VU,N
+RODENTIA,Aplodontiidae,Aplodontia rufa,Mountain beaver,Aplodontia_rufa,1. Zoonomia,GCA_004027875.1,LC,N
+RODENTIA,Bathyergidae,Fukomys damarensis,Damara mole-rat,Fukomys_damarensis,2. Existing assembly,GCF_000743615.1,LC,N
+RODENTIA,Bathyergidae,Heterocephalus glaber,Naked mole-rat,Heterocephalus_glaber,2. Existing assembly,GCF_000247695.1,LC,N
+RODENTIA,Capromyidae,Capromys pilorides,Desmarest's hutia,Capromys_pilorides,1. Zoonomia,GCA_004027915.1,LC,N
+RODENTIA,Castoridae,Castor canadensis,North American beaver,Castor_canadensis,1. Zoonomia,GCA_004027675.1,LC,N
+RODENTIA,Caviidae,Cavia aperea,Brazilian guinea pig,Cavia_aperea,2. Existing assembly,GCA_000688575.1,LC,N
+RODENTIA,Caviidae,Cavia porcellus,Domestic guinea pig,Cavia_porcellus,2. Existing assembly,GCF_000151735.1,LC,N
+RODENTIA,Caviidae,Cavia tschudii,Montane guinea pig,Cavia_tschudii,1. Zoonomia,GCA_004027695.1,LC,N
+RODENTIA,Caviidae,Dolichotis patagonum,Patagonian mara,Dolichotis_patagonum,1. Zoonomia,GCA_004027295.1,NT,N
+RODENTIA,Caviidae,Hydrochoerus hydrochaeris,Capybara,Hydrochoerus_hydrochaeris,1. Zoonomia,GCA_004027455.1,LC,N
+RODENTIA,Chinchillidae,Chinchilla lanigera,Long-tailed chinchilla,Chinchilla_lanigera,2. Existing assembly,GCF_000276665.1,EN,N
+RODENTIA,Cricetidae,Ellobius lutescens,Transcaucasian mole vole,Ellobius_lutescens,2. Existing assembly,GCA_001685075.1,LC,N
+RODENTIA,Cricetidae,Ellobius talpinus,Northern mole vole,Ellobius_talpinus,2. Existing assembly,GCA_001685095.1,LC,N
+RODENTIA,Cricetidae,Mesocricetus auratus,Golden hamster,Mesocricetus_auratus,2. Existing assembly,GCF_000349665.1,VU,N
+RODENTIA,Cricetidae,Microtus ochrogaster,Prairie vole,Microtus_ochrogaster,2. Existing assembly,GCF_000317375.1,LC,N
+RODENTIA,Cricetidae,Ondatra zibethicus,Muskrat,Ondatra_zibethicus,1. Zoonomia,GCA_004026605.1,LC,N
+RODENTIA,Cricetidae,Onychomys torridus,Scorpion mouse,Onychomys_torridus,1. Zoonomia,GCA_004026725.1,LC,N
+RODENTIA,Cricetidae,Peromyscus maniculatus,Prairie deer mouse,Peromyscus_maniculatus,2. Existing assembly,GCF_000500345.1,LC,N
+RODENTIA,Cricetidae,Sigmodon hispidus,Hispid cotton rat,Sigmodon_hispidus,1. Zoonomia,GCA_004025045.1,LC,N
+RODENTIA,Ctenodactylidae,Ctenodactylus gundi,Common gundi,Ctenodactylus_gundi,1. Zoonomia,GCA_004027205.1,LC,N
+RODENTIA,Ctenomyidae,Ctenomys sociabilis,Social tuco-tuco,Ctenomys_sociabilis,1. Zoonomia,GCA_004027165.1,CR,N
+RODENTIA,Cuniculidae,Cuniculus paca,Lowland paca,Cuniculus_paca,1. Zoonomia,GCA_004365215.1,LC,N
+RODENTIA,Dasyproctidae,Dasyprocta punctata,Central American agouti,Dasyprocta_punctata,1. Zoonomia,GCA_004363535.1,LC,N
+RODENTIA,Dinomyidae,Dinomys branickii,Pacarana,Dinomys_branickii,1. Zoonomia,GCA_004027595.1,LC,N
+RODENTIA,Dipodidae,Allactaga bullata,Gobi jerboa,Allactaga_bullata,1. Zoonomia,GCA_004027895.1,LC,N
+RODENTIA,Dipodidae,Jaculus jaculus,Lesser egyptian jerboa,Jaculus_jaculus,2. Existing assembly,GCF_000280705.1,LC,N
+RODENTIA,Dipodidae,Zapus hudsonius,Meadow jumping mouse,Zapus_hudsonius,1. Zoonomia,GCA_004024765.1,LC,N
+RODENTIA,Gliridae,Glis glis,Edible dormouse,Glis_glis,1. Zoonomia,GCA_004027185.1,LC,N
+RODENTIA,Gliridae,Graphiurus murinus,Woodland doormouse,Graphiurus_murinus,1. Zoonomia,GCA_004027655.1,LC,N
+RODENTIA,Gliridae,Muscardinus avellanarius,Hazel dormouse,Muscardinus_avellanarius,1. Zoonomia,GCA_004027005.1,LC,N
+RODENTIA,Heteromyidae,Dipodomys ordii,Ord's kangaroo rat,Dipodomys_ordii,2. Existing assembly,GCF_000151885.1,LC,N
+RODENTIA,Heteromyidae,Dipodomys stephensi,Stephen's kangaroo rat,Dipodomys_stephensi,1. Zoonomia,GCA_004024685.1,VU,N
+RODENTIA,Heteromyidae,Perognathus longimembris pacificus,Pacific pocket mouse,Perognathus_longimembris_pacificus,1. Zoonomia,GCA_004363475.1,LC,N
+RODENTIA,Hystricidae,Hystrix cristata,Northern crested porcupine,Hystrix_cristata,1. Zoonomia,GCA_004026905.1,LC,N
+RODENTIA,Muridae,Acomys cahirinus,Cairo spiny mouse,Acomys_cahirinus,1. Zoonomia,GCA_004027535.1,LC,N
+RODENTIA,Muridae,Meriones unguiculatus,Mongolian jird,Meriones_unguiculatus,1. Zoonomia,GCA_004026785.1,LC,N
+RODENTIA,Muridae,Mus caroli,Ryukyu mouse,Mus_caroli,2. Existing assembly,GCA_900094665.2,LC,N
+RODENTIA,Muridae,Mus musculus,House mouse,Mus_musculus,2. Existing assembly,GCF_000001635.26,LC,N
+RODENTIA,Muridae,Mus pahari,Shrew mouse,Mus_pahari,2. Existing assembly,GCA_900095145.2,LC,N
+RODENTIA,Muridae,Mus spretus,Western wild mouse,Mus_spretus,2. Existing assembly,GCA_001624865.1,LC,N
+RODENTIA,Muridae,Psammomys obesus,Fat sand rat,Psammomys_obesus,2. Existing assembly,GCA_002215935.1,LC,N
+RODENTIA,Muridae,Rattus norvegicus,Norway rat,Rattus_norvegicus,2. Existing assembly,GCF_000001895.5,LC,N
+RODENTIA,Myocastoridae,Myocastor coypus,Coypu,Myocastor_coypus,1. Zoonomia,GCA_004027025.1,LC,N
+RODENTIA,Nesomyidae,Cricetomys gambianus,Gambian pouched rat,Cricetomys_gambianus,1. Zoonomia,GCA_004027575.1,LC,N
+RODENTIA,Nesomyidae,Cricetulus griseus,Chinese hamster,Cricetulus_griseus,2. Existing assembly,GCA_900186095.1,LC,N
+RODENTIA,Octodontidae,Octodon degus,Degu,Octodon_degus,2. Existing assembly,GCF_000260255.1,LC,N
+RODENTIA,Petromuridae,Petromus typicus,Dassie rat,Petromus_typicus,1. Zoonomia,GCA_004026965.1,LC,N
+RODENTIA,Sciuridae,Ictidomys tridecemlineatus,Thirteen-lined ground squirrel,Ictidomys_tridecemlineatus,2. Existing assembly,GCF_000236235.1,LC,N
+RODENTIA,Sciuridae,Marmota marmota,Alpine marmot,Marmota_marmota,2. Existing assembly,GCF_001458135.1,LC,N
+RODENTIA,Sciuridae,Spermophilus dauricus,Daurian ground squirrel,Spermophilus_dauricus,2. Existing assembly,GCA_002406435.1,LC,N
+RODENTIA,Sciuridae,Xerus inauris,Cape ground squirrel,Xerus_inauris,1. Zoonomia,GCA_004024805.1,LC,N
+RODENTIA,Spalacidae,Nannospalax galili,Upper galilee mountains blind mole rat,Nannospalax_galili,2. Existing assembly,GCF_000622305.1,DD,N
+RODENTIA,Thryonomyidae,Thryonomys swinderianus,Greater cane rat,Thryonomys_swinderianus,1. Zoonomia,GCA_004025085.1,LC,N
+SCANDENTIA,Tupaiidae,Tupaia belangeri chinensis,Northern tree shrew,Tupaia_belangeri_chinensis,2. Existing assembly,GCF_000334495.1,LC,N
+SCANDENTIA,Tupaiidae,Tupaia tana,Large treeshrew,Tupaia_tana,1. Zoonomia,GCA_004365275.1,LC,N
+SIRENIA,Trichechidae,Trichechus manatus,Florida manatee,Trichechus_manatus,2. Existing assembly,GCF_000243295.1,EN,N
+TUBULIDENTATA,Orycteropodidae,Orycteropus afer,Aardvark,Orycteropus_afer,1. Zoonomia,GCA_004365145.1,LC,N
