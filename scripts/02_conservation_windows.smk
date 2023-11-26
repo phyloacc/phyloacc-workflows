@@ -423,7 +423,8 @@ rule get_conserved_elements:
     shell:
         """
         bedtools intersect -a {input.windows_bed} -b {input.conserved_high_depth_sites_bed} -c | \
-        awk '$4 >= {params.conserved_threshold} {{print}}' 2> {log} > {output.conserved_windows}
+        awk '$4 >= {params.conserved_threshold} {{print}}' | \
+        bedtools merge -d 5 -i - 2> {log} > {output.conserved_windows}
         """
 
 ####################
