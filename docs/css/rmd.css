@@ -1,0 +1,118 @@
+/*------------------------------------------------------*/
+/* Regular markdown styles */
+/* .main-container {
+    min-width:75%;
+} */
+
+/*------------------------------------------------------*/
+/* bookthedown styles */
+#content{
+    min-width:75%;
+}
+.page-inner{
+    min-width:100%;
+    background-color:#f2f2f2;
+}
+/* Widens page content so there isn't a bunch of wasted space on the sides */
+
+#content{
+    background-color:#f2f2f2;
+}
+.row{
+    background-color:#f2f2f2;
+}
+/* Changes background color so there is contrast between figures and page */
+
+.book .book-body .page-inner section.normal pre.sourceCode{
+    margin:0;
+}
+/* Removes white background stripe when code is expanded */
+
+nav#toc > ul > li > a{
+    display:flex !important;
+    align-items:center !important;
+ }
+ nav#toc > ul > li > a > span{
+    padding-right:15px;
+ }
+ /* Spaces the number from the text in table of contents level 1 */
+
+.authors > li:nth-child(2) > span:nth-child(1) > a:nth-child(2){
+    display:inline-block;
+    padding:0px 4px;
+}
+/* Makes the author icon and text line up */
+
+li.active > ul > li {
+    max-height:none !important;
+   }
+li.active > ul > li > ul > li {
+max-height:none !important;
+}
+/* Prevents level 3 of table of contents from being cutoff by removing max-height of level 2 for both active and inactive states */
+
+nav#toc > ul.nav > li.active > ul > li > a{
+    display:flex;
+    align-items:center;
+}
+nav#toc > ul.nav > li.active > ul > li > a > span{
+    padding: 0px 15px;
+}
+nav#toc ul.nav li.active ul li ul li a{
+    display: flex;
+    align-items:center;
+}
+nav#toc ul.nav li.active ul li ul li a span{
+    padding: 0px 15px;
+}
+/* Centers the table of contents text for levels 2 and 3 */
+
+.book-summary .title{
+    background-color:#009292;
+    color: #ececec;
+}
+.divider{
+    display:none;
+}
+/* TOC title colors */
+
+.authors{
+    background-color:#009292;
+    padding-top:10px !important;
+}
+.authors a{
+    color:#ececec !important;
+}
+.authors span{
+    color:#ececec !important;
+}
+.glyphicon{
+    color:#ececec;
+}
+/* TOC footer colors */
+
+/*------------------------------------------------------*/
+/* Footer grid styles */
+#footer {
+	font-family: "Courier New", Courier, monospace;
+	background-color: #fff;
+	color:#333;
+	font-size:0.6em;
+	height:3vh;
+	display: flex;
+	justify-content: center;
+	align-content: center;
+	flex-direction: column;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+	border-top:1px solid #333;
+	width:100%;
+}
+#footer_text {
+}
+@media (max-width: 1025px) {
+	#footer { height:6vh; }
+	#footer_text { top: 25%; }
+}
+/*------------------------------------------------------*/
