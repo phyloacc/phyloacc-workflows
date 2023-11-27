@@ -410,7 +410,7 @@ rule merge_conserved_sites:
 
 rule get_conserved_elements:
     input:
-        conserved_high_depth_sites_bed = expand(os.path.join(MAF_OUTDIR, "06-conserved-sites", "{aln_depth_threshold}", PREFIX + ".conserved.sites." + ALPHA + ".{aln_depth_threshold}.bed"), aln_depth_threshold=ALN_DEPTH_THRESHOLD),
+        conserved_high_depth_sites_bed = expand(os.path.join(MAF_OUTDIR, "06-conserved-sites", "{{aln_depth_threshold}}", PREFIX + ".conserved.sites." + ALPHA + ".{{aln_depth_threshold}}.bed"), aln_depth_threshold=ALN_DEPTH_THRESHOLD),
         windows_bed = REF_ELEMENT_BED
     output:
         conserved_windows = os.path.join(MAF_OUTDIR, "07-conserved-elements", "{aln_depth_threshold}", PREFIX + ".phylop-conserved-windows." + ALPHA  + ".{aln_depth_threshold}.{conserved_threshold}.bed")

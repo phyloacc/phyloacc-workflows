@@ -1,4 +1,5 @@
 data/
+scripts/dryrun
 scripts/test*
 scripts/.snakemake/
 scripts/slurm-logs/
