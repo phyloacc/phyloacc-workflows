@@ -394,23 +394,23 @@ rule combine_high_depth_conserved_sites:
 
 ####################
 
-rule merge_conserved_sites:
-    input:
-        conserved_high_depth_sites = os.path.join(MAF_OUTDIR, "06-conserved-sites", "{aln_depth_threshold}", PREFIX + ".conserved.sites." + ALPHA + ".{aln_depth_threshold}.wig")
-    output:
-        conserved_high_depth_sites_bed = os.path.join(MAF_OUTDIR, "06-conserved-sites", "{aln_depth_threshold}", PREFIX + ".conserved.sites." + ALPHA + ".{aln_depth_threshold}.bed")
-    log:
-        os.path.join(MAF_OUTDIR, "06-conserved-sites", "logs", PREFIX + ".conserved.sites." + ALPHA + ".{aln_depth_threshold}.bed.log")     
-    shell:
-        """
-        bedtools merge -i {input.conserved_high_depth_sites} 2> {log} > {output.conserved_high_depth_sites_bed}
-        """    
+# rule merge_conserved_sites:
+#     input:
+#         conserved_high_depth_sites = os.path.join(MAF_OUTDIR, "06-conserved-sites", "{aln_depth_threshold}", PREFIX + ".conserved.sites." + ALPHA + ".{aln_depth_threshold}.wig")
+#     output:
+#         conserved_high_depth_sites_bed = os.path.join(MAF_OUTDIR, "06-conserved-sites", "{aln_depth_threshold}", PREFIX + ".conserved.sites." + ALPHA + ".{aln_depth_threshold}.bed")
+#     log:
+#         os.path.join(MAF_OUTDIR, "06-conserved-sites", "logs", PREFIX + ".conserved.sites." + ALPHA + ".{aln_depth_threshold}.bed.log")     
+#     shell:
+#         """
+#         bedtools merge -i {input.conserved_high_depth_sites} 2> {log} > {output.conserved_high_depth_sites_bed}
+#         """    
 
 ####################
 
 rule get_conserved_elements:
     input:
-        conserved_high_depth_sites_bed = expand(os.path.join(MAF_OUTDIR, "06-conserved-sites", "{{aln_depth_threshold}}", PREFIX + ".conserved.sites." + ALPHA + ".{{aln_depth_threshold}}.bed"), aln_depth_threshold=ALN_DEPTH_THRESHOLD),
+        conserved_high_depth_sites_bed = expand(os.path.join(MAF_OUTDIR, "06-conserved-sites", "{{aln_depth_threshold}}", PREFIX + ".conserved.sites." + ALPHA + ".{{aln_depth_threshold}}.wig"), aln_depth_threshold=ALN_DEPTH_THRESHOLD),
         windows_bed = REF_ELEMENT_BED
     output:
         conserved_windows = os.path.join(MAF_OUTDIR, "07-conserved-elements", "{aln_depth_threshold}", PREFIX + ".phylop-conserved-windows." + ALPHA  + ".{aln_depth_threshold}.{conserved_threshold}.bed")
