@@ -1,0 +1,249 @@
+sed -i 's/^/STRING_TO_ADD/' FILENAME
+sed -i '/^[^XYMT]/s/^/STRING_TO_ADD/' FILENAME
+
+
+
+
+sort -n -k1 FILENAME
+
+
+
+
+
+
+awk -F, '{count[$1]++} END {for (i in count) print i "," count[i]}' FILENAME > temp && mv temp FILENAME
+
+
+
+
+
+
+
+
+/usr/bin/time bigWigToWig ../241-mammalian-2020v2.bigWig /dev/stdout | grep -v "^#" | awk -v OFS="\t" '{ if ($4 > 0) print $0, "0", 10^-$4; else if ($4 < 0) print $0, "2", 10^$4; else print $0, "1", 10^$4 }' > 241-mammalian-2020v2b.phylop-scores.tsv
+# Convert bigwig to wig and add new columns with the conservation status, raw p-value
+# HEADERS:
+# 1. chromosome
+# 2. start position
+# 3. end position
+# 4. raw score/log(raw p-value)
+# 5. conservation status (0 = conserved, 1 = neutral, 2 = accelerated)
+# 6. raw p-value
+# 945.29user 22.20system 45:11.77elapsed 35%CPU (0avgtext+0avgdata 1238900maxresident)k
+# 19289288inputs+0outputs (0major+29267minor)pagefaults 0swaps
+
+time -p total=$(wc -l 241-mammalian-2020v2b.phylop-scores.tsv | cut -d ' ' -f1)
+# Get the total number of sites (/tests performed)
+# 2852623265
+# real 32.34
+# user 18.51
+# sys 13.76
+
+#/usr/bin/time sort -k6,6g --parallel=4 -T $(pwd) 241-mammalian-2020v2b.phylop-scores.tsv | awk -v OFS="\t" '{ print $0, NR }' | awk -v OFS="\t" -v total="${total}" '{ print $0, ($7 / total)*0.05 }' > 241-mammalian-2020v2b.phylop-scores.qvals.tsv
+# Sort by p-value and add column for row number and calculate q-value in another column
+# Uses 0.05 alpha critical value
+
+#sort -k6,6g --parallel=4 -T $(pwd) test.tsv | awk -v OFS="\t" '{ print $0, NR }' | sort -rn -k7 --parallel=4 -T $(pwd) | awk -v OFS="\t" -v total=${total2} 'BEGIN{prev_pn=999} {p_adj=total/$7*$6; if(p_adj>prev_pn){p_adj=prev_pn}; prev_pn=p_adj; if(p_adj>1){p_adj=1}; print $0, p_adj}' | sort -k 1,1 -k2,2n | cut -f 1,2,3,5,8 > test2-out.tsv
+
+/usr/bin/time sort -k6,6g --parallel=12 -T $(pwd) 241-mammalian-2020v2b.phylop-scores.tsv | awk -v OFS="\t" '{ print $0, NR }' | sort -rn -k7 --parallel=12 -T $(pwd) | awk -v OFS="\t" -v total=${total} 'BEGIN{prev_pn=999} {p_adj=(total/$7)*$6; if(p_adj>prev_pn){p_adj=prev_pn}; prev_pn=p_adj; if(p_adj>1){p_adj=1}; sig=0; if(p_adj<0.05){sig=1}; print $0, p_adj, sig}' | sort -k 1,1 -k2,2n --parallel=12 -T $(pwd) | cut -f 1,2,3,5,8,9 > 241-mammalian-2020v2b.phylop-scores.fdr-adj.tsv
+# Adjust the raw phylop p-values for multiple testing using the Benjamini-Hochberg method
+# STEPS:
+# 1. Sort by p-value in ascending order
+# 2. Add a column with the row number as the rank of that p-value
+# 3. Sort by p-value in descending order so it is easy to check the adjusted p-value of the next highest raw p-value as per the BH method
+# 4. Calculate the adjusted p-value using the formula: p_adj = (total number of tests / rank of p-value) * raw p-value
+#       If the adjusted p-value is greater than the previous adjusted p-value, set the adjusted p-value to the previous adjusted p-value
+#       If the adjusted p-value is greater than 1, set the adjusted p-value to 1
+#       Add a column with the adjusted p-value
+#       Add a column with the significance status (0 = not significant, 1 = significant)
+# 9. Sort by chromosome and then by position numerically
+# 10. Remove the row number and raw p-value columns
+# 11. Write the output to a new file
+# HEADERS:
+# 1. chromosome
+# 2. start position
+# 3. end position
+# 4. conservation status (0 = conserved, 1 = neutral, 2 = accelerated)
+# 5. adjusted p-value
+# 6. significant (0 = not significant, 1 = significant)
+## Took a couple of days because I forgot the parallel option on the last sort
+
+/usr/bin/time awk -v OFS='\t' '$4=="0" && $6=="1"{print $1, $2, $3, $4$6}' 241-mammalian-2020v2b.phylop-scores.fdr-adj.tsv > 241-mammalian-2020v2b.phylop-scores.fdr-adj.conserved.tsv
+# Get only the sites that are conserved and significant and combine the conserved and significant columns into one column (they should all be 01)
+# HEADERS:
+# 1. chromosome
+# 2. start position
+# 3. end position
+# 4. combined state and significance codes
+# 747.86user 19.15system 12:48.12elapsed 99%CPU (0avgtext+0avgdata 9120maxresident)k
+# 385024inputs+4237480outputs (0major+750minor)pagefaults 0swaps
+# 80565993 sites conserved and significant
+
+/usr/bin/time bedGraphPack 241-mammalian-2020v2b.phylop-scores.fdr-adj.conserved.tsv 241-mammalian-2020v2b.phylop-scores.fdr-adj.conserved.bed
+# Convert the conserved and significant sites to a bed file
+# 18.91user 1.53system 0:20.52elapsed 99%CPU (0avgtext+0avgdata 5632maxresident)k
+# 0inputs+2296504outputs (0major+303minor)pagefaults 0swaps
+# 43653297 regions conserved and significant
+
+#######
+# Convert a bigWig file to a wig file, filter out comments, and add a new column with the conservation status and score
+bigWigToWig 241-mammalian-2020v2.bigWig /dev/stdout | grep -v "^#" | awk -v OFS="\t" '{ if ($4 > 0) print $0, "0", 10^-$4; else if ($4 < 0) print $0, "2", 10^$4; else print $0, "1", 10^$4 }' > 241-mammalian-2020v2.phylop-scores.tsv
+
+
+# this will take a while to run!
+total=`cat 241-mammalian-2020v2.parse.txt | wc -l` && 
+
+cat 241-mammalian-2020v2.parse.txt | # read the contents of the file
+sort -k6,6g --parallel=4 -T $(pwd) | # sort the contents by the 6th column in parallel using 4 threads and temporary files in the current directory
+awk -v OFS="\t" '{ print $0, NR }' | # add a new column with the row number to the output using tab as the separator
+awk -v OFS="\t" -v total="${total}" '{ print $0, ($7 / total)*0.05 }' | # add a new column with the FDR value to the output using tab as the separator
+awk -v OFS="\t" '{ if ($6 < $8) print $0, "TRUE"; else print $0, "FALSE" }' > 241-mammalian-2020v2.parse.fdr.txt # add a new column with the FDR status to the output using tab as the separator and write the output to a new file
+
+
+cat 241-mammalian-2020v2.parse.fdr.txt | # read the contents of the file
+awk '{ if ($9 == "TRUE") print $0 }' | # filter the rows where the 9th column is "TRUE"
+tail -n 1 | # get the last row of the filtered output
+awk '{ print $6 }' # print the 6th column of the last row
+
+
+
+cat 241-mammalian-2020v2.parse.fdr.txt | # read the contents of the file
+awk '{ if ($6 <= 0.00229615) print $0 }' | # filter the rows where the 6th column is less than or equal to 0.00229615
+sort -k1,1 -k2,2n --parallel=4 -T $(pwd) > 241-mammalian-2020v2.parse.fdr.significant.txt # sort the filtered output by the 1st column and then by the 2nd column numerically and write the output to a new file
+
+
+
+set.seed(123) # set seed for reproducibility
+p_values <- runif(10) # generate 10 random p-values between 0 and 1
+p_values # print the p-values
+
+
+# create a vector of numbers
+numbers <- c(5, 2, 9, 1, 7)
+
+# sort the vector in ascending order
+sorted_numbers <- sort(numbers)
+
+# print the sorted vector
+print(sorted_numbers)
+
+
+
+i <- lp:1L
+
+pmin(1, cummin(n/i * p[o]))[ro]
+
+
+# create a vector of p-values
+p_values <- c(0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10)
+
+# sort the p-values in ascending order
+sorted_p_values <- sort(p_values)
+
+# calculate the number of tests
+m <- length(p_values)
+
+# initialize the q-values vector
+q_values <- rep(0, m)
+
+# calculate the FDR for each p-value
+for (i in 1:m) {
+    q_values[i] <- min(sorted_p_values[i:m] * m / (i:m))
+}
+
+# adjust the q-values to be monotonically increasing
+for (i in (m - 1):1) {
+    q_values[i] <- min(q_values[i], q_values[i + 1])
+}
+
+# print the q-values
+print(q_values)
+
+
+
+
+
+
+
+# create a vector of p-values
+p_values <- c(0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10)
+
+# sort the p-values in ascending order
+sorted_p_values <- sort(p_values)
+
+# calculate the number of tests
+m <- length(p_values)
+
+# initialize the q-values vector
+q_values <- rep(0, m)
+
+# initialize the previous q-value
+prev_q_value <- 0
+
+# loop through each p-value and calculate the FDR
+for (i in 1:m) {
+    curr_q_value <- min(sorted_p_values[i:m] * m / (i:m))
+    q_values[i] <- max(prev_q_value, curr_q_value)
+    prev_q_value <- q_values[i]
+}
+
+# print the q-values
+print(q_values)
+
+
+
+
+
+
+#!/bin/bash
+
+# Read the input file and extract the p-values column
+p_values=$(awk '{print $1}' "$1")
+
+# Sort the p-values in ascending order
+sorted_p_values=$(echo "$p_values" | sort -n)
+
+# Calculate the number of tests
+m=$(echo "$sorted_p_values" | wc -l)
+
+# Initialize the q-values vector
+q_values=()
+
+# Initialize the previous q-value
+prev_q_value=0
+
+# Loop through each p-value and calculate the FDR
+for ((i=1; i<=m; i++)); do
+    curr_p_value=$(echo "$sorted_p_values" | sed -n "${i}p")
+    curr_q_value=$(echo "scale=10; $curr_p_value * $m / $i" | bc)
+    q_values+=($(echo "scale=10; $(echo "${prev_q_value:-0} $curr_q_value" | awk '{print $1 > $2 ? $1 : $2}')" | bc))
+    prev_q_value=${q_values[-1]}
+done
+
+# Print the q-values
+printf '%s\n' "${q_values[@]}"
+
+
+
+
+
+awk '{print $1}' input_file.txt | sort -n | awk 'BEGIN {m=0} {m++; if ($1<=m/NR*q) print $1, "significant"; else print $1, "not significant"}' q=0.05
+
+
+awk '{a[NR]=$1} END {PROCINFO["sorted_in"]="@val_num_asc"; for (i=1;i<=NR;i++) {p=a[i]; q=p*NR/i; if (q>1) q=1; for (j=i+1;j<=NR;j++) {if (a[j]<=p) {fdr=q*NR/(j-1); if (fdr<q) q=fdr;}}; print p,q}}' input_file.txt
+
+
+
+sort -rn -k 2 input.txt
+
+
+ln -s /path/to/original/file /path/to/link
+
+awk '/Exercise/,/`/' data4/Biotips-workshop-2023-Day2-student.Rmd
+
+
+
+
+TATTCA
+123456
+0123456
