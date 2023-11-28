@@ -42,7 +42,7 @@ source(here("docs", "lib", "design.r"))
 ```{r read, warning=FALSE, message=FALSE}
 
 chrome_file = here("summary-data", "GRCh38.chromes")
-chrome_info = read_tsv(chrome_file, col_names=c("chr", "length", "location", "line.length", "line.length.nl")) %>%
+chrome_info = read_tsv(chrome_file, col_names=c("chr", "length", "location", "line.length", "line.length.nl"), show_col_types=FALSE) %>%
   select(chr, length)
 # Read the chrome info file and select juse the length and id cols
 
@@ -53,7 +53,7 @@ exclude_chr = c("chrX", "chrY")
 ##########
 
 conserved_sites_file = here("summary-data", "site-counts", "conserved", "241-mammalian-2020v2b.conserved-site-counts.0.05.tsv")
-conserved_site_counts = read_delim(conserved_sites_file, delim=" ", col_names=c("chr", "num.conserved.sites")) %>%
+conserved_site_counts = read_delim(conserved_sites_file, delim=" ", col_names=c("chr", "num.conserved.sites"), show_col_types=FALSE) %>%
   left_join(chrome_info, by="chr") %>%
   mutate(perc.conserved.sites = num.conserved.sites / length)
 # Read the conserved site counts and merge with the chrome info and calculate percent per chrome
@@ -69,7 +69,7 @@ depth_dir = here("summary-data", "site-counts", "depth")
 depth_counts = data.frame()
 for(chrome in chrome_info$chr[!chrome_info$chr %in% exclude_chr]) {
   cur_depth_file = here(depth_dir, paste0("241-mammalian-2020v2b.", chrome, ".maf-depth-site-counts.tsv"))
-  cur_depth_counts = read_delim(cur_depth_file, delim=" ", col_names=c("depth", "num.sites"))
+  cur_depth_counts = read_delim(cur_depth_file, delim=" ", col_names=c("depth", "num.sites"), show_col_types=FALSE)
   cur_depth_counts$chr = chrome
   
   depth_counts = rbind(depth_counts, cur_depth_counts)
@@ -91,7 +91,7 @@ conserved_hd_counts = data.frame()
 for(chrome in chrome_info$chr[!chrome_info$chr %in% exclude_chr]) {
   for(depth_cutoff in depth_cutoffs) {
     cur_conserved_hd_file = here(conserved_hd_dir, depth_cutoff, paste0("241-mammalian-2020v2b.", chrome, ".conserved-high-depth-site-counts.0.05.", depth_cutoff, ".tsv"))
-    cur_conserved_hd_counts = read_delim(cur_conserved_hd_file, delim=" ", col_names=c("sig.code", "num.sites"))
+    cur_conserved_hd_counts = read_delim(cur_conserved_hd_file, delim=" ", col_names=c("sig.code", "num.sites"), show_col_types=FALSE)
     cur_conserved_hd_counts$chr = chrome
     cur_conserved_hd_counts$depth.cutoff = depth_cutoff
     
@@ -115,7 +115,8 @@ element_counts = data.frame()
 for(depth_cutoff in depth_cutoffs) {
   for(chd_cutoff in chd_per_element_cutoffs) {
     cur_element_file = here(element_dir, depth_cutoff, paste0("241-mammalian-2020v2b.conserved-element-counts.0.05.", depth_cutoff, ".", chd_cutoff, ".tsv"))
-    cur_element_counts = read_delim(cur_element_file, delim=" ", col_names=c("chr", "num.elements"))
+    #print(cur_element_file)
+    cur_element_counts = read_delim(cur_element_file, delim=" ", col_names=c("chr", "num.elements"), show_col_types=FALSE)
     cur_element_counts$depth.cutoff = depth_cutoff
     cur_element_counts$chd.cutoff = chd_cutoff
     
@@ -235,15 +236,19 @@ print(num_conserved_hd_chr_p)
 
 ```{r conserved-element-counts, warning=FALSE, message=FALSE}
 
-num_conserved_elements_p = ggplot(element_counts, aes(x=depth.cutoff, y=chd.cutoff, fill=num.elements)) +
+num_conserved_elements_p = element_counts %>% group_by(depth.cutoff, chd.cutoff) %>%
+  summarize(num.elements=sum(num.elements)) %>%
+  ggplot(aes(x=depth.cutoff, y=chd.cutoff, fill=num.elements)) +
   geom_tile() + 
   scale_x_continuous(breaks=unique(element_counts$depth.cutoff)) +
   scale_y_continuous(breaks=unique(element_counts$chd.cutoff)) +
+  labs(fill = "Num. conserved\nelements") +
   xlab("Cut-off to consider a site high-depth") +
   ylab("Number of conserved, high-depth sites\nto consider an element conserved") +
   scale_fill_viridis(option="C") +
   #facet_wrap(~chr, scales="free_y") +
-  bartheme()
+  bartheme() +
+  theme(legend.title=element_text(size=12))
 print(num_conserved_elements_p)
 
 ```
