@@ -61,6 +61,7 @@ ref_fasta_index: Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai
 # Ensembl, release 110, Oct. 11, 2023
 ## NOTE: Ensemble files must be de-compressed because they are not compressed with bgzip
 
+chr_bed: Homo_sapiens.GRCh38.dna.primary_assembly.chr.bed
 ref_split_bed: Homo_sapiens.GRCh38.dna.primary_assembly.chr.1Mb.bed
 # A bed file with the MAF reference genome scaffold ids and coordinates split into windows to use
 # to split the MAF file

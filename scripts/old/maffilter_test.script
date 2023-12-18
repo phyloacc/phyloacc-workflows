@@ -1,0 +1,9 @@
+input.file=/n/holyscratch01/informatics/gwct/241-mammalian-2020v2b-mafSplit/chr22.00.maf
+input.file.compression=none
+input.format=Maf
+output.log=maffilter-test-2.log
+maf.filter=ExtractFeature(ref_species=Homo_sapiens, feature.file=test.bed, feature.file.compression=none, feature.format=BedGraph, ignore_strand=no),\
+            Concatenate(minimum_size=200, ref_species=Homo_sapiens),\
+            OutputAlignments(file=maffilter-test-2.out, compression=none, format=Clustal, coordinates=yes)
+
+            

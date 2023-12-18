@@ -53,7 +53,8 @@ MAF_REF_PREFIX = MAF_REF_ID + MAF_REF_CHR_JOINER + MAF_CHR_PREFIX;
 # The prefix for the reference chromosome in the MAF file
 
 MAF_SPLIT_MB = str(config["maf_split_size_mb"]);
-MAF_SPLIT_DIR = os.path.join(MAF_DIR, PREFIX + "-mafSplit-" + MAF_SPLIT_MB + "Mb", "");
+MAF_SPLIT_CHR_DIR = os.path.join(MAF_DIR, PREFIX + "-mafSplit");
+MAF_SPLIT_MB_DIR = os.path.join(MAF_DIR, PREFIX + "-mafSplit-" + MAF_SPLIT_MB + "Mb");
 # Info for splitting the MAF file into smaller chunks
 
 ## MAF 
@@ -68,6 +69,9 @@ PHYLOP_BIGWIG = config["phylop_bigwig"];
 
 REF_DIR = config["ref_dir"];
 # The directory with reference files
+
+REF_CHR_BED = config["chr_bed"];
+REF_CHR_BED = os.path.join(REF_DIR, REF_CHR_BED);
 
 REF_SPLIT_BED = config["ref_split_bed"];
 REF_SPLIT_BED = os.path.join(REF_DIR, REF_SPLIT_BED);
@@ -119,6 +123,9 @@ rule all:
 
         expand(os.path.join(PROJ_DIR, "summary-data", "site-counts", "conserved-elements", "{aln_depth_threshold}",  PREFIX + ".conserved-element-counts." + ALPHA + ".{aln_depth_threshold}.{conserved_threshold}.tsv"), aln_depth_threshold=ALN_DEPTH_THRESHOLD, conserved_threshold=CONSERVED_THRESHOLD),
         # conserved_element_counts
+
+        expand(os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.mdx"), chrome=chr_list)
+        # split_maf_index
 
 #############################################################################
 
@@ -262,10 +269,10 @@ rule split_maf:
         maf = MAF_PATH,
         split_bed = REF_SPLIT_BED
     output:
-        outdir = directory(MAF_SPLIT_DIR),
-        split_maf = expand(os.path.join(MAF_SPLIT_DIR, "{chrome}.{win}.maf"), zip, chrome=chr_list, win=win_list)
+        outdir = directory(MAF_SPLIT_MB_DIR),
+        split_maf = expand(os.path.join(MAF_SPLIT_MB_DIR, "{chrome}.{win}.maf"), zip, chrome=chr_list, win=win_list)
     params:
-        prefix = MAF_SPLIT_DIR
+        prefix = MAF_SPLIT_MB_DIR
     conda:
         "envs/ucsc-mafsplit.yml"
         # mafSplit needs its own environment right now because the current version (377) requires an outdated
@@ -292,7 +299,7 @@ rule split_maf:
 
 rule get_maf_depth:
     input:
-        split_maf = os.path.join(MAF_SPLIT_DIR, "{chrome}.{win}.maf")
+        split_maf = os.path.join(MAF_SPLIT_MB_DIR, "{chrome}.{win}.maf")
     output:
         split_wig = os.path.join(MAF_OUTDIR, "03-aln-depth", "{chrome}.{win}.maf-depth.wig")
     params:
@@ -440,5 +447,44 @@ rule conserved_element_counts:
         """
 
 ####################
+
+rule split_maf_chr:
+    input:
+        maf = MAF_PATH,
+        split_bed = REF_CHR_BED
+    output:
+        outdir = directory(MAF_SPLIT_CHR_DIR),
+        split_maf = expand(os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.maf"), chrome=chr_list)
+    params:
+        prefix = MAF_SPLIT_CHR_DIR
+    conda:
+        "envs/ucsc-mafsplit.yml"
+        # mafSplit needs its own environment right now because the current version (377) requires an outdated
+        # openssl library (1.0.0) that doesn't play nice with other tools
+    resources:
+        partition="intermediate",
+        mem="48g",
+        time="120:00:00"
+    shell:
+        """
+        mkdir -p {output.outdir}
+        mafSplit {input.split_bed} {params.prefix} {input.maf}
+        """
         
+####################
+
+rule index_maf_chr:
+    input:
+        split_maf = os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.maf")
+    output:
+        split_maf_index = os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.mdx")
+    resources:
+        partition="intermediate",
+        mem="48g",
+        time="120:00:00"
+    shell:
+        """
+        python maf-scripts/maf_index.py {input.split_maf} {output.split_maf_index}
+        """
+
 #############################################################################
