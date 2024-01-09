@@ -124,8 +124,14 @@ rule all:
         expand(os.path.join(PROJ_DIR, "summary-data", "site-counts", "conserved-elements", "{aln_depth_threshold}",  PREFIX + ".conserved-element-counts." + ALPHA + ".{aln_depth_threshold}.{conserved_threshold}.tsv"), aln_depth_threshold=ALN_DEPTH_THRESHOLD, conserved_threshold=CONSERVED_THRESHOLD),
         # conserved_element_counts
 
-        expand(os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.mdx"), chrome=chr_list)
+        expand(os.path.join(MAF_OUTDIR, "07-conserved-elements-chr", "{chrome}", "{aln_depth_threshold}", PREFIX + ".phylop-conserved-windows.{chrome}." + ALPHA  + ".{aln_depth_threshold}.{conserved_threshold}.bed"), chrome=chr_list, aln_depth_threshold=ALN_DEPTH_THRESHOLD, conserved_threshold=CONSERVED_THRESHOLD),
+        # get_conserved_elements_chr
+
+        expand(os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.mdx"), chrome=chr_list),
         # split_maf_index
+
+        expand(os.path.join(MAF_OUTDIR, "08-conserved-elements-chr-fasta", "{chrome}", "{aln_depth_threshold}-{conserved_threshold}"), chrome=chr_list, aln_depth_threshold=ALN_DEPTH_THRESHOLD, conserved_threshold=CONSERVED_THRESHOLD),
+        # get_sequences_chr
 
 #############################################################################
 
@@ -436,6 +442,27 @@ rule get_conserved_elements:
 
 ####################
 
+rule get_conserved_elements_chr:
+    input:
+        conserved_high_depth_sites_chr_bed = os.path.join(MAF_OUTDIR, "05-conserved-sites-chr", "{aln_depth_threshold}", PREFIX + ".conserved.sites.{chrome}." + ALPHA + ".{aln_depth_threshold}.wig"),
+        windows_bed = REF_ELEMENT_BED
+    output:
+        conserved_windows = os.path.join(MAF_OUTDIR, "07-conserved-elements-chr", "{chrome}", "{aln_depth_threshold}", PREFIX + ".phylop-conserved-windows.{chrome}." + ALPHA  + ".{aln_depth_threshold}.{conserved_threshold}.bed")
+    params:
+        conserved_threshold = "{conserved_threshold}"
+    log:
+        os.path.join(MAF_OUTDIR, "07-conserved-elements-chr", "logs", PREFIX + ".phylop-conserved-windows.{chrome}." + ALPHA + ".{aln_depth_threshold}.{conserved_threshold}.bed.log")
+    resources:
+        mem = "24g"
+    shell:
+        """
+        bedtools intersect -a {input.windows_bed} -b {input.conserved_high_depth_sites_chr_bed} -c | \
+        awk '$4 >= {params.conserved_threshold} {{print}}' | \
+        bedtools merge -d 5 -i - 2> {log} > {output.conserved_windows}
+        """
+
+####################
+
 rule conserved_element_counts:
     input:
         conserved_windows = os.path.join(MAF_OUTDIR, "07-conserved-elements", "{aln_depth_threshold}", PREFIX + ".phylop-conserved-windows." + ALPHA  + ".{aln_depth_threshold}.{conserved_threshold}.bed")
@@ -486,5 +513,22 @@ rule index_maf_chr:
         """
         python maf-scripts/maf_index.py {input.split_maf} {output.split_maf_index}
         """
+
+####################
+
+rule get_sequences_chr:
+    input:
+        split_maf = os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.maf"),
+        split_maf_index = os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.mdx"),
+        conserved_windows = os.path.join(MAF_OUTDIR, "07-conserved-elements-chr", "{chrome}", "{aln_depth_threshold}", PREFIX + ".phylop-conserved-windows.{chrome}." + ALPHA  + ".{aln_depth_threshold}.{conserved_threshold}.bed")
+    output:
+        seq_dir = directory(os.path.join(MAF_OUTDIR, "08-conserved-elements-chr-fasta", "{chrome}", "{aln_depth_threshold}-{conserved_threshold}"))
+    params:
+        ref_id = MAF_REF_ID
+    shell:
+        """
+        python maf-scripts/maf_fetch.py {input.split_maf} {input.split_maf_index} {params.ref_id} {input.conserved_windows} {output.seq_dir} 
+        """
+
 
 #############################################################################

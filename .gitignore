@@ -6,4 +6,5 @@ scripts/slurm-logs/
 scripts/full-maf-depth.wig
 scripts/maf-scripts/debug*
 scripts/maf-scripts/chr22.00.mdx
+scripts/maf-scripts/bed-blocks.txt
 scripts/old/maffilter-test.log

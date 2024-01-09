@@ -92,5 +92,8 @@ element_size_bed: Homo_sapiens.GRCh38.dna.primary_assembly.200bp-windows.bed
 # 
 
 
-aln_depth_threshold: [80, 100, 120, 140]
-conserved_threshold: [40, 60, 80, 100, 120, 140, 160, 180]
+#aln_depth_threshold: [80, 100, 120, 140]
+#conserved_threshold: [40, 60, 80, 100, 120, 140, 160, 180]
+
+aln_depth_threshold: [80]
+conserved_threshold: [40]
