@@ -60,7 +60,10 @@ localrules: all
 
 rule all:
     input:
-        os.path.join(MAF_OUTDIR, "02-phylofit", PREFIX + "-corrected.mod")
+        os.path.join(MAF_OUTDIR, "03-phylop", PREFIX + "-phylop.wig")
+        # run_phylop
+
+        #os.path.join(MAF_OUTDIR, "02-phylofit", PREFIX + "-corrected.mod")
         # run_mod_freqs
 
         # expand(os.path.join(REF_DIR, "chromosome-gffs", REF_GFF_FILE.replace(".gff", "{chrome}.gff")), chrome=CHROMES),
@@ -237,6 +240,24 @@ rule run_mod_freqs:
         """
         gc=$(cat {input.avg_gc_file})
         modFreqs {input.mod_file} $gc > {output.adj_mod_file} 2> {log}
+        """
+
+####################
+
+rule run_phylop:
+    input:
+        mod_file = os.path.join(MAF_OUTDIR, "02-phylofit", PREFIX + "-corrected.mod"),
+        maf = MAF_PATH
+    output:
+        wig_file = os.path.join(MAF_OUTDIR, "03-phylop", PREFIX + "-phylop.wig")
+    log:
+        os.path.join(MAF_OUTDIR, "logs", "phylop.log")
+    resources:
+        mem = "48g",
+        time = "72:00:00"
+    shell:
+        """
+        phyloP --method LRT --mode CONACC --wig-scores -i MAF {input.mod_file} {input.maf_file} > {output.wig_file} 2> {log}
         """
 
 #############################################################################

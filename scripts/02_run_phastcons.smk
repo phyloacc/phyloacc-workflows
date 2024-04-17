@@ -72,23 +72,32 @@ for line in open(REF_SPLIT_BED):
 
 # print(chr_counts["chr6"]);
 # print(len(chr_counts["chr6"]));
+# print(MAF_PATH);
+# print(REF_SPLIT_BED);
 # sys.exit();
 
 #############################################################################
 
 rule all:
     input:
+        expand(os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + ".{chrome}.{win}.cons.mod"), zip, chrome=chr_list, win=win_list),
+        expand(os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + ".{chrome}.{win}.noncons.mod"), zip, chrome=chr_list, win=win_list),    
+        # estimate_rho
+
+        # expand(os.path.join(MAF_SPLIT_DIR, "{chrome}.{win}.maf"), zip, chrome=chr_list, win=win_list),
+        # split_maf
+
         os.path.join(MAF_OUTDIR, "04-phyloboot-mods", MAF_REF_ID + ".avg.cons.mod"),
-        os.path.join(MAF_OUTDIR, "04-phyloboot-mods", MAF_REF_ID + ".avg.noncons.mod")
+        os.path.join(MAF_OUTDIR, "04-phyloboot-mods", MAF_REF_ID + ".avg.noncons.mod"),
         # run_phyloboot
         
-        #expand(os.path.join(MAF_SPLIT_DIR, "{chrome}.{win}.maf"), zip, chrome=chr_list, win=win_list),
-        # split_maf
+        os.path.join(MAF_OUTDIR, "05-phastcons", MAF_REF_ID + ".phastCons.wig"),
+        os.path.join(MAF_OUTDIR, "05-phastcons", MAF_REF_ID + ".phastCons.bed")
+        # run_phastcons
         
 
-        #expand(os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + ".{chrome}.{win}.cons.mod"), zip, chrome=chr_list, win=win_list),
-        #expand(os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + ".{chrome}.{win}.noncons.mod"), zip, chrome=chr_list, win=win_list),     
-        # # estimate_rho
+ 
+        
 #############################################################################
 
 # rule get_split_bed:
@@ -106,12 +115,11 @@ rule all:
 
 ####################
 
-rule split_maf:
+rule split_maf_windows:
     input:
         maf = MAF_PATH,
         split_bed = REF_SPLIT_BED
     output:
-        outdir = MAF_SPLIT_DIR,
         chrome_maf = expand(os.path.join(MAF_SPLIT_DIR, "{chrome}.{win}.maf"), zip, chrome=chr_list, win=win_list)
     params:
         prefix = MAF_SPLIT_DIR
@@ -125,7 +133,7 @@ rule split_maf:
         time="120:00:00"
     shell:
         """
-        mkdir -p {output.outdir}
+        mkdir -p {params.prefix}
         mafSplit {input.split_bed} {params.prefix} {input.maf}
         """
 # On holybioinf:
@@ -136,51 +144,89 @@ rule split_maf:
 
 ####################
 
-checkpoint estimate_rho:
+def get_time(wildcards, attempt):
+    if attempt == 1:
+        return "4:0:00";
+    elif attempt == 2:
+        return "0:02:00";
+
+def get_mem(wildcards, attempt):
+    if attempt == 1:
+        return "24g";
+    elif attempt == 2:
+        return "1g";
+# Changing resources based on attempt
+# Attempt 1 tries to run phastCons while attempt 2 simply checks why attempt 1 failed
+
+rule estimate_rho:
     input:
         mod_file = MOD_FILE,
         chrome_maf = os.path.join(MAF_SPLIT_DIR, "{chrome}.{win}.maf")
     output:
         rho_cons_mod = os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + ".{chrome}.{win}.cons.mod"),
-        rho_noncons_mod = os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + ".{chrome}.{win}.noncons.mod")
+        rho_noncons_mod = os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + ".{chrome}.{win}.noncons.mod"),
     params:
         output_prefix = os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + ".{chrome}.{win}"),
         length = 45,
-        coverage = 0.3
+        coverage = 0.3,
+        job_id_dir = os.path.join(MAF_OUTDIR, "03-phastcons-rho", "job-ids"),
+        job_id_file = os.path.join(MAF_OUTDIR, "03-phastcons-rho", "job-ids", MAF_REF_ID + ".{chrome}.{win}.jobid"),
+        err_file = os.path.join(MAF_OUTDIR, "03-phastcons-rho", "logs", "errors.log"),
+        timeout_file = os.path.join(MAF_OUTDIR, "03-phastcons-rho", "logs", "timeouts.log")
     log:
         os.path.join(MAF_OUTDIR, "03-phastcons-rho", "logs", MAF_REF_ID + ".{chrome}.{win}.log")
     resources:
-        mem = "24g",
-        time = "4:00:00",
-	    partition = "holy-info,shared"
-    shell:
-        """
-        phastCons --expected-length {params.length} --target-coverage {params.coverage} --no-post-probs --msa-format MAF --estimate-rho {params.output_prefix} {input.chrome_maf} {input.mod_file} &> {log}
-        """
-    # Many of these will time out for some reason ... need a way to deal with this
+        mem = lambda wildcards, attempt: get_mem(wildcards, attempt),
+        time = lambda wildcards, attempt: get_time(wildcards, attempt),
+	    partition = "holy-info,shared",
+        cur_attempt = lambda wildcards, attempt: attempt
+    retries: 
+        1
+    run:
+        print("CUR ATTEMPT:", resources.cur_attempt);
+        if resources.cur_attempt == 1:
+            shell(
+                    """
+                    echo $SLURM_JOB_ID
+                    mkdir -p {params.job_id_dir}
+                    echo $SLURM_JOB_ID > {params.job_id_file}
+                    phastCons --expected-length {params.length} --target-coverage {params.coverage} --no-post-probs --msa-format MAF --estimate-rho {params.output_prefix} {input.chrome_maf} {input.mod_file} &> {log}
+                    """
+                )
+        # Try to run phastCons in attempt 1, but also write the SLURM job id to a file to look up in case of failure
+        elif resources.cur_attempt == 2:
+            shell(
+                    """
+                    if [ -f {params.job_id_file} ]; then 
+                        echo "Job ID file exists"
+                        job_id=$(cat {params.job_id_file})
+
+                        if sacct -j $job_id | grep TIMEOUT; then
+                            echo {wildcards.chrome}.{wildcards.win} $job_id >> {params.timeout_file}
+
+                            touch {output.rho_cons_mod}
+                            touch {output.rho_noncons_mod}
+                        else
+                            echo "Job failed with errors. Check log files for {wildcards.chrome}.{wildcards.win} for errors."
+                            echo {wildcards.chrome}.{wildcards.win} $job_id >> {params.err_file}
+                        fi                        
+                    else 
+                        echo "Job ID file does not exist. Check log files for {wildcards.chrome}.{wildcards.win} for errors."
+                        echo {wildcards.chrome}.{wildcards.win} >> {params.err_file}
+                    fi
+                    """
+                    )
+        # If attempt 1 fails, check the job's status in attempt 2. If it timed out, create empty output files. If it failed with errors, write the job ID to a file to look up later
+# The estimate_rho rule times out on some jobs, and we want to continue with the pipeline by creating empty output files
+# This is accomplished by specifying that this job can be retried once
+# During the first attempt, we write the job ID to a file and try to run phastCons, and then, if that fails, check the job's status in the second attempt
+#
+# real 419894.88
+# user 444.03
+# sys 134.16
+
 
 ####################
-
-# def get_completed_mods(wildcard):
-#     # completed_cons_mods = [];
-#     # for f in os.listdir(os.path.join(MAF_OUTDIR, "03-phastcons-rho")):
-#     #     if f.endswith(".cons.mod"):
-#     #         completed_cons_mods.append(os.path.join(MAF_OUTDIR, "03-phastcons-rho", f));
-#     # return(completed_cons_mods);
-
-#     completed_cons_mods = [];
-#     chrome = wildcard.chrome;
-#     win = wildcard.win;
-
-#     cons_mod = os.path.join(MAF_OUTDIR, "03-phastcons-rho", MAF_REF_ID + "." + chrome + "." + win + ".cons.mod");
-#     if os.path.isfile(cons_mod):
-#         completed_cons_mods.append(cons_mod);
-
-#     return completed_cons_mods;
-
-def input_for_b(*wildcards):
-    print(checkpoints.estimate_rho.get().output);
-    return checkpoints.estimate_rho.get().output
 
 rule run_phyloboot:
     input:
@@ -196,10 +242,35 @@ rule run_phyloboot:
         noncons_mod_list_file = os.path.join(MAF_OUTDIR, "04-phyloboot-mods", MAF_REF_ID + ".noncons.mod.list")
     shell:
         """
-        ls {params.rho_mod_dir}/*.cons.mod > {params.cons_mod_list_file}
+        find {params.rho_mod_dir} -name "*.cons.mod" ! -empty > {params.cons_mod_list_file}
         phyloBoot --read-mods '*{params.cons_mod_list_file}' --output-average {output.avg_cons_mod}
-        ls {params.rho_mod_dir}/*.noncons.mod > {params.noncons_mod_list_file}
+        find {params.rho_mod_dir} -name "*.noncons.mod" ! -empty > {params.noncons_mod_list_file}
         phyloBoot --read-mods '*{params.noncons_mod_list_file}' --output-average {output.avg_noncons_mod}
+        """
+
+####################
+
+rule run_phastcons:
+    input:
+        avg_cons_mod = os.path.join(MAF_OUTDIR, "04-phyloboot-mods", MAF_REF_ID + ".avg.cons.mod"),
+        avg_noncons_mod = os.path.join(MAF_OUTDIR, "04-phyloboot-mods", MAF_REF_ID + ".avg.noncons.mod"),
+        maf = MAF_PATH
+    output:
+        wig = os.path.join(MAF_OUTDIR, "05-phastcons", MAF_REF_ID + ".phastCons.wig"),
+        bed = os.path.join(MAF_OUTDIR, "05-phastcons", MAF_REF_ID + ".phastCons.bed")
+    params:
+        length = 45,
+        coverage = 0.3,
+        rho = 0.4
+    log:
+        os.path.join(MAF_OUTDIR, "05-phastcons", "logs", MAF_REF_ID + ".phastCons.log")
+    resources:
+        mem = "48g",
+        time = "72:00:00",
+        partition = "holy-info,shared"
+    shell:
+        """
+        phastCons --expected-length {params.length} --target-coverage {params.coverage} --most-conserved {output.bed} --msa-format MAF {input.maf} {input.avg_cons_mod},{input.avg_noncons_mod} > {output.wig} 2> {log}
         """
 
 #############################################################################

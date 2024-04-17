@@ -32,13 +32,13 @@ def processMAFBlock(block):
 
 #############################################################################
 
-maf_file, mdx_file = sys.argv[1:];
+#maf_file, mdx_file = sys.argv[1:];
 # Get inputs from command line
 
 #maf_file = "/n/holyscratch01/informatics/gwct/test.maf";
 #mdx_file = "test.mdx";
-# maf_file = "/n/holyscratch01/informatics/gwct/241-mammalian-2020v2b-mafSplit/chr22.00.maf";
-# mdx_file = "chr22.00.mdx";
+maf_file = "/n/holyscratch01/informatics/gwct/241-mammalian-2020v2b-mafSplit/chr22.00.maf";
+mdx_file = "chr22.00.mdx";
 # 533.92user 28.90system 9:23.90elapsed 99%CPU (0avgtext+0avgdata 16680maxresident)k
 # 499720inputs+786136outputs (0major+2548minor)pagefaults 0swaps
 # Test inputs

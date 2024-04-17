@@ -530,5 +530,20 @@ rule get_sequences_chr:
         python maf-scripts/maf_fetch.py {input.split_maf} {input.split_maf_index} {params.ref_id} {input.conserved_windows} {output.seq_dir} 
         """
 
+####################
+
+rule dedup_sequences_chr:
+    input:
+        split_maf = os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.maf"),
+        split_maf_index = os.path.join(MAF_SPLIT_CHR_DIR, "{chrome}.00.mdx"),
+        conserved_windows = os.path.join(MAF_OUTDIR, "07-conserved-elements-chr", "{chrome}", "{aln_depth_threshold}", PREFIX + ".phylop-conserved-windows.{chrome}." + ALPHA  + ".{aln_depth_threshold}.{conserved_threshold}.bed")
+    output:
+        seq_dir = directory(os.path.join(MAF_OUTDIR, "08-conserved-elements-chr-fasta", "{chrome}", "{aln_depth_threshold}-{conserved_threshold}"))
+    params:
+        ref_id = MAF_REF_ID
+    shell:
+        """
+        python maf-scripts/maf_fetch.py {input.split_maf} {input.split_maf_index} {params.ref_id} {input.conserved_windows} {output.seq_dir} 
+        """
 
 #############################################################################

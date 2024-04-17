@@ -1,3 +1,206 @@
+subir's scripts: https://github.com/subirshakya/phast_scripts/blob/main/run_phast.sh
+tim's scripts:  https://github.com/tsackton/ratite-genomics/blob/69461bbafa772a25e84feb283b4fbc8397838fed/04_wga/02_ce_id/run_phast.sh#L223
+zoonomia docs: https://github.com/ComparativeGenomicsToolkit/zoonomia-hub/blob/185997c8f95d23f41d7232b055f91f236650f9d4/documentation/200mAlignment.html
+
+phyloacc:
+/n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/02-phylofit/241-mammalian-2020v2b-corrected.mod
+/n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/08-conserved-elements-chr-fasta/chr1/80-40-dedup-241/
+
+"Dasypus_novemcinctus;Tolypeutes_matacus;Chaetophractus_vellerosus;Tamandua_tetradactyla;Myrmecophaga_tridactyla;Choloepus_didactylus;Choloepus_hoffmanni;Trichechus_manatus;Procavia_capensis;Heterohyrax_brucei;Loxodonta_africana;Microgale_talazaci;Echinops_telfairi;Chrysochloris_asiatica;Elephantulus_edwardii;Orycteropus_afer"
+
+fullTreeAnc167 (toothed whales)
+fullTreeAnc125 (echolocating yinpterochiroptera)
+fullTreeAnc149 (yangochiroptera)
+
+/n/home07/gthomas/projects/phyloacc/PhyloAcc/PhyloAcc-ST
+
+python ~/projects/phyloacc/PhyloAcc/src/PhyloAcc-interface/phyloacc.py -d /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/08-conserved-elements-chr-fasta/chr1/80-40-dedup-241/ -m /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/02-phylofit/241-mammalian-2020v2b-corrected.mod -o /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/02-phyloacc/chr1/ -t "fullTreeAnc167;fullTreeAnc125;fullTreeAnc149" -g "Dasypus_novemcinctus;Tolypeutes_matacus;Chaetophractus_vellerosus;Tamandua_tetradactyla;Myrmecophaga_tridactyla;Choloepus_didactylus;Choloepus_hoffmanni;Trichechus_manatus;Procavia_capensis;Heterohyrax_brucei;Loxodonta_africana;Microgale_talazaci;Echinops_telfairi;Chrysochloris_asiatica;Elephantulus_edwardii;Orycteropus_afer" -n 4 -batch 20 -j 20 -p 24 -part "holy-info,shared" -time 12 -mem 24 -st-path /n/home07/gthomas/projects/phyloacc/PhyloAcc/PhyloAcc-ST
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/
+
+ID_FILE /n/home07/gthomas/projects/phyloacc/PhyloAcc-test-data/phyloacc-st-id-test/phyloacc-job-files/ids/1-st.id
+
+-------------------------
+
+PHYTREE_FILE /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/02-phylofit/241-mammalian-2020v2b-corrected.mod
+SEG_FILE /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/02-phyloacc/chr1/phyloacc-job-files/bed/1-st.bed
+ID_FILE /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/02-phyloacc/chr1/phyloacc-job-files/ids/1-st.id
+ALIGN_FILE /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/02-phyloacc/chr1/phyloacc-job-files/alns/1-st.fa
+RESULT_FOLDER /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/02-phyloacc/chr1/phyloacc-job-files/phyloacc-output/1-phyloacc-st-out
+PREFIX 1
+THIN 1
+BURNIN 500
+MCMC 1000
+CHAIN 1
+TARGETSPECIES fullTreeAnc167;fullTreeAnc125;fullTreeAnc149
+OUTGROUP Dasypus_novemcinctus;Tolypeutes_matacus;Chaetophractus_vellerosus;Tamandua_tetradactyla;Myrmecophaga_tridactyla;Choloepus_didactylus;Choloepus_hoffmanni;Trichechus_manatus;Procavia_capensis;Heterohyrax_brucei;Loxodonta_africana;Microgale_talazaci;Echinops_telfairi;Chrysochloris_asiatica;Elephantulus_edwardii;Orycteropus_afer
+CONSERVE Kogia_breviceps;Platanista_gangetica;Mesoplodon_bidens;Ziphius_cavirostris;Inia_geoffrensis;Lipotes_vexillifer;Neophocaena_asiaeorientalis;Phocoena_phocoena;Delphinapterus_leucas;Monodon_monoceros;Tursiops_truncatus;Orcinus_orca;Megaderma_lyra;Craseonycteris_thonglongyai;Hipposideros_armiger;Hipposideros_galeritus;Rhinolophus_sinicus;Noctilio_leporinus;Pteronotus_parnellii;Mormoops_blainvillei;Carollia_perspicillata;Artibeus_jamaicensis;Anoura_caudifer;Tonatia_saurophila;Micronycteris_hirsuta;Desmodus_rotundus;Pipistrellus_pipistrellus;Eptesicus_fuscus;Lasiurus_borealis;Murina_feae;Myotis_myotis;Myotis_brandtii;Myotis_lucifugus;Myotis_davidii;Miniopterus_natalensis;Miniopterus_schreibersii;Tadarida_brasiliensis;Nycticebus_coucang;Otolemur_garnettii;Daubentonia_madagascariensis;Propithecus_coquereli;Indri_indri;Cheirogaleus_medius;Microcebus_murinus;Mirza_coquereli;Lemur_catta;Eulemur_fulvus;Eulemur_flavifrons;Pithecia_pithecia;Callicebus_donacophilus;Saguinus_imperator;Callithrix_jacchus;Aotus_nancymaae;Saimiri_boliviensis;Cebus_albifrons;Cebus_capucinus;Alouatta_palliata;Ateles_geoffroyi;Mandrillus_leucophaeus;Cercocebus_atys;Papio_anubis;Macaca_mulatta;Macaca_fascicularis;Macaca_nemestrina;Erythrocebus_patas;Chlorocebus_sabaeus;Cercopithecus_neglectus;Rhinopithecus_roxellana;Rhinopithecus_bieti;Pygathrix_nemaeus;Nasalis_larvatus;Semnopithecus_entellus;Piliocolobus_tephrosceles;Colobus_angolensis;Nomascus_leucogenys;Gorilla_gorilla;Pan_troglodytes;Pan_paniscus;Homo_sapiens;Pongo_abelii;Galeopterus_variegatus;Tupaia_tana;Tupaia_chinensis;Oryctolagus_cuniculus;Lepus_americanus;Ochotona_princeps;Ctenodactylus_gundi;Petromus_typicus;Thryonomys_swinderianus;Heterocephalus_glaber;Fukomys_damarensis;Dolichotis_patagonum;Hydrochoerus_hydrochaeris;Cavia_tschudii;Cavia_porcellus;Cavia_aperea;Dasyprocta_punctata;Cuniculus_paca;Octodon_degus;Ctenomys_sociabilis;Myocastor_coypus;Capromys_pilorides;Chinchilla_lanigera;Dinomys_branickii;Hystrix_cristata;Rattus_norvegicus;Mus_musculus;Mus_spretus;Mus_caroli;Mus_pahari;Acomys_cahirinus;Meriones_unguiculatus;Psammomys_obesus;Mesocricetus_auratus;Cricetulus_griseus;Microtus_ochrogaster;Ondatra_zibethicus;Ellobius_talpinus;Ellobius_lutescens;Sigmodon_hispidus;Peromyscus_maniculatus;Onychomys_torridus;Cricetomys_gambianus;Nannospalax_galili;Jaculus_jaculus;Allactaga_bullata;Zapus_hudsonius;Perognathus_longimembris;Dipodomys_stephensi;Dipodomys_ordii;Castor_canadensis;Xerus_inauris;Spermophilus_dauricus;Ictidomys_tridecemlineatus;Marmota_marmota;Aplodontia_rufa;Muscardinus_avellanarius;Glis_glis;Graphiurus_murinus;Solenodon_paradoxus;Erinaceus_europaeus;Crocidura_indochinensis;Sorex_araneus;Uropsilus_gracilis;Condylura_cristata;Scalopus_aquaticus;Macroglossus_sobrinus;Eidolon_helvum;Pteropus_vampyrus;Pteropus_alecto;Rousettus_aegyptiacus;Vicugna_pacos;Camelus_dromedarius;Camelus_ferus;Camelus_bactrianus;Hippopotamus_amphibius;Eubalaena_japonica;Balaenoptera_bonaerensis;Balaenoptera_acutorostrata;Eschrichtius_robustus;Tragulus_javanicus;Moschus_moschiferus;Bubalus_bubalis;Bos_taurus;Bos_indicus;Bos_mutus;Bison_bison;Beatragus_hunteri;Ammotragus_lervia;Hemitragus_hylocrius;Capra_hircus;Capra_aegagrus;Ovis_aries;Ovis_canadensis;Pantholops_hodgsonii;Saiga_tatarica;Okapia_johnstoni;Giraffa_tippelskirchi;Antilocapra_americana;Odocoileus_virginianus;Rangifer_tarandus;Elaphurus_davidianus;Catagonus_wagneri;Sus_scrofa;Cryptoprocta_ferox;Mungos_mungo;Suricata_suricatta;Helogale_parvula;Hyaena_hyaena;Paradoxurus_hermaphroditus;Panthera_tigris;Panthera_pardus;Panthera_onca;Felis_catus;Felis_nigripes;Puma_concolor;Acinonyx_jubatus;Lycaon_pictus;Canis_lupus;Canis_lupus_familiaris;Vulpes_lagopus;Pteronura_brasiliensis;Enhydra_lutris;Mustela_putorius;Mellivora_capensis;Ailurus_fulgens;Spilogale_gracilis;Zalophus_californianus;Odobenus_rosmarus;Leptonychotes_weddellii;Mirounga_angustirostris;Neomonachus_schauinslandi;Ailuropoda_melanoleuca;Ursus_maritimus;Manis_javanica;Manis_pentadactyla;Equus_caballus;Equus_przewalskii;Equus_asinus;Tapirus_indicus;Tapirus_terrestris;Dicerorhinus_sumatrensis;Diceros_bicornis;Ceratotherium_simum;Ceratotherium_simum_cottoni
+NUM_THREAD 12
+
+-------------------------
+
+/usr/bin/time phyloFit --tree /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/summary-data/241-mammalian-2020v2.phast-242.nh --subst-mod REV --out-root modelfile chr8.118.maf
+Reading alignment from chr8.118.maf ...
+Compacting sufficient statistics ...
+Fitting tree model to chr8.118.maf using REV ...
+numpar = 485
+^CCommand terminated by signal 2
+1035630.47user 1.93system 287:59:36elapsed 99%CPU (0avgtext+0avgdata 507144maxresident)k
+500824inputs+0outputs (9major+4055747minor)pagefaults 0swaps
+
+-------------------------
+
+to prune:
+
+Dasypus_novemcinctus
+Tolypeutes_matacus
+Chaetophractus_vellerosus
+Tamandua_tetradactyla
+Myrmecophaga_tridactyla
+Choloepus_didactylus
+Choloepus_hoffmanni
+Trichechus_manatus
+Procavia_capensis
+Heterohyrax_brucei
+Microgale_talazaci
+Echinops_telfairi
+Chrysochloris_asiatica
+Elephantulus_edwardii
+Orycteropus_afer
+Equus_przewalskii
+Equus_asinus
+Tapirus_terrestris
+Dicerorhinus_sumatrensis
+Diceros_bicornis
+Ceratotherium_simum
+Ceratotherium_simum_cottoni
+Cryptoprocta_ferox
+Mungos_mungo
+Suricata_suricatta
+Helogale_parvula
+Hyaena_hyaena
+Paradoxurus_hermaphroditus
+Panthera_pardus
+Panthera_onca
+Felis_nigripes
+Puma_concolor
+Acinonyx_jubatus
+Lycaon_pictus
+Canis_lupus
+Vulpes_lagopus
+Pteronura_brasiliensis
+Enhydra_lutris
+Mustela_putorius
+Mellivora_capensis
+Ailurus_fulgens
+Spilogale_gracilis
+Zalophus_californianus
+Odobenus_rosmarus
+Leptonychotes_weddellii
+Mirounga_angustirostris
+Neomonachus_schauinslandi
+Ursus_maritimus
+Manis_javanica
+Manis_pentadactyla
+Moschus_moschiferus
+Bubalus_bubalis
+Bos_indicus
+Bos_mutus
+Beatragus_hunteri
+Ammotragus_lervia
+Hemitragus_hylocrius
+Capra_hircus
+Capra_aegagrus
+Ovis_canadensis
+Pantholops_hodgsonii
+Saiga_tatarica
+Antilocapra_americana
+Odocoileus_virginianus
+Rangifer_tarandus
+Elaphurus_davidianus
+Nycticebus_coucang
+Daubentonia_madagascariensis
+Propithecus_coquereli
+Indri_indri
+Cheirogaleus_medius
+Mirza_coquereli
+Lemur_catta
+Eulemur_fulvus
+Eulemur_flavifrons
+Pithecia_pithecia
+Callicebus_donacophilus
+Saguinus_imperator
+Saimiri_boliviensis
+Cebus_albifrons
+Cebus_capucinus
+Alouatta_palliata
+Ateles_geoffroyi
+Mandrillus_leucophaeus
+Cercocebus_atys
+Macaca_fascicularis
+Macaca_nemestrina
+Erythrocebus_patas
+Cercopithecus_neglectus
+Rhinopithecus_roxellana
+Rhinopithecus_bieti
+Pygathrix_nemaeus
+Nasalis_larvatus
+Semnopithecus_entellus
+Piliocolobus_tephrosceles
+Colobus_angolensis
+Homo_sapiens
+Pongo_abelii
+Galeopterus_variegatus
+Tupaia_tana
+Tupaia_chinensis
+Ochotona_princeps
+Ctenodactylus_gundi
+Petromus_typicus
+Thryonomys_swinderianus
+Heterocephalus_glaber
+Fukomys_damarensis
+Dolichotis_patagonum
+Hydrochoerus_hydrochaeris
+Cavia_tschudii
+Cavia_porcellus
+Cavia_aperea
+Dasyprocta_punctata
+Cuniculus_paca
+Octodon_degus
+Ctenomys_sociabilis
+Myocastor_coypus
+Capromys_pilorides
+Dinomys_branickii
+Hystrix_cristata
+Mus_spretus
+Mus_caroli
+Mus_pahari
+Acomys_cahirinus
+Meriones_unguiculatus
+Psammomys_obesus
+Microtus_ochrogaster
+Ondatra_zibethicus
+Ellobius_talpinus
+Ellobius_lutescens
+Sigmodon_hispidus
+Onychomys_torridus
+Nannospalax_galili
+Allactaga_bullata
+Zapus_hudsonius
+Perognathus_longimembris
+Dipodomys_stephensi
+Dipodomys_ordii
+Castor_canadensis
+Xerus_inauris
+Spermophilus_dauricus
+Marmota_marmota
+Muscardinus_avellanarius
+Glis_glis
+
+
+
+--------------------------------------------------
+
 sed -i 's/^/STRING_TO_ADD/' FILENAME
 sed -i '/^[^XYMT]/s/^/STRING_TO_ADD/' FILENAME
 
