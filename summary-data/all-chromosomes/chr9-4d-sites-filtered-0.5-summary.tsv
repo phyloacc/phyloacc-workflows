@@ -1,0 +1,20 @@
+# input file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01b-zoonomia-aln/02-4d-sites/all-chromosomes/chr9-4d-sites.ss
+# missing threshold: 0.5
+# output file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01b-zoonomia-aln/02-4d-sites/all-chromosomes-filtered/chr9-4d-sites-filtered-0.5.ss
+var	filter.cat	value
+num.seqs	pre.filter	241
+aln.len	pre.filter	30164
+num.sites	pre.filter	28352
+avg.site.count	pre.filter	1.0639108352144468
+max.site.count	pre.filter	99
+num.singletons	pre.filter	27920
+total.missing.cols	pre.filter	571565
+avg.missing.per.site	pre.filter	18.94858109004111
+num.seqs	post.filter	241
+aln.len	post.filter	27950
+num.sites	post.filter	27364
+avg.site.count	post.filter	1.0214149978073381
+max.site.count	post.filter	99
+num.singletons	post.filter	27218
+total.missing.cols	post.filter	93920
+avg.missing.per.site	post.filter	3.3602862254025045

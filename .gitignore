@@ -2,9 +2,13 @@ data/
 scripts/dryrun
 scripts/test*
 scripts/.snakemake/
-scripts/slurm-logs/
+scripts/slurm-logs*
 scripts/full-maf-depth.wig
 scripts/maf-scripts/debug*
 scripts/maf-scripts/chr22.00.mdx
 scripts/maf-scripts/bed-blocks.txt
 scripts/old/maffilter-test.log
+scripts/hmm-benchmarks/*.bed
+scripts/hmm-benchmarks/old/
+scripts/hmm-benchmarks/slurm-logs/
+scripts/hmm-benchmarks/.snakemake/

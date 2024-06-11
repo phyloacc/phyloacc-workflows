@@ -1,0 +1,20 @@
+# input file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01b-zoonomia-aln/02-4d-sites/all-chromosomes/chr13-4d-sites.ss
+# missing threshold: 0.5
+# output file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01b-zoonomia-aln/02-4d-sites/all-chromosomes-filtered/chr13-4d-sites-filtered-0.5.ss
+var	filter.cat	value
+num.seqs	pre.filter	241
+aln.len	pre.filter	15164
+num.sites	pre.filter	14730
+avg.site.count	pre.filter	1.0294636795655125
+max.site.count	pre.filter	34
+num.singletons	pre.filter	14623
+total.missing.cols	pre.filter	156684
+avg.missing.per.site	pre.filter	10.332629912951727
+num.seqs	post.filter	241
+aln.len	post.filter	14678
+num.sites	post.filter	14498
+avg.site.count	post.filter	1.0124155055869775
+max.site.count	post.filter	26
+num.singletons	post.filter	14431
+total.missing.cols	post.filter	55522
+avg.missing.per.site	post.filter	3.782667938411228

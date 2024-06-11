@@ -1,0 +1,20 @@
+# input file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01b-zoonomia-aln/02-4d-sites/all-chromosomes/chr17-4d-sites.ss
+# missing threshold: 0.5
+# output file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01b-zoonomia-aln/02-4d-sites/all-chromosomes-filtered/chr17-4d-sites-filtered-0.5.ss
+var	filter.cat	value
+num.seqs	pre.filter	241
+aln.len	pre.filter	43845
+num.sites	pre.filter	40643
+avg.site.count	pre.filter	1.078783554363605
+max.site.count	pre.filter	276
+num.singletons	pre.filter	40228
+total.missing.cols	pre.filter	968973
+avg.missing.per.site	pre.filter	22.099965788573382
+num.seqs	post.filter	241
+aln.len	post.filter	40336
+num.sites	post.filter	39796
+avg.site.count	post.filter	1.0135692029349683
+max.site.count	post.filter	71
+num.singletons	post.filter	39602
+total.missing.cols	post.filter	170494
+avg.missing.per.site	post.filter	4.226844506148354

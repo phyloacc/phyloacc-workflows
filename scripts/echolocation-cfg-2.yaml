@@ -1,0 +1,54 @@
+sample_file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/summary-data/241-mammalian-2020v2b.csv
+# This is a csv file that at minimum must have a column called "accession" for each sample in the MAF
+# The accession should be an NCBI Assembly accession number and will be used to look up the GC content of the genome
+# for modFreqs
+# Alternatively, if a column called "gc" is present, the GC content will be taken from that column
+
+project_dir: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/
+# The root directory of the project
+
+prefix: 241-mammalian-2020v2b
+# A prefix for some of the output files
+
+ref_chromosome_groups: { 'all-chromosomes' :  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X"] }
+# The chromosomes listed in the gff file that you want to run phyloFit on
+# Should also be how the chromosomes are listed in the reference genome index file (.fai)
+# Structuring this with groups now for further development: each group will be its own sub-folder/subset of analyses for certain steps
+
+alpha: 0.05
+# The significance level for calling a site conserved after running phyloP
+
+outdir: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01b-zoonomia-aln/
+# The main output directory for the workflow
+
+tmp_dir: /n/holylfs05/LABS/informatics/Users/gthomas/tmp/
+
+maf: /n/holyscratch01/informatics/gwct/241-mammalian-2020v2b.maf
+# The multiple alignment file
+# https://cglgenomics.ucsc.edu/data/cactus/
+# Accessed Sep. 1, 2023
+
+maf_ref_id: "Homo_sapiens"
+maf_chr_prefix: "chr"
+maf_ref_chr_joiner: "."
+# The chromosome IDs in the split gffs must match those in the maf
+# In case the chromosomes are labeled differently in the gff and the maf, use the maf_ref_chr_joiner and maf_chr_prefix
+# Chromosome IDs in the split gffs will be maf_ref_id + maf_ref_chr_joiner + maf_chr_prefix
+# If the chromosomes are labeled the same, just set maf_chr_prefix to an empty string, ""
+
+tree_file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/summary-data/241-mammalian-2020v2.phast-242.nh
+# The species tree in Newick format
+# https://cglgenomics.ucsc.edu/data/cactus/
+# Accessed Sep. 1, 2023
+
+filter_threshold_4d: 0.5
+# The fraction of sequences in the MAF required for a 4d site pattern to be filtered for phyloFit
+# e.g. if num_seqs = 10 and threshold = 0.2, then all sites that have missing data in 10 * 0.2 sequences (2) will be filtered
+
+ref_gff: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/00-human-ref-ensembl/Homo_sapiens.GRCh38.110.chr.gff3
+# The GFF annotation of the reference genome in the MAF
+# http://ftp.ensembl.org/pub/current_gff3/homo_sapiens/Homo_sapiens.GRCh38.110.chr.gff3.gz
+# Ensembl, release 110, Sep. 6, 2023
+
+ref_genome_index: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/00-human-ref-ensembl/Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai
+# The reference genome index file (.fai), used for splitting the MAF file by chromosome/scaffold

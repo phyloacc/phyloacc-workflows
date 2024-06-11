@@ -1,0 +1,3 @@
+# Command: ../conserved_elements_hmm.py 0.1 0.4 0.7 0.6 1.0
+# chromosome	chromosome.length	conserved.sites	total.conserved.elems	elems.too.short	elems.too.long	final.cons.elems	avg.cons.elem.len	avg.inter.elem.dist	cons.sites.in.cons.elems	avg.perc.cons.sites.per.elem	t0_0	t1_1	e0_0	e1_1	s0	min.elem.len.cutoff
+chr19	58617616	1924627	1475555	1344835	553	130167	289.15495478884816	160.49897439443177	240680	0.03847559299461612	0.1	0.4	0.7	0.6	0.9999999999	20

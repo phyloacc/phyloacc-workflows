@@ -56,7 +56,7 @@ def seqTest(genome_fasta, maf_fetch_seq, chrom, start, end, debug=False):
 
 #############################################################################
 
-maf_file, mdx_file, ref_spec, bed_file, outdir = sys.argv[1:];
+# maf_file, mdx_file, ref_spec, bed_file, outdir = sys.argv[1:];
 # Get inputs from command line
 
 # ref_genome_fasta = "/n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/00-human-ref-ensembl/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
@@ -65,13 +65,13 @@ maf_file, mdx_file, ref_spec, bed_file, outdir = sys.argv[1:];
 # bed_file = "/n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/07-conserved-elements-chr/chr1/80/241-mammalian-2020v2b.phylop-conserved-windows.chr1.0.05.80.40.bed";
 # outdir = "/n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01-zoonomia-aln/08-conserved-elements-chr-fasta/chr1/80-40/"
 
-
-#bed_file = "test-chr22.bed";
-#mdx_file = "chr22.00.mdx";
-#outdir = "test-out-100";
+maf_file = "/n/holyscratch01/informatics/gwct/241-mammalian-2020v2b-mafSplit/all-chromosomes/chr22.00.maf";
+bed_file = "test-chr22.bed";
+mdx_file = "chr22.00.mdx";
+outdir = "fetch-test";
 overwrite = True;
 
-# ref_spec = "Homo_sapiens";
+ref_spec = "Homo_sapiens";
 # ref_chr = "chr1";
 #query_spec = "Castor_canadensis";
 #query_scaff = "CasCan_scaffold_576";
@@ -169,6 +169,8 @@ for line in open(bed_file):
 
             maf_stream.seek(block_start_byte);
             block = maf_stream.read(block_end_byte - block_start_byte).split("\n");
+            # print(block);
+            # sys.exit();
             block = list(filter(None, block));
             # Read the block from the maf file
 

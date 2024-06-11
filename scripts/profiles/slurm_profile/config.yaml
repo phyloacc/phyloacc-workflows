@@ -13,7 +13,7 @@ cluster-sync:
   --mail-user=gthomas@g.harvard.edu
 default-resources:
   - cpus=1
-  - partition="holy-info,shared"
+  - partition="shared"
   - mem="12g"
   - time="16:00:00"
 restart-times: 0

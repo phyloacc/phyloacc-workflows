@@ -1,6 +1,6 @@
-# input file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-sicb/data/01-zoonomia-aln/01-4d-sites/all-4d-sites.ss
+# input file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01a-zoonomia-aln/02-4d-sites/all-4d-sites.ss
 # missing threshold: 0.5
-# output file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-sicb/data/01-zoonomia-aln/01-4d-sites/all-4d-sites-filtered-0.5.ss
+# output file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/01a-zoonomia-aln/02-4d-sites/all-4d-sites-filtered-0.5.ss
 var	filter.cat	value
 num.seqs	pre.filter	241
 aln.len	pre.filter	535570
