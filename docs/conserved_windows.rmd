@@ -251,6 +251,8 @@ num_conserved_elements_p = element_counts %>% group_by(depth.cutoff, chd.cutoff)
   theme(legend.title=element_text(size=12))
 print(num_conserved_elements_p)
 
+#ggsave("C:/Users/Gregg/figs2.pdf", num_conserved_elements_p, height=5, width=7, unit="in")
+
 ```
 
 ```{r conserved-element-counts-table, warning=FALSE, message=FALSE, fig.height=8}

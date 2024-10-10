@@ -1,0 +1,20 @@
+jobs: 20
+cluster-sync:
+  mkdir -p /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/02-phyloacc/chr1/phyloacc-job-files/slurm-logs/{rule}/ &&
+  sbatch
+  --wait
+  --partition={resources.partition}
+  --nodes={resources.nodes}
+  --cpus-per-task={resources.cpus}
+  --job-name={rule}-{wildcards}
+  --mem={resources.mem}
+  --time={resources.time}
+  --output=/n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/02-phyloacc/chr1/phyloacc-job-files/slurm-logs/{rule}/{rule}-{wildcards}-%j.out
+default-resources:
+  - partition='holy-info,shared'
+  - nodes='1'
+  - mem='4g'
+  - time='12:00:00'
+  - cpus=12
+latency-wait: 45
+verbose: true

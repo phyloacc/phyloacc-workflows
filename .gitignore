@@ -2,8 +2,9 @@ data/
 scripts/dryrun
 scripts/test*
 scripts/.snakemake/
-scripts/slurm-logs*
 scripts/full-maf-depth.wig
+phyloacc-sicb-ms/chr1/phyloacc-job-files/alns/
+scripts/slurm-logs*
 scripts/maf-scripts/debug*
 scripts/maf-scripts/chr22.00.mdx
 scripts/maf-scripts/bed-blocks.txt
@@ -12,3 +13,4 @@ scripts/hmm-benchmarks/*.bed
 scripts/hmm-benchmarks/old/
 scripts/hmm-benchmarks/slurm-logs/
 scripts/hmm-benchmarks/.snakemake/
+phyloacc-sicb-ms/chr1/results/elem_lik.txt
