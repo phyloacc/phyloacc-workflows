@@ -52,3 +52,16 @@ ref_gff: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/00-
 
 ref_genome_index: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/00-human-ref-ensembl/Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai
 # The reference genome index file (.fai), used for splitting the MAF file by chromosome/scaffold
+
+alpha: 0.05
+# The significance level for FDR adjustment of phylop p-values
+
+tmp_dir: /n/holylfs05/LABS/informatics/Users/gthomas/tmp/
+# A directory for some temporary files - should have lots of space
+
+##########################################
+
+# HDBSCAN cluster benchmarking
+
+min_cluster_sizes: [20, 35, 50]
+min_samples: [1, 10, 25, 50]

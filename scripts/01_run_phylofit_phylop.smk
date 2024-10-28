@@ -3,7 +3,7 @@
 # Gregg Thomas, September 2023
 #############################################################################
 
-# snakemake -p -s 01_run_phylofit_4d.smk --configfile echolocation-cfg-2.yaml --profile profiles/slurm_profile/ --use-conda --dryrun --rulegraph | dot -Tpng > dags/01-run-phylofit-4d-dag.png
+# snakemake -p -s 01_run_phylofit_phylop.smk --configfile echolocation-cfg-2.yaml --profile profiles/slurm_profile/ --use-conda --dryrun --rulegraph | dot -Tpng > dags/01-run-phylofit-4d-dag.png
 
 #############################################################################
 
@@ -51,11 +51,21 @@ REF_INDEX = config["ref_genome_index"];
 REF_GFF_PATH = config["ref_gff"];
 REF_GFF_FILE = os.path.basename(REF_GFF_PATH);
 
+ALPHA = str(config["alpha"]);
+# The alpha level to consider a site to be conserved
+
 PREFIX = config["prefix"];
+
+TMPDIR = config["tmp_dir"];
+# A temporary directory for intermediate files
 
 OUTDIR = config["outdir"];
 os.makedirs(OUTDIR, exist_ok=True);
 # Have to manually make the outdir because we parse the ref index into beds first
+
+MIN_CLUSTER_SIZES = config["min_cluster_sizes"];
+MIN_SAMPLES = config["min_samples"];
+# Cluster benchmarking
 
 #############################################################################
 
@@ -78,6 +88,7 @@ for GROUP in REF_CHROMOSOME_GROUPS:
 #CHROMES = [MAF_REF + "." + c for c in CHROMES];
 
 flattened_chromosome_groups = [(group, chromosome) for group, chromosome_list in REF_CHROMOSOME_GROUPS.items() for chromosome in chromosome_list];
+
 REF_CHR_GROUPS_LIST, REF_CHROMOSOMES = zip(*flattened_chromosome_groups);
 # Get two lists of equal length to use for wild cards
 
@@ -85,11 +96,51 @@ REF_CHR_GROUPS_LIST, REF_CHROMOSOMES = zip(*flattened_chromosome_groups);
 # Final rule - rule that depends on final expected output file and initiates all
 # the other rules
 
+# Helper function to generate combinations
+def get_combinations():
+    combinations = []
+    for chromosome_group, ref_chromosomes in REF_CHROMOSOME_GROUPS.items():
+        for ref_chromosome in ref_chromosomes:
+            for min_cluster_size in MIN_CLUSTER_SIZES:
+                for min_samples in MIN_SAMPLES:
+                    combinations.append((chromosome_group, ref_chromosome, min_cluster_size, min_samples))
+    return combinations
+
+# Helper function to generate combinations
+def generate_combinations():
+    combinations = []
+    for chromosome_group, ref_chromosomes in REF_CHROMOSOME_GROUPS.items():
+        for ref_chromosome in ref_chromosomes:
+            for min_cluster_size in MIN_CLUSTER_SIZES:
+                for min_samples in MIN_SAMPLES:
+                    combinations.append({
+                        "chromosome_group": chromosome_group,
+                        "ref_chromosome": ref_chromosome,
+                        "min_cluster_size": min_cluster_size,
+                        "min_samples": min_samples
+                    })
+    return combinations
+
 localrules: all
 
 rule all:
     input:
-        expand(os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.wig"), zip, chromosome_group=REF_CHR_GROUPS_LIST, ref_chromosome=REF_CHROMOSOMES)
+        expand(
+            os.path.join(OUTDIR, "04-phylop", "clustering", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-fdr-" + ALPHA + ".conserved.clusters-{min_cluster_size}-{min_samples}.bed"),
+            **combination  # Expanding dictionary keys to wildcards
+        ) for combination in generate_combinations()
+        # cluster_conserved_sites
+
+        #expand(os.path.join(PROJ_DIR, "summary-data", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.conserved-site-counts." + ALPHA + ".tsv"), zip, chromosome_group=REF_CHR_GROUPS_LIST, ref_chromosome=REF_CHROMOSOMES)
+        # conserved_site_counts
+        
+        #expand(os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-fdr-" + ALPHA + ".bed"), zip, chromosome_group=REF_CHR_GROUPS_LIST, ref_chromosome=REF_CHROMOSOMES)
+        # adjust_pvals
+
+        #expand(os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.bed"), zip, chromosome_group=REF_CHR_GROUPS_LIST, ref_chromosome=REF_CHROMOSOMES)
+        # convert_wig_to_bed
+
+        #expand(os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.wig"), zip, chromosome_group=REF_CHR_GROUPS_LIST, ref_chromosome=REF_CHROMOSOMES)
         # run_phylop
 
         #expand(os.path.join(OUTDIR, "03-phylofit", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-corrected.mod"), zip, chromosome_group=REF_CHR_GROUPS_LIST, ref_chromosome=REF_CHROMOSOMES)
@@ -294,7 +345,7 @@ rule run_phylop:
         adj_mod_file = os.path.join(OUTDIR, "03-phylofit", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-corrected.mod"),
         chromosome_maf = os.path.join(MAF_SPLIT_CHR_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.00.maf")
     output:
-        wig_file = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.wig")
+        phylop_wig_file = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.wig")
     log:
         os.path.join(OUTDIR, "logs", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.log")
     resources:
@@ -303,7 +354,129 @@ rule run_phylop:
         partition = "intermediate"
     shell:
         """
-        phyloP --method LRT --mode CONACC --wig-scores -i MAF {input.adj_mod_file} {input.chromosome_maf} > {output.wig_file} 2> {log}
+        phyloP --method LRT --mode CONACC --wig-scores -i MAF {input.adj_mod_file} {input.chromosome_maf} > {output.phylop_wig_file} 2> {log}
+        """
+
+####################
+
+rule convert_wig_to_bed:
+    input:
+        phylop_wig_file = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.wig")
+    output:
+        phylop_bed_file = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.bed")
+    log:
+        os.path.join(OUTDIR, "logs", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-wig-to-bed.log")
+    resources:
+        mem = "12g",
+        time = "4:00:00",
+        partition = "shared"
+    shell:
+        """
+        awk -v OFS="\t" 'BEGIN {{chrom=""; start=0; step=0; counter=0}} /^fixedStep/ {{split($2,a,"="); chrom=a[2]; split($3,b,"="); start=b[2]-1; split($4,c,"="); step=c[2]; counter=0; next}} {{pos=start+counter*step; end=pos+1; score=$1; if (score > 0) print chrom, pos, end, score, "0", 10^-score; else if (score < 0) print chrom, pos, end, score, "2", 10^score; else print chrom, pos, end, score, "1", 10^score; counter++}}' {input.phylop_wig_file} 2> {log} > {output.phylop_bed_file}
+        """
+# Convert phylop wig to bed and add new columns with the conservation status, raw p-value
+# HEADERS:
+# 1. chromosome
+# 2. start position
+# 3. end position
+# 4. raw score/log(raw p-value)
+# 5. conservation status (0 = conserved, 1 = neutral, 2 = accelerated)
+# 6. raw p-value
+
+####################
+
+rule adjust_pvals:
+    input:
+        phylop_bed_file = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.bed")
+    output:
+        phylop_bed_file_fdr = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-fdr-" + ALPHA + ".bed")
+    params:
+        alpha = ALPHA,
+        tmp_dir = TMPDIR
+    log:
+        os.path.join(OUTDIR, "logs", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.phylop-scores.fdr-" + ALPHA + ".log")
+    resources:
+        cpus = 32,
+        time = "72:00:00",
+        mem = "64g"
+    shell:
+        """
+        total=$(wc -l {input.phylop_bed_file} | cut -d ' ' -f1)
+
+        sort -k6,6g --parallel={resources.cpus} -T {params.tmp_dir} {input.phylop_bed_file} | \
+        awk -v OFS="\\t" '{{ print $0, NR }}' | \
+        sort -rn -k7 --parallel={resources.cpus} -T {params.tmp_dir} | \
+        awk -v OFS="\\t" -v total=${{total}} 'BEGIN{{prev_pn=999}} {{p_adj=(total/$7)*$6; if(p_adj>prev_pn){{p_adj=prev_pn}}; prev_pn=p_adj; if(p_adj>1){{p_adj=1}}; sig=0; if(p_adj<0.05){{sig=1}}; print $0, p_adj, sig}}' | \
+        sort -k 1,1 -k2,2n --parallel={resources.cpus} -T {params.tmp_dir} |\
+        cut -f 1,2,3,5,8,9 2> {log} > {output.phylop_bed_file_fdr}
+        """
+# Adjust the raw phylop p-values for multiple testing using the Benjamini-Hochberg method
+# STEPS:
+# 1. Sort by p-value in ascending order
+# 2. Add a column with the row number as the rank of that p-value
+# 3. Sort by p-value in descending order so it is easy to check the adjusted p-value of the next highest raw p-value as per the BH method
+# 4. Calculate the adjusted p-value using the formula: p_adj = (total number of tests / rank of p-value) * raw p-value
+#       If the adjusted p-value is greater than the previous adjusted p-value, set the adjusted p-value to the previous adjusted p-value
+#       If the adjusted p-value is greater than 1, set the adjusted p-value to 1
+#       Add a column with the adjusted p-value
+#       Add a column with the significance status (0 = not significant, 1 = significant)
+# 9. Sort by chromosome and then by position numerically
+# 10. Remove the row number and raw p-value columns
+# 11. Write the output to a new file
+# HEADERS:
+# 1. chromosome
+# 2. start position
+# 3. end position
+# 4. conservation status (0 = conserved, 1 = neutral, 2 = accelerated)
+# 5. adjusted p-value
+# 6. significant (0 = not significant, 1 = significant)
+
+####################
+
+rule get_conserved_sites:
+    input:
+        phylop_bed_file_fdr = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-fdr-" + ALPHA + ".bed")
+    output:
+        conserved_sites_bed = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-fdr-" + ALPHA + ".conserved.bed")
+    log:
+        os.path.join(OUTDIR, "logs", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.phylop-scores.fdr-" + ALPHA + ".conserved.log")
+    shell:
+        """
+        awk -v OFS='\\t' '$4=="0" && $6=="1"{{print $1, $2, $3, $4$6}}' {input.phylop_bed_file_fdr} 2> {log} > {output.conserved_sites_bed}
+        """
+
+####################
+
+rule conserved_site_counts:
+    input:
+        conserved_sites_bed = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-fdr-" + ALPHA + ".conserved.bed")
+    output:
+        conserved_site_counts = os.path.join(PROJ_DIR, "summary-data", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.conserved-site-counts." + ALPHA + ".tsv")
+    shell:
+        """
+        awk '{{ count[$1]++ }} END {{ for (num in count) print num, count[num] }}' {input.conserved_sites_bed} > {output.conserved_site_counts}
+        """
+
+####################
+
+rule cluster_conserved_sites:
+    input:
+        conserved_sites_bed = os.path.join(OUTDIR, "04-phylop", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-fdr-" + ALPHA + ".conserved.bed")
+    output:
+        conserved_site_clusters = os.path.join(OUTDIR, "04-phylop", "clustering", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop-fdr-" + ALPHA + ".conserved.clusters-{min_cluster_size}-{min_samples}.bed")
+    log:
+        os.path.join(OUTDIR, "logs", "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.phylop-scores.fdr-" + ALPHA + ".conserved.clusters-{min_cluster_size}-{min_samples}.log")
+    params:
+        script_path = os.path.join(PROJ_DIR, "scripts", "cluster_conserved_sites.py"),
+        chromosome = "{ref_chromosome}",
+        min_cluster_size = "{min_cluster_size}",
+        min_samples = "{min_samples}"
+    resources:
+        mem = "12g",
+        time = "4:00:00"
+    shell:
+        """
+        python {params.script_path} {input.conserved_sites_bed} {output.conserved_site_clusters} {params.chromosome} {params.min_cluster_size} {params.min_samples} 2> {log}
         """
 
 #############################################################################
