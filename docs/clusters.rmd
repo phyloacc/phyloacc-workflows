@@ -1,0 +1,105 @@
+---
+title: "Conserved elements"
+author: "[gwct](https://gwct.github.io/)"
+date: "`r format(Sys.time(), '%m/%d/%Y %H:%M:%S %Z')`"
+navbar:
+  title: Conserved elements
+output:
+  rmdformats::robobook:
+    highlight: kate
+    includes:
+      in_header: 'lib/rmd_header.html'
+    df_print: paged
+    code_folding: hide
+    number_sections: true
+    toc_depth: 3
+---
+
+Predicting conserved elements based on clusters of conserved sites predicted with phyloP using the HDBSCAN cluster algorithm
+
+```{r setup, warning=FALSE, message=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(cowplot)
+library(kableExtra)
+library(viridis)
+library(here)
+
+source(here("docs", "lib", "design.r"))
+
+```
+
+
+```{r read, warning=FALSE, message=FALSE}
+
+# Define the directory containing the .bed files
+directory = here("data", "01b-zoonomia-aln", "04-phylop", "clustering", "all-chromosomes")
+
+# List all .bed files in the directory
+bed_files = list.files(directory, pattern = "\\.bed$", full.names = TRUE)
+
+# Initialize an empty data frame to store the combined data
+combined_df <- tibble()
+
+# Loop through each file, read the data, extract information from the file name, and append it to the combined data frame
+for (file_path in bed_files) {
+  # Extract file name without extension
+  file_name = basename(file_path)
+  file_name = tools::file_path_sans_ext(file_name)
+  #print(file_name)
+  
+  # Extract information from the file name (assuming the format is consistent)
+  
+  info = str_split(file_name, "-")
+  min_cluster_size = info[[1]][5]
+  min_samples = info[[1]][6]
+  
+  # Read the .bed file into a data frame
+  df <- read_tsv(file_path, col_names = c("chrom", "start", "end", "cluster_id"), col_types = cols(
+      chrom = col_character(),
+      start = col_integer(),
+      end = col_integer(),
+      cluster_id = col_character()
+    ))
+  
+  # Add the extracted information as new columns
+  df = df %>%
+    mutate(min.cluster.size = min_cluster_size, min.samples = min_samples)
+  
+  # Append the data frame to the combined data frame
+  combined_df = bind_rows(combined_df, df)
+}
+
+# Print the combined data frame
+print(combined_df)
+
+
+```
+
+
+```{r plots, warning=FALSE, message=FALSE}
+
+
+combined_df %>% group_by(min.cluster.size, min.samples) %>% summarize(num.clusters = n()) %>%
+  ggplot(aes(min.cluster.size, min.samples, fill = num.clusters)) +
+    geom_tile() +
+    scale_fill_gradient(low = "white", high = "red") +
+    labs(title = "Heatmap", x = "X-axis", y = "Y-axis", fill = "Value") +
+    theme_minimal()
+
+
+
+x = combined_df %>% filter(min.cluster.size == 50, min.samples == 50)
+
+
+
+
+
+
+
+
+
+
+```
