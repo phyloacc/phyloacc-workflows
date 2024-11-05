@@ -32,7 +32,50 @@ source(here("docs", "lib", "design.r"))
 ```
 
 
-```{r read, warning=FALSE, message=FALSE}
+```{r read-cons-sites, warning=FALSE, message=FALSE}
+
+# Define the directory containing the .bed files
+directory = here("summary-data", "all-chromosomes")
+
+# List all .bed files in the directory
+conserved_sites_files = list.files(directory, pattern = "\\.conserved-site-counts.0.05.tsv$", full.names = TRUE)
+
+# Initialize an empty data.frame or tibble
+conserved_site_counts = tibble()
+
+# Loop through each file and read the data
+for (file in conserved_sites_files) {
+  # Read the file
+  temp_df = read_delim(file, delim=" ", col_names = c("chromosome", "total.conserved"))
+  
+  # Add the data to the combined data.frame
+  conserved_site_counts = bind_rows(conserved_site_counts, temp_df)
+}
+
+# Print the combined data.frame or tibble
+print(conserved_site_counts)
+
+chromes_file = here("summary-data", "GRCh38.chromes")
+chromes_df = read_tsv(chromes_file, col_names = c("chromosome", "chromosome.length", "bytes", "ll1", "ll2")) %>%
+  select(chromosome, chromosome.length)
+
+# Join the combined_df with chromes_df
+conserved_site_counts = conserved_site_counts %>%
+  left_join(chromes_df, by = "chromosome") #
+
+conserved_site_counts = conserved_site_counts %>%
+  mutate(percent.conserved = total.conserved / chromosome.length)
+
+# Print the final data.frame or tibble
+print(conserved_site_counts)
+
+
+
+
+```
+
+
+```{r read-cons-clusters, warning=FALSE, message=FALSE}
 
 # Define the directory containing the .bed files
 directory = here("data", "01b-zoonomia-aln", "04-phylop", "clustering", "all-chromosomes")
@@ -41,7 +84,7 @@ directory = here("data", "01b-zoonomia-aln", "04-phylop", "clustering", "all-chr
 bed_files = list.files(directory, pattern = "\\.bed$", full.names = TRUE)
 
 # Initialize an empty data frame to store the combined data
-combined_df <- tibble()
+conserved_clusters <- tibble()
 
 # Loop through each file, read the data, extract information from the file name, and append it to the combined data frame
 for (file_path in bed_files) {
@@ -57,8 +100,8 @@ for (file_path in bed_files) {
   min_samples = info[[1]][6]
   
   # Read the .bed file into a data frame
-  df <- read_tsv(file_path, col_names = c("chrom", "start", "end", "cluster_id"), col_types = cols(
-      chrom = col_character(),
+  df <- read_tsv(file_path, col_names = c("chromosome", "start", "end", "cluster.id", "num.conserved"), col_types = cols(
+      chromosome = col_character(),
       start = col_integer(),
       end = col_integer(),
       cluster_id = col_character()
@@ -66,38 +109,104 @@ for (file_path in bed_files) {
   
   # Add the extracted information as new columns
   df = df %>%
-    mutate(min.cluster.size = min_cluster_size, min.samples = min_samples)
+    mutate(min.cluster.size = min_cluster_size, min.samples = min_samples) %>%
+    mutate(chromosome = paste0("chr", chromosome))
   
   # Append the data frame to the combined data frame
-  combined_df = bind_rows(combined_df, df)
+  conserved_clusters = bind_rows(conserved_clusters, df)
 }
 
-# Print the combined data frame
-print(combined_df)
+```
+
+```{r summarize, warning=FALSE, message=FALSE}
+
+total_sites = sum(conserved_site_counts$chromosome.length)
+total_conserved_sites = sum(conserved_site_counts$total.conserved)
+perc_conserved_sites = total_conserved_sites / total_sites
+
+conserved_clusters = conserved_clusters %>%
+  mutate(cluster.length = end - start, 
+         perc.cons.sites = num.conserved / cluster.length)
+
+conserved_clusters_summary = conserved_clusters %>%
+  left_join(conserved_site_counts, by = "chromosome") %>%
+  group_by(min.cluster.size, min.samples) %>%
+  summarize(num.clusters = n(),
+            total.conserved.cluster.len = sum(cluster.length),
+            mean.cluster.length = mean(cluster.length),
+            med.cluster.length = median(cluster.length),
+            cons.sites.in.clusters = sum(num.conserved),
+            mean.cons.sites.in.clusters = mean(num.conserved),
+            median.cons.sites.in.clusters = median(num.conserved),
+            mean.perc.cons.sites.in.clusters = mean(perc.cons.sites),
+            median.perc.cons.sites.in.clusters = median(perc.cons.sites)) %>%
+  mutate(total.sites = total_sites,
+         total.conserved.sites = total_conserved_sites,
+         perc.conserved.sites = perc_conserved_sites,
+         perc.conserved.sites.in.clusters = cons.sites.in.clusters / total.conserved.sites)
+
+
+
+# conserved_elements_chr_summary = conserved_elements %>% 
+#   left_join(conserved_site_counts, by = "chromosome") %>%
+#   mutate(cluster.length = end - start) %>%
+#   group_by(chromosome, chromosome.length, total.conserved, percent.conserved, min.cluster.size, min.samples) %>%
+#   summarize(num.clusters = n(), 
+#             mean.cluster.length = mean(cluster.length), 
+#             med.cluster.length = median(cluster.length), 
+#             cons.sites.in.clusters = sum(num.conserved)) %>%
+#   #left_join(conserved_site_counts, by = "chromosome") %>%
+#   mutate(percent.cons.in.clusters = cons.sites.in.clusters / total.conserved)
+
 
 
 ```
 
 
-```{r plots, warning=FALSE, message=FALSE}
+```{r plot, warning=FALSE, message=FALSE}
+
+ggplot(conserved_clusters_summary, aes(min.samples, num.clusters, color = min.cluster.size, group=min.cluster.size)) +
+  geom_point(size=2, alpha=0.6) +
+  geom_line() +
+  labs(x = "min_samples", y = "# clusters", color = "min_cluster_size") +
+  scale_color_manual(values=corecol(pal="wilke", numcol=3)) +
+  bartheme() +
+  theme(legend.title = element_text(size=10),
+        legend.position="bottom")
 
 
-combined_df %>% group_by(min.cluster.size, min.samples) %>% summarize(num.clusters = n()) %>%
-  ggplot(aes(min.cluster.size, min.samples, fill = num.clusters)) +
-    geom_tile() +
-    scale_fill_gradient(low = "white", high = "red") +
-    labs(title = "Heatmap", x = "X-axis", y = "Y-axis", fill = "Value") +
-    theme_minimal()
+ggplot(conserved_clusters_summary, aes(min.samples, med.cluster.length, color = min.cluster.size, group=min.cluster.size)) +
+  geom_point(size=2, alpha=0.6, fill="transparent") +
+  geom_line(aes(linetype = "Median")) +
+  geom_point(aes(y=mean.cluster.length), size=2, alpha=0.6) +
+  geom_line(aes(y=mean.cluster.length, linetype="Mean")) +
+  scale_color_manual(values=corecol(pal="wilke", numcol=3)) +
+  scale_linetype_manual(values = c("Median" = "solid", "Mean" = "dashed")) +
+  labs(x = "min_samples", y = "Cluster length", color = "min_cluster_size") +
+  bartheme() +
+  theme(legend.title = element_text(size=10),
+        legend.position="bottom",
+        legend.box = "vertical")
+  #guides(color = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2))
 
+ggplot(conserved_clusters_summary, aes(x=min.samples, y=as.character(signif(perc.conserved.sites.in.clusters, 2)), fill=median.perc.cons.sites.in.clusters)) +
+  geom_tile() +
+  facet_wrap(~min.cluster.size) +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(x = "min_samples", y = "% conserved sites in clusters", fill = "Median % of cluster sites that are conserved") +
+  bartheme() +
+  theme(legend.position="bottom")
+         
+ggplot(conserved_clusters_summary, aes(x=perc.conserved.sites.in.clusters, y=median.perc.cons.sites.in.clusters)) +
+  geom_point() +
+  geom_line() +
+  bartheme()
 
+example_params = conserved_clusters %>% filter(min.samples==25, min.cluster.size==20)
+ggplot(example_params, aes(x=perc.cons.sites)) +
+  geom_histogram() +
 
-x = combined_df %>% filter(min.cluster.size == 50, min.samples == 50)
-
-
-
-
-
-
+  bartheme()
 
 
 
