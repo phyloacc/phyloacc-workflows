@@ -472,7 +472,7 @@ rule cluster_conserved_sites:
         min_cluster_size = "{min_cluster_size}",
         min_samples = "{min_samples}"
     resources:
-        mem = "12g",
+        mem = "24g",
         time = "4:00:00"
     shell:
         """

@@ -64,4 +64,4 @@ tmp_dir: /n/holylfs05/LABS/informatics/Users/gthomas/tmp/
 # HDBSCAN cluster benchmarking
 
 min_cluster_sizes: [20, 35, 50]
-min_samples: [1, 10, 25, 50]
+min_samples: [1, 10, 25, 50, 75]
