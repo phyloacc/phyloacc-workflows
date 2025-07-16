@@ -1,0 +1,14 @@
+0	A*T****TTT*T*TT*TTTTAATT*T*T**T**T**T*T*T****	1
+0	G*A****GAA*A*CA*AAAAAAAA*A*A**A**A**A*A*A****	1
+0	-*-****---*T*--*--------*-*-**-**-**-*-*-****	1
+0	C*T****TTT*T*TT*TTTTTTTT*T*T**T**T**T*T*T****	1
+0	T*T****TTT*C*TT*TTTTTTTT*C*C**T**T**C*C*C****	1
+0	A*A****AAA*A*GA*GAGGGGAA*A*A**A**A**A*A*A****	1
+0	G*G****GGC*G*GG*GAGGGGAG*G*T**G**G**G*G*G****	1
+0	C*-********-**-*T*****--*********C******-****	1
+0	G*T********C**-*C*****-T*********T******-****	1
+0	-*-****---*-*--*--------*-*-*****G**-*-*-****	1
+0	A*A****AAA*A*AA*AAAAAAAA*A*A*****A**A*A*A****	1
+0	-*-****---*-**C*------C-*-*-*****-**-*-*C****	1
+0	A*C****CCC*C**C*CACCTCCC*C*C*****C**C*C*T****	1
+0	T*C****CTT*T**C*CCCCCCCC*C*C*****C**C*C*C****	1

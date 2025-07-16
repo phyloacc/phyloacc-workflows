@@ -1,0 +1,11 @@
+mem_mb:
+  map: mem
+
+cpus:
+  map: cpus-per-task
+
+time:
+  map: time
+
+partition:
+  map: partition

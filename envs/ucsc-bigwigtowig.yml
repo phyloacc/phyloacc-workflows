@@ -1,0 +1,7 @@
+name: ucsc-bigwigtowig
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - ucsc-bigwigtowig=448=h2a80c09_0

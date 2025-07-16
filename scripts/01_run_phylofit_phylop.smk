@@ -73,15 +73,19 @@ REF_CHR_BED_DIR = os.path.join(OUTDIR, "beds");
 os.makedirs(REF_CHR_BED_DIR, exist_ok=True);
 
 for GROUP in REF_CHROMOSOME_GROUPS:
+    print(GROUP);
     with open(os.path.join(REF_CHR_BED_DIR, GROUP + ".bed"), "w") as f:
         for line in open(REF_INDEX, "r"):
+            print(line);
             chrome, length = line.strip().split("\t")[:2];
-            if chrome in GROUP:
+            print(chrome, length);
+            if chrome in REF_CHROMOSOME_GROUPS[GROUP]:
+                print(chrome);
                 length = int(length)-1;
                 f.write(f"{chrome}\t0\t{length}\n");
         
-        for chrome in GROUP:
-            f.write(f"{chrome}\t0\t{length}\n");
+        # for chrome in GROUP:
+        #     f.write(f"{chrome}\t0\t{length}\n");
 # This gets the chromosome start and end positions from the reference genome index file
 # for splitting the MAF
 
@@ -91,7 +95,8 @@ flattened_chromosome_groups = [(group, chromosome) for group, chromosome_list in
 
 REF_CHR_GROUPS_LIST, REF_CHROMOSOMES = zip(*flattened_chromosome_groups);
 # Get two lists of equal length to use for wild cards
-
+print(REF_CHROMOSOMES)
+sys.exit();
 #############################################################################
 # Final rule - rule that depends on final expected output file and initiates all
 # the other rules

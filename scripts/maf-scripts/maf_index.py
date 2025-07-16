@@ -9,13 +9,46 @@
 # 2. Reference position (0-based)
 # 3. Alignment block sequence length
 # 4. Alignment block line length
-# 5. Number of sequences in the alignment block (though this is incorrect right now -- need to filter empty lines)
+# 5. Number of sequences in the alignment block
 # 6. Start byte position of the alignment block in the maf file
 # 7. End byte position of the alignment block in the maf file
 #############################################################################
 
 import sys
 import os
+import gzip
+
+#############################################################################
+
+def detectCompression(filename):
+# Detect compression of a file by examining the first lines in the file
+
+    compression_type = "none";
+
+    magic_dict = {
+            b"\x1f\x8b\x08": "gz",
+            # b"\x1f\x8b\x08\x08": "gz",
+            b"\x42\x5a\x68": "bz2",
+            b"\x50\x4b\x03\x04": "zip"
+        }
+    # An encoded set of possible "magic strings" that start different types of compressed files
+    # From: https://www.garykessler.net/library/file_sigs.html
+    # \x is the escape code for hex values
+    # b converts strings to bytes
+
+    max_len = max(len(x) for x in magic_dict)
+    # The number of characters to read from the beginning of the file should be the length of
+    # the longest magic string
+
+    file_start = open(filename, "rb").read(max_len);
+    # Read the beginning of the file up to the length of the longest magic string
+
+    for magic_string in magic_dict:
+        if file_start.startswith(magic_string):
+            compression_type = magic_dict[magic_string];
+    # Check each magic string against the start of the file
+
+    return compression_type;
 
 #############################################################################
 
@@ -23,7 +56,7 @@ def processMAFBlock(block):
     ref_seq = block[1].split();
     # The reference sequence is always the second line in a block
 
-    ref_scaff = ref_seq[1].split(".")[1];
+    ref_scaff = ref_seq[1].split(".", 1)[1];
     line_len = str(len(block[1]));
     num_seqs = str(len(block) - 1);
     seq_len = str(len(ref_seq[6]));
@@ -32,19 +65,31 @@ def processMAFBlock(block):
 
 #############################################################################
 
-#maf_file, mdx_file = sys.argv[1:];
+maf_file, mdx_file = sys.argv[1:];
 # Get inputs from command line
+
+maf_compression = detectCompression(maf_file);
+# Check if the maf file is compressed
+
+if maf_compression == "gz":
+    maf_stream = gzip.open(maf_file, "rt");
+    # Open the input maf file as a binary file
+elif maf_compression == "none":
+    maf_stream = open(maf_file, "r");
+    # Open the input maf file as a binary file
+else:
+    raise ValueError(f"Unsupported compression type: {maf_compression}")
 
 #maf_file = "/n/holyscratch01/informatics/gwct/test.maf";
 #mdx_file = "test.mdx";
-maf_file = "/n/holyscratch01/informatics/gwct/241-mammalian-2020v2b-mafSplit/all-chromosomes/chr22.00.maf";
-mdx_file = "test.mdx";
+#maf_file = "/n/holyscratch01/informatics/gwct/241-mammalian-2020v2b-mafSplit/all-chromosomes/chr22.00.maf";
+#mdx_file = "test.mdx";
 # 533.92user 28.90system 9:23.90elapsed 99%CPU (0avgtext+0avgdata 16680maxresident)k
 # 499720inputs+786136outputs (0major+2548minor)pagefaults 0swaps
 # Test inputs
 
 with open(mdx_file, "w") as mdx_stream:
-    maf_stream = open(maf_file, "r");
+    #maf_stream = open(maf_file, "r");
     # Open the input maf file
 
     line = "init";
@@ -53,19 +98,19 @@ with open(mdx_file, "w") as mdx_stream:
     #first_block = True;
     block = [];
 
-    # block_num = 0;
+    block_num = 0;
 
     while line != "":
         line = maf_stream.readline();
         # Read a line from the maf file
-        
-        if line.startswith("#"):
+
+        if line.startswith("#") or line.strip() == "":
             continue;
         # Skip the blocks containing comments
 
         if line.startswith("a"):
         # If the line is a header line, process the previous block and start the next one
-
+            
             header_line_len = len(line);
 
             if block:
