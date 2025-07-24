@@ -20,3 +20,4 @@ scripts/phylop-site-checks/bird-chr10-max-score-mafs/
 scripts/phylop-site-checks/bird-chr10-max-score-sites.maf
 phyloacc-sicb-ms/chr1/results/elem_lik.txt
 .snakemake
+analyses/*/

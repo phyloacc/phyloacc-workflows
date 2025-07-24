@@ -32,7 +32,7 @@ Parallelization:
 
 Required input:
     - A MAF file (.maf or .maf.gz)
-    - An index file (.idx for block mode, .idx for scaffold mode)
+    - A MAF index file (from maf_index.py)
     - A BED file
 
 Optional arguments:
@@ -91,8 +91,9 @@ def optParse():
     )
 
     parser.add_argument(
-        "--outdir", "-o", default=".",
-        help="Output directory (default: current directory)"
+        "--output", "-o", default=".",
+        help="Output directory (default: current directory); "
+        "if --single-output is used, this should instead be a filename and will default to maf-fetch.maf in the current directory."
     )
     
     parser.add_argument(
@@ -102,6 +103,11 @@ def optParse():
     parser.add_argument(
         "--mode", "-m", choices=["block", "scaffold"], default="block",
         help="Mode: 'block' to trim by regions, 'scaffold' to extract whole scaffolds (default: block)"
+    )
+
+    parser.add_argument(
+        "--single-output", "-s", action="store_true", default=False,
+        help="If set, output all blocks to a single MAF file specified by --output (default: maf-fetch.maf)."
     )
 
     return parser.parse_args()
@@ -274,22 +280,36 @@ def trimMafBlock(block_text, bed_start, bed_end):
             overlap_end = min(bed_end, block_ref_start + block_ref_size)
             if overlap_start >= overlap_end:
                 return None  # No overlap.
-            # Map the overlap to alignment columns.
+            
+            # FIXED: Map the overlap to alignment columns correctly
             current_ref = block_ref_start
             col_start = None
             col_end = None
+
             for i, char in enumerate(ref_seq):
-                if current_ref == overlap_start and col_start is None:
-                    col_start = i
                 if char != '-':
+                    # This is a real reference position
+                    if current_ref >= overlap_start and col_start is None:
+                        col_start = i
                     current_ref += 1
-                if current_ref == overlap_end:
-                    col_end = i + 1  # include this column
-                    break
+                    if current_ref >= overlap_end:  # Check AFTER incrementing
+                        col_end = i + 1  # Include current position
+                        break
+                elif col_start is not None and col_end is None:
+                    # We're in our target region and this is a gap - we'll include it
+                    pass
+
             if col_start is None:
                 return None
             if col_end is None:
                 col_end = len(ref_seq)
+
+            if col_start is not None:
+                extracted_ref_bases = sum(1 for c in ref_seq[col_start:col_end] if c != '-')
+                expected_bases = overlap_end - overlap_start
+                if extracted_ref_bases != expected_bases:
+                        print(f"[WARN] Expected {expected_bases} bases but extracted {extracted_ref_bases} for region {overlap_start}-{overlap_end}")   
+
             ref_col_start = col_start
             ref_col_end = col_end
             new_ref_start = overlap_start
@@ -303,11 +323,14 @@ def trimMafBlock(block_text, bed_start, bed_end):
             new_fields = fields.copy()
             new_fields[6] = fields[6][ref_col_start:ref_col_end]
             trimmed_lines.append(" ".join(new_fields))
+
+    #print(f"DEBUG: bed_interval=[{bed_start},{bed_end}), block_ref=[{block_ref_start},{block_ref_start + block_ref_size}), extracted_cols=[{ref_col_start}:{ref_col_end}], ref_seq_sample='{ref_seq[ref_col_start:ref_col_end] if ref_col_start is not None else 'None'}'", file=sys.stderr)
+
     return "\n".join(trimmed_lines)
 
 #############################################################################
 
-def fetchByRegion(region, header, maf_file, maf_compression, index, out_dir):
+def fetchByRegion(region, header, maf_file, maf_compression, index, output, single_output=False):
     """
     Worker function to process a single BED region:
         - Opens the MAF file independently.
@@ -322,7 +345,15 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, out_dir):
     bed_start = region["start"]
     bed_end = region["end"]
     out_basename = region["output_basename"]
-    output_filename = os.path.join(out_dir, out_basename + ".maf")
+
+    # if bed_start not in ["9547874", 9547874]:
+    #     return
+
+    if not single_output:
+        output_filename = os.path.join(output, out_basename + ".maf")
+        out_stream = open(output_filename, "w", encoding="utf-8")
+    else:
+        current_blocks = []
 
     # Open the MAF file using the appropriate opener.
     if maf_compression == "gz":
@@ -333,36 +364,57 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, out_dir):
     try:
         maf_fp = opener(maf_file, "rb")
     except Exception as e:
+        if not single_output:
+            out_stream.close()
         sys.exit(f"[ERROR] Region {scaffold}:{bed_start}-{bed_end}: Error opening MAF file: {e}");
 
     blocks_written = 0;
 
-    with open(output_filename, "w", encoding="utf-8") as out_stream:
-        print(f">>> Region {scaffold}:{bed_start}-{bed_end}")
-        if scaffold not in index:
-            maf_fp.close()
-            return f"{output_filename}: No index entries for scaffold {scaffold}"
-        for entry in index[scaffold]:
-            block_ref_start = entry["ref_start"]
-            block_ref_end = block_ref_start + entry["seq_length"]
-            if bed_start < block_ref_end and bed_end > block_ref_start:
-                try:
-                    maf_fp.seek(entry["offset_start"])
-                    block_bytes = maf_fp.read(entry["offset_end"] - entry["offset_start"])
-                    block_text = block_bytes.decode("utf-8", errors="replace")
-                except Exception as e:
-                    sys.exit(f"[ERROR] Error fetching block: {e}\n");
-                trimmed = trimMafBlock(block_text, bed_start, bed_end)
-                if trimmed:
+    print(f">>> Region {scaffold}:{bed_start}-{bed_end}")
+    if scaffold not in index:
+        maf_fp.close()
+        if not single_output:
+            out_stream.close()
+        return f"{output_filename}: No index entries for scaffold {scaffold}"
+
+    for entry in index[scaffold]:
+        block_ref_start = entry["ref_start"]
+        block_ref_end = block_ref_start + entry["seq_length"]
+        if bed_start < block_ref_end and bed_end > block_ref_start:
+            try:
+                maf_fp.seek(entry["offset_start"])
+                block_bytes = maf_fp.read(entry["offset_end"] - entry["offset_start"])
+                block_text = block_bytes.decode("utf-8", errors="replace")
+            except Exception as e:
+                maf_fp.close()
+                if not single_output:
+                    out_stream.close()
+                sys.exit(f"[ERROR] Error fetching block: {e}\n");
+            
+            # print(block_text)
+            # os._exit(1)
+
+            trimmed = trimMafBlock(block_text, bed_start, bed_end)
+            if trimmed:
+                if not single_output:
                     if blocks_written == 0:
                         out_stream.write(header);
                     out_stream.write(trimmed)
                     out_stream.write("\n")
-                    blocks_written += 1
-        if not blocks_written:
-            print(f"{scaffold}:{bed_start}-{bed_end} No overlapping blocks found.\n");
+                else:
+                    current_blocks.append(trimmed + "\n")
+                blocks_written += 1
+
     maf_fp.close()
-    return f"{output_filename}: Wrote {blocks_written} blocks for region {scaffold}:{bed_start}-{bed_end}";
+
+    if not blocks_written:
+        print(f"{scaffold}:{bed_start}-{bed_end} No overlapping blocks found.\n");
+
+    if not single_output:
+        out_stream.close()
+        return f"{output_filename}: Wrote {blocks_written} blocks for region {scaffold}:{bed_start}-{bed_end}";
+    else:
+        return current_blocks;
 
 #############################################################################
 
@@ -403,7 +455,8 @@ def main():
     maf_file = args.maf_file
     index_file = args.index_file
     bed_file = args.bed_file
-    out_dir = args.outdir
+    output = args.output
+    single_output = args.single_output
     max_processes = args.processes
     run_mode = args.mode
     # Get inputs from command line
@@ -412,7 +465,8 @@ def main():
         sys.exit(f"[ERROR] Invalid mode: '{run_mode}'. Must be 'block' or 'scaffold'.")
 
     maf_compression = COMMON.detectCompression(maf_file);
-    os.makedirs(out_dir, exist_ok=True);
+    if not single_output:
+        os.makedirs(output, exist_ok=True);
     # Create output directory if it doesn't exist
 
     print(f"Parsing index file.... {index_file}");
@@ -429,6 +483,9 @@ def main():
     ##############################
 
     if run_mode == "scaffold":
+        if single_output:
+            sys.exit("[ERROR] --single-output cannot be used in scaffold mode.");
+
         print(f"[INFO] Running in SCAFFOLD mode with BED + region index");
         
         # Parse the BED file to get a set of scaffolds to extract
@@ -449,7 +506,7 @@ def main():
                     maf_file,
                     maf_header,
                     maf_compression,
-                    out_dir
+                    output
                 ))
             for future in futures:
                 result = future.result()
@@ -461,6 +518,16 @@ def main():
     ##############################
 
     print(f"[INFO] Running in BLOCK mode");
+
+    if args.single_output:
+        # NEW: Single output mode
+        if args.output == "." or os.path.isdir(args.output):
+            output_file = "maf-fetch.maf"
+        else:
+            if os.path.isdir(args.output):
+                sys.exit("[ERROR] --single-output cannot be used with --outdir. Use current directory only.");
+            output_file = args.output
+        print(f"[INFO] Using single output file: {output_file}")
 
     # Pre-assign output basenames for regions.
     # For regions missing a 4th column (basename), assign a unique counter per scaffold.
@@ -495,12 +562,28 @@ def main():
                 maf_file,
                 maf_compression,
                 index,
-                out_dir
+                output,
+                single_output
             ));
         for future in futures:
             result = future.result();
-            print(result);
-            results.append(result);
+            if not single_output:
+                print(result);
+            else:
+                results.append(result);
+
+    if single_output:
+        with open(output_file, "w", encoding="utf-8") as out_stream:
+            out_stream.write(maf_header)  # Write header to single output file
+
+            total_blocks = 0
+            for block_list in results:
+                if block_list:  # block_list is now a list of strings
+                    for block in block_list:
+                        out_stream.write(block)
+                        total_blocks += 1
+
+        print(f"Single output file written: {output_file} ({total_blocks} blocks)")
 
 if __name__ == "__main__":
     main();

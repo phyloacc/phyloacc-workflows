@@ -1,0 +1,5 @@
+##maf version=1
+a score=1000
+s human.chr1 2 4 + 1000 CTG-A
+s chimp.chr1 0 10 + 1000 -TGAA
+

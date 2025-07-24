@@ -184,7 +184,7 @@ def pipelineSetup(config, args, version_flag, info_flag, config_flag, debug, wor
         log_verbosity = "screen";
     # Set the log verbosity based on the arguments
 
-    log_filename = os.path.join(log_dir, f"cactus-snakemake.{log_level}.log"); # Log file name if log_verbosity is "file" or "both"
+    log_filename = os.path.join(log_dir, f"{log_level}.log"); # Log file name if log_verbosity is "file" or "both"
     configureLogging(log_filename, log_level.upper(), log_verbosity.upper());
     meta_logger = logging.getLogger('META')
     # Set up the logger
@@ -364,6 +364,8 @@ def runCommand(cmd, log_stream, out_stream, rule, wc=""):
     # Run the command and write the output to the log file
 
     rcode = proc.returncode;
+    print(f"{fmtDT()} - RULE {rule}{wc} - INFO - Command finished with return code: {rcode}", log_stream);
+    printWrite(f"{fmtDT()} - RULE {rule}{wc} - INFO - Command finished with return code: {rcode}", log_stream);
     # Get the return code
 
     if rcode != 0:

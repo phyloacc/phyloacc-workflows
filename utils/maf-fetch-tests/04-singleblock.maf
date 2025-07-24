@@ -1,0 +1,5 @@
+##maf version=1
+a score=300
+s human.chr2 5 5 + 2000 AAACC
+s chimp.chr2 5 6 + 2000 GAACC
+

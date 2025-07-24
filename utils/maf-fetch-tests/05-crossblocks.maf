@@ -1,0 +1,10 @@
+##maf version=1
+a score=100
+s human.chr3 4 1 + 1000 A
+s chimp.chr3 0 5 + 1000 A
+
+a score=200
+s human.chr3 6 2 + 1000 CC
+s chimp.chr3 5 4 + 1000 CC
+
+##maf version=1

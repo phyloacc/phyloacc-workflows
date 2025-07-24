@@ -126,8 +126,6 @@ MIN_SAMPLES = config["min_samples"];
 
 #############################################################################
 
-
-
 # for GROUP in REF_CHROMOSOME_GROUPS:
 #     print(GROUP);
 #     with open(os.path.join(REF_CHR_BED_DIR, GROUP + ".bed"), "w") as f:

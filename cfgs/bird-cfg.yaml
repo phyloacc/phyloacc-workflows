@@ -4,6 +4,7 @@
 # - phast
 # - ncbi-datasets-cli
 # - hdbscan
+# - picard
 
 # snakemake -s 01_run_phylofit_phylop.smk --configfile cfgs/bird-cfg.yaml --dryrun
 
@@ -31,7 +32,7 @@ ref_chromosome_groups:
 alpha: 0.05
 # The significance level for calling a site conserved after running phyloP
 
-output_dir: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/test3/
+output_dir: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/test-split-workflows1/
 # The main output directory for the workflow
 
 tmp_dir: /n/holylfs05/LABS/informatics/Users/gthomas/tmp/
@@ -60,11 +61,23 @@ filter_threshold_4d: 0.5
 # The fraction of sequences in the MAF required for a 4d site pattern to be filtered for phyloFit
 # e.g. if num_seqs = 10 and threshold = 0.2, then all sites that have missing data in 10 * 0.2 sequences (2) will be filtered
 
+ref_fasta: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/GCF_000002315.6_GRCg6a_genomic.RENAMED.fna
+
 ref_gff: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/GCF_000002315.6_GRCg6a_genomic.RENAMED.gff
 # The GFF annotation of the reference genome in the MAF
 
-ref_genome_index: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/GCF_000002315.6_GRCg6a_genomic.RENAMED.fna.fai
+ref_fasta_index: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/GCF_000002315.6_GRCg6a_genomic.RENAMED.fna.fai
 # The reference genome index file (.fai), used for splitting the MAF file by chromosome/scaffold
+
+##########################################
+
+# INTERVALS
+
+window_size: 100000
+# For bed windows
+
+min_Ns_to_split_by: 500
+# For N intervals
 
 ##########################################
 
@@ -178,3 +191,10 @@ rule_resources:
     mem_mb: 4000
     cpus: 1
     time: 10   
+
+
+  fetch_window_mafs:
+      partition: shared
+      mem_mb: 12000
+      cpus: 12
+      time: 480
