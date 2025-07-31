@@ -97,6 +97,11 @@ def optParse():
     )
     
     parser.add_argument(
+        "--fasta", "-f", action="store_true", default=False,
+        help="Output region(s) in FASTA format instead of MAF."
+    )
+
+    parser.add_argument(
         "--processes", "-p", type=int, default=1,
         help="Number of parallel processes to use (default: 1)"
     )
@@ -237,6 +242,32 @@ def getMAFHeader(maf_file, maf_compression):
 
 #############################################################################
 
+def mafBlockToFasta(block_text, region=None):
+    """
+    Converts a (trimmed) MAF block to multi-FASTA format. 
+    Optionally, include region/scaffold in headers.
+    """
+    fasta_lines = []
+    lines = block_text.strip().splitlines()
+    # Optionally add region name to header
+    region_prefix = ""
+    if region:
+        region_prefix = f"{region['scaffold']}:{region['start']}-{region['end']}"
+    for line in lines:
+        if line.startswith("s "):
+            fields = line.split()
+            src = fields[1]
+            seq = fields[6]
+            # Compose description: src plus region if supplied
+            header = f">{src}"
+            if region_prefix:
+                header += f" {region_prefix}"
+            fasta_lines.append(header)
+            fasta_lines.append(seq)
+    return "\n".join(fasta_lines)
+
+#############################################################################
+
 def trimMafBlock(block_text, bed_start, bed_end):
     """
     Trims a MAF block to exactly the portion overlapping [bed_start, bed_end)
@@ -330,7 +361,7 @@ def trimMafBlock(block_text, bed_start, bed_end):
 
 #############################################################################
 
-def fetchByRegion(region, header, maf_file, maf_compression, index, output, single_output=False):
+def fetchByRegion(region, header, maf_file, maf_compression, index, output, single_output=False, as_fasta=False):
     """
     Worker function to process a single BED region:
         - Opens the MAF file independently.
@@ -395,12 +426,17 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
             # os._exit(1)
 
             trimmed = trimMafBlock(block_text, bed_start, bed_end)
-            if trimmed:
-                if not single_output:
-                    if blocks_written == 0:
-                        out_stream.write(header);
-                    out_stream.write(trimmed)
-                    out_stream.write("\n")
+            if not single_output:
+                if blocks_written == 0 and not as_fasta:
+                    out_stream.write(header)
+                if as_fasta:
+                    # Output as fasta
+                    out_stream.write(mafBlockToFasta(trimmed, region) + "\n")
+                else:
+                    out_stream.write(trimmed + "\n")
+            else:
+                if as_fasta:
+                    current_blocks.append(mafBlockToFasta(trimmed, region) + "\n")
                 else:
                     current_blocks.append(trimmed + "\n")
                 blocks_written += 1
@@ -486,6 +522,9 @@ def main():
         if single_output:
             sys.exit("[ERROR] --single-output cannot be used in scaffold mode.");
 
+        if args.fasta:
+            sys.exit("[ERROR] FASTA output not supported in scaffold mode.")
+
         print(f"[INFO] Running in SCAFFOLD mode with BED + region index");
         
         # Parse the BED file to get a set of scaffolds to extract
@@ -563,7 +602,8 @@ def main():
                 maf_compression,
                 index,
                 output,
-                single_output
+                single_output,
+                args.fasta
             ));
         for future in futures:
             result = future.result();
@@ -574,7 +614,8 @@ def main():
 
     if single_output:
         with open(output_file, "w", encoding="utf-8") as out_stream:
-            out_stream.write(maf_header)  # Write header to single output file
+            if not args.fasta:
+                out_stream.write(maf_header)  # Write header to single output file
 
             total_blocks = 0
             for block_list in results:

@@ -1,0 +1,4 @@
+##maf version=1
+a score=400
+s human.chr4 31 2 + 1000 AC
+s chimp.chr4 28 7 + 998 -C
