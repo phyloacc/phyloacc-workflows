@@ -390,6 +390,8 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
 
     if not single_output:
         output_filename = os.path.join(output, out_basename + ".maf")
+        if as_fasta:
+            output_filename = os.path.join(output, out_basename + ".fa")
         out_stream = open(output_filename, "w", encoding="utf-8")
     else:
         current_blocks = []
