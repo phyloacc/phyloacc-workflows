@@ -1,4 +1,4 @@
->human.chr4 chr4:31-33
+>human.chr4 chr4:31-33 id:08-span-multiple-gaps
 AC
->chimp.chr4 chr4:31-33
+>chimp.chr4 chr4:31-33 id:08-span-multiple-gaps
 -C

@@ -249,19 +249,27 @@ def mafBlockToFasta(block_text, region=None):
     """
     fasta_lines = []
     lines = block_text.strip().splitlines()
-    # Optionally add region name to header
-    region_prefix = ""
+    
+    # Compose region description
+    header_fields = []
     if region:
-        region_prefix = f"{region['scaffold']}:{region['start']}-{region['end']}"
+        if "scaffold" in region and "start" in region and "end" in region:
+            header_fields.append(f"{region['scaffold']}:{region['start']}-{region['end']}")
+        # Add id if present
+        if "id" in region and region["id"]:
+            header_fields.append(f"id:{region['id']}")
+
+        # (You could customize more info if you like)
+    description = " ".join(header_fields).strip()
+    
     for line in lines:
         if line.startswith("s "):
             fields = line.split()
             src = fields[1]
             seq = fields[6]
-            # Compose description: src plus region if supplied
             header = f">{src}"
-            if region_prefix:
-                header += f" {region_prefix}"
+            if description:
+                header += f" {description}"
             fasta_lines.append(header)
             fasta_lines.append(seq)
     return "\n".join(fasta_lines)
