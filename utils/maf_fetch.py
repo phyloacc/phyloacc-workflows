@@ -447,10 +447,8 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
                     # Output as fasta
                     #out_stream.write(mafBlockToFasta(trimmed, region) + "\n")
                     return_fasta_seqs = mafBlockToFasta(trimmed, region)
-                    print(return_fasta_seqs)
                     for key, seq in return_fasta_seqs.items():
                         fasta_seqs[key] += seq
-                    print(fasta_seqs)
                 else:
                     out_stream.write(trimmed + "\n")
                 blocks_written += 1
