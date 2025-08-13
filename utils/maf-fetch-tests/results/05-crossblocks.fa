@@ -1,8 +1,4 @@
 >human.chr3 chr3:4-8 id:05-crossblocks
-A
+ACC
 >chimp.chr3 chr3:4-8 id:05-crossblocks
-A
->human.chr3 chr3:4-8 id:05-crossblocks
-CC
->chimp.chr3 chr3:4-8 id:05-crossblocks
-CC
+ACC

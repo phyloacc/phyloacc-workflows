@@ -3,7 +3,6 @@ a score=500
 s human.chr1 24 2 + 1000 GA
 s chimp.chr1 17 8 + 1000 GA
 
-##maf version=1
 a score=500
 s human.chr1 32 1 + 1000 G
 s chimp.chr1 30 8 + 1000 A

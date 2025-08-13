@@ -60,6 +60,7 @@ import os
 import argparse
 import gzip
 from concurrent.futures import ProcessPoolExecutor
+from collections import defaultdict
 
 import lib.common as COMMON
 
@@ -247,7 +248,7 @@ def mafBlockToFasta(block_text, region=None):
     Converts a (trimmed) MAF block to multi-FASTA format. 
     Optionally, include region/scaffold in headers.
     """
-    fasta_lines = []
+    fasta_lines = defaultdict(str)
     lines = block_text.strip().splitlines()
     
     # Compose region description
@@ -260,19 +261,22 @@ def mafBlockToFasta(block_text, region=None):
             header_fields.append(f"id:{region['id']}")
 
         # (You could customize more info if you like)
+    #description = False # Disable until i fix the concatenation issue
     description = " ".join(header_fields).strip()
     
     for line in lines:
-        if line.startswith("s "):
+        if line.startswith("s ") or line.startswith("s\t"):
             fields = line.split()
             src = fields[1]
             seq = fields[6]
             header = f">{src}"
             if description:
                 header += f" {description}"
-            fasta_lines.append(header)
-            fasta_lines.append(seq)
-    return "\n".join(fasta_lines)
+            fasta_lines[header] = seq
+            #fasta_lines.append(header)
+            #fasta_lines.append(seq)
+    #return "\n".join(fasta_lines)
+    return fasta_lines
 
 #############################################################################
 
@@ -388,6 +392,9 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
     # if bed_start not in ["9547874", 9547874]:
     #     return
 
+    if as_fasta:
+        fasta_seqs = defaultdict(str);
+
     if not single_output:
         output_filename = os.path.join(output, out_basename + ".maf")
         if as_fasta:
@@ -431,9 +438,6 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
                 if not single_output:
                     out_stream.close()
                 sys.exit(f"[ERROR] Error fetching block: {e}\n");
-            
-            # print(block_text)
-            # os._exit(1)
 
             trimmed = trimMafBlock(block_text, bed_start, bed_end)
             if not single_output:
@@ -441,17 +445,27 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
                     out_stream.write(header)
                 if as_fasta:
                     # Output as fasta
-                    out_stream.write(mafBlockToFasta(trimmed, region) + "\n")
+                    #out_stream.write(mafBlockToFasta(trimmed, region) + "\n")
+                    return_fasta_seqs = mafBlockToFasta(trimmed, region)
+                    print(return_fasta_seqs)
+                    for key, seq in return_fasta_seqs.items():
+                        fasta_seqs[key] += seq
+                    print(fasta_seqs)
                 else:
                     out_stream.write(trimmed + "\n")
+                blocks_written += 1
             else:
                 if as_fasta:
                     current_blocks.append(mafBlockToFasta(trimmed, region) + "\n")
                 else:
                     current_blocks.append(trimmed + "\n")
-                blocks_written += 1
 
     maf_fp.close()
+
+    if as_fasta:
+        # Write all fasta sequences to the output
+        for header, seq in fasta_seqs.items():
+            out_stream.write(f"{header}\n{seq}\n")
 
     if not blocks_written:
         print(f"{scaffold}:{bed_start}-{bed_end} No overlapping blocks found.\n");
