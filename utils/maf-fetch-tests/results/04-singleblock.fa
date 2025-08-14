@@ -1,4 +1,4 @@
->human.chr2 chr2:5-10 id:04-singleblock
+>human.chr2 id:04-singleblock chr2:5-10
 AAACC
->chimp.chr2 chr2:5-10 id:04-singleblock
+>chimp.chr2 id:04-singleblock
 GAACC

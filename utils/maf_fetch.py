@@ -254,27 +254,30 @@ def mafBlockToFasta(block_text, region=None):
     fasta_lines = defaultdict(str)
     lines = block_text.strip().splitlines()
     
-    # Compose region description
-    header_fields = []
     if region:
         if "scaffold" in region and "start" in region and "end" in region:
-            header_fields.append(f"{region['scaffold']}:{region['start']}-{region['end']}")
+            ref_region_header = f"{region['scaffold']}:{region['start']}-{region['end']}"
         # Add id if present
         if "id" in region and region["id"]:
-            header_fields.append(f"id:{region['id']}")
-
-        # (You could customize more info if you like)
-    #description = False # Disable until i fix the concatenation issue
-    description = " ".join(header_fields).strip()
+            id_header = f"id:{region['id']}"
     
+    first_seq = True
     for line in lines:
         if re.match(r"^s\s", line):
             fields = line.split()
             src = fields[1]
             seq = fields[6]
+
+            description = "";
+            if id_header:
+                description += f" {id_header}"
+            if first_seq:
+                first_seq = False
+                description += f" {ref_region_header}"
+
             header = f">{src}"
             if description:
-                header += f" {description}"
+                header += f"{description}"
             fasta_lines[header] = seq
             #fasta_lines.append(header)
             #fasta_lines.append(seq)

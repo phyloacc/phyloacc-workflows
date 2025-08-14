@@ -1,6 +1,6 @@
->human.chr4 chr4:4-8 id:10-crossblocks-missing-species
+>human.chr4 id:10-crossblocks-missing-species chr4:4-8
 ACC
->gorilla.chr4 chr4:4-8 id:10-crossblocks-missing-species
+>gorilla.chr4 id:10-crossblocks-missing-species
 A--
->chimp.chr4 chr4:4-8 id:10-crossblocks-missing-species
+>chimp.chr4 id:10-crossblocks-missing-species
 -CC

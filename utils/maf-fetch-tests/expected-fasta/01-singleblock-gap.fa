@@ -1,4 +1,4 @@
->human.chr1 chr1:2-6 id:01-singleblock-gap
+>human.chr1 id:01-singleblock-gap chr1:2-6
 CTG-A
->chimp.chr1 chr1:2-6 id:01-singleblock-gap
+>chimp.chr1 id:01-singleblock-gap
 -TGAA

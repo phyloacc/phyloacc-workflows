@@ -1,4 +1,4 @@
->human.chr1 chr1:8-12 id:02-truncatedblock
+>human.chr1 id:02-truncatedblock chr1:8-12
 G
->chimp.chr1 chr1:8-12 id:02-truncatedblock
+>chimp.chr1 id:02-truncatedblock
 G
