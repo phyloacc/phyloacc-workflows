@@ -57,6 +57,7 @@ Examples:
 
 import sys
 import os
+import re
 import argparse
 import gzip
 from concurrent.futures import ProcessPoolExecutor
@@ -145,14 +146,16 @@ def parseIndex(index_file, mode="block"):
                 scaffold = fields[0]
                 try:
                     ref_start = int(fields[1])
-                    seq_length = int(fields[2])
-                    offset_start = int(fields[5])
-                    offset_end = int(fields[6])
+                    ref_length = int(fields[2])
+                    aln_length = int(fields[3])
+                    offset_start = int(fields[6])
+                    offset_end = int(fields[7])
                 except ValueError:
                     continue
                 entry = {
                     "ref_start": ref_start,
-                    "seq_length": seq_length,
+                    "ref_length": ref_length,
+                    "aln_length": aln_length,
                     "offset_start": offset_start,
                     "offset_end": offset_end
                 }
@@ -265,7 +268,7 @@ def mafBlockToFasta(block_text, region=None):
     description = " ".join(header_fields).strip()
     
     for line in lines:
-        if line.startswith("s ") or line.startswith("s\t"):
+        if re.match(r"^s\s", line):
             fields = line.split()
             src = fields[1]
             seq = fields[6]
@@ -291,6 +294,7 @@ def trimMafBlock(block_text, bed_start, bed_end):
 
     Returns the trimmed block as a string, or None if no overlap occurs.
     """
+
     lines = block_text.splitlines()
     if len(lines) < 2:
         return None  # Invalid block
@@ -306,10 +310,10 @@ def trimMafBlock(block_text, bed_start, bed_end):
     new_ref_start = None
     new_ref_size = None
     for line in lines[1:]:
-        if not line.startswith("s "):
+        fields = line.split()
+        if not fields or fields[0] != "s":
             trimmed_lines.append(line)
             continue
-        fields = line.split()
         if not ref_line_found:
             ref_line_found = True
             try:
@@ -354,7 +358,7 @@ def trimMafBlock(block_text, bed_start, bed_end):
                         print(f"[WARN] Expected {expected_bases} bases but extracted {extracted_ref_bases} for region {overlap_start}-{overlap_end}")   
 
             ref_col_start = col_start
-            ref_col_end = col_end
+            ref_col_end = col_end       
             new_ref_start = overlap_start
             new_ref_size = sum(1 for c in ref_seq[ref_col_start:ref_col_end] if c != '-')
             new_fields = fields.copy()
@@ -427,12 +431,13 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
 
     for entry in index[scaffold]:
         block_ref_start = entry["ref_start"]
-        block_ref_end = block_ref_start + entry["seq_length"]
+        block_ref_end = block_ref_start + entry["ref_length"]
         if bed_start < block_ref_end and bed_end > block_ref_start:
             try:
                 maf_fp.seek(entry["offset_start"])
                 block_bytes = maf_fp.read(entry["offset_end"] - entry["offset_start"])
                 block_text = block_bytes.decode("utf-8", errors="replace")
+                #print(block_text.splitlines()[1])
             except Exception as e:
                 maf_fp.close()
                 if not single_output:

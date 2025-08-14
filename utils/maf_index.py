@@ -1,4 +1,4 @@
-#############################################################################
+    #############################################################################
 # Given a MAF file, this script will create an index telling the location of
 # each alignment block in the file
 #
@@ -7,11 +7,12 @@
 # Output format for the mdx file is:
 # 1. Reference scaffold
 # 2. Reference position (0-based)
-# 3. Alignment block sequence length
-# 4. Alignment block line length
-# 5. Number of sequences in the alignment block
-# 6. Start byte position of the alignment block in the maf file
-# 7. End byte position of the alignment block in the maf file
+# 3. Reference interval length
+# 4. Alignment block sequence length
+# 5. Alignment block line length
+# 6. Number of sequences in the alignment block
+# 7. Start byte position of the alignment block in the maf file
+# 8. End byte position of the alignment block in the maf file
 #############################################################################
 
 import sys
@@ -25,16 +26,17 @@ import lib.common as COMMON
 def processMAFBlock(block):
     ref_seq = block[1].split()  # Reference line (second line in block)
     ref_scaff = ref_seq[1].split(".", 1)[1]
+    ref_len = block[1].split()[3]
     line_len = str(len(block[1]))
     num_seqs = str(len(block) - 1)
     seq_len = str(len(ref_seq[6]))  # Aligned sequence
 
-    return [ref_scaff, ref_seq[2], seq_len, line_len, num_seqs]
+    return [ref_scaff, ref_seq[2], ref_len, seq_len, line_len, num_seqs]
 
 #############################################################################
 
 if len(sys.argv) != 4:
-    print("Usage: python index_maf.py <input.maf> <output.block.mdx> <output.scaffold.rdx>")
+    print("Usage: python index_maf.py <input.maf> <output.block.idx> <output.scaffold.idx>")
     sys.exit(1)
 
 maf_file, mdx_block_file, mdx_scaffold_file = sys.argv[1:]
