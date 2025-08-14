@@ -23,12 +23,18 @@ a score=200
 s human.chr3 6 4 + 1000 CCAG
 s chimp.chr3 5 4 + 1000 CC-G
 
-##maf version=1
+a score=100
+s human.chr4 0 5 + 1000 TTTAA
+s gorilla.chr4 0 5 + 1000 T-TAA
+
+a score=200
+s human.chr4 6 4 + 1000 CCAG
+s chimp.chr4 5 4 + 1000 CC-G
+
 a score=99
 s human.chrX 50 4 - 500 AGTC
 s gorilla.chrX 99 4 - 800 AGTC
 
-##maf version=1
 a score=400
 s human.chr4 30 7 + 1000 T--ACGT
 s chimp.chr4 28 7 + 998 TGG-C-T

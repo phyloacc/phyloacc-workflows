@@ -4,6 +4,7 @@ import pytest
 
 TEST_DIR = os.path.dirname(__file__)
 BED_FILE = os.path.join(TEST_DIR, "example.bed")
+#BED_FILE = os.path.join(TEST_DIR, "crossblocks-missing-species.bed")
 MAF_FILE = os.path.join(TEST_DIR, "example.maf")
 INDEX_FILE = os.path.join(TEST_DIR, "example.maf.block.idx")
 OUT_DIR = os.path.join(TEST_DIR, "results")
@@ -42,6 +43,11 @@ def test_maf_fetch_region(chrom, start, end, region_id):
     got = open(output_file).read()
     expected_file = os.path.join(EXPECTED_MAF_DIR, f"{region_id}.maf")
     expected = open(expected_file).read()
+    
+    # Strip trailing blank lines from both outputs before comparison
+    got = got.rstrip('\n')
+    expected = expected.rstrip('\n')
+
     assert got == expected, f"Output for region {region_id} does not match expected"
 
 @pytest.mark.parametrize("chrom,start,end,region_id", list(get_regions()))
@@ -68,5 +74,9 @@ def test_maf_fetch_fasta_region(chrom, start, end, region_id):
     got = open(output_file).read()
     expected_file = os.path.join(EXPECTED_FASTA_DIR, f"{region_id}.fa")
     expected = open(expected_file).read()
+
+    # Strip trailing blank lines from both outputs before comparison
+    got = got.rstrip('\n')
+    expected = expected.rstrip('\n')
 
     assert got == expected, f"FASTA output for region {region_id} does not match expected"

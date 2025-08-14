@@ -398,6 +398,8 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
 
     if as_fasta:
         fasta_seqs = defaultdict(str);
+        species_order = []
+        block_lengths = []    
 
     if not single_output:
         output_filename = os.path.join(output, out_basename + ".maf")
@@ -450,10 +452,23 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
                     out_stream.write(header)
                 if as_fasta:
                     # Output as fasta
-                    #out_stream.write(mafBlockToFasta(trimmed, region) + "\n")
                     return_fasta_seqs = mafBlockToFasta(trimmed, region)
-                    for key, seq in return_fasta_seqs.items():
-                        fasta_seqs[key] += seq
+                    block_len = len(next(iter(return_fasta_seqs.values())))
+                    block_lengths.append(block_len)
+                    block_species = list(return_fasta_seqs)
+
+                    # For any new species, add to order and backfill
+                    for sp in block_species:
+                        if sp not in species_order:
+                            species_order.append(sp)
+                        if sp not in fasta_seqs:
+                            # Backfill for all previous blocks
+                            fasta_seqs[sp] = ''.join('-'*l for l in block_lengths[:-1])
+
+                    # After establishing all species, append current block or pad as needed
+                    for sp in species_order:
+                        seq = return_fasta_seqs.get(sp, '-'*block_len)
+                        fasta_seqs[sp] += seq
                 else:
                     out_stream.write(trimmed + "\n")
                 blocks_written += 1
@@ -467,8 +482,9 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
 
     if as_fasta:
         # Write all fasta sequences to the output
-        for header, seq in fasta_seqs.items():
-            out_stream.write(f"{header}\n{seq}\n")
+        for sp in species_order:
+            seq = fasta_seqs[sp]
+            out_stream.write(f"{sp}\n{seq}\n")
 
     if not blocks_written:
         print(f"{scaffold}:{bed_start}-{bed_end} No overlapping blocks found.\n");

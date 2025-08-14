@@ -1,0 +1,9 @@
+##maf version=1
+a score=100
+s human.chr4 4 1 + 1000 A
+s gorilla.chr4 0 5 + 1000 A
+
+a score=200
+s human.chr4 6 2 + 1000 CC
+s chimp.chr4 5 4 + 1000 CC
+
