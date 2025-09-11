@@ -1,4 +1,4 @@
-    #############################################################################
+#############################################################################
 # Given a MAF file, this script will create an index telling the location of
 # each alignment block in the file
 #

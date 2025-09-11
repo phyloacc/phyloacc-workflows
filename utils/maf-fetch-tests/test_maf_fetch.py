@@ -67,7 +67,8 @@ def test_maf_fetch_fasta_region(chrom, start, end, region_id):
         per_test_bed,
         "-b", "id",
         "-o", OUT_DIR,
-        "-f"
+        "-f",
+        "-fh", "species-coords-id"
     ]
     subprocess.run(cmd, check=True)
 

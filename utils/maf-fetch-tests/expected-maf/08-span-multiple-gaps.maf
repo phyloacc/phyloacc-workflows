@@ -1,4 +1,7 @@
 ##maf version=1
+## Extracted by maf_fetch.py
+## Source MAF: example.maf
+## Reference region: chr4	31	33	08-span-multiple-gaps
 a score=400
 s human.chr4 31 2 + 1000 AC
-s chimp.chr4 28 7 + 998 -C
+s chimp.chr4 31 1 + 998 -C

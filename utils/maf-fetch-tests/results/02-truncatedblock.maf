@@ -1,5 +1,8 @@
 ##maf version=1
+## Extracted by maf_fetch.py
+## Source MAF: example.maf
+## Reference region: chr1	8	12	02-truncatedblock
 a score=1000
 s human.chr1 8 1 + 1000 G
-s chimp.chr1 0 10 + 1000 G
+s chimp.chr1 7 1 + 1000 G
 

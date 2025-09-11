@@ -1,9 +1,12 @@
 ##maf version=1
+## Extracted by maf_fetch.py
+## Source MAF: example.maf
+## Reference region: chr1	24	33	03-crossblocks-missing
 a score=500
 s human.chr1 24 2 + 1000 GA
-s chimp.chr1 17 8 + 1000 GA
+s chimp.chr1 21 2 + 1000 GA
 
 a score=500
 s human.chr1 32 1 + 1000 G
-s chimp.chr1 30 8 + 1000 A
+s chimp.chr1 23 1 + 1000 A
 

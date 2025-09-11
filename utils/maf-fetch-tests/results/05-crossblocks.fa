@@ -1,4 +1,4 @@
->human.chr3 id:05-crossblocks chr3:4-8
+>human.chr3:4-8(+) id:05-crossblocks
 ACC
->chimp.chr3 id:05-crossblocks
+>chimp.chr3:3-7(+) id:05-crossblocks
 ACC

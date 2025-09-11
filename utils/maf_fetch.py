@@ -60,9 +60,11 @@ import os
 import re
 import argparse
 import gzip
+import logging
 from concurrent.futures import ProcessPoolExecutor
 from collections import defaultdict
 
+import lib.loginit as LOGINIT
 import lib.common as COMMON
 
 #############################################################################
@@ -104,6 +106,14 @@ def optParse():
     )
 
     parser.add_argument(
+        "--fasta-header", "-fh",
+        choices=["species-coords-id", "species-coords", "species-only"],
+        default="species-coords",
+        help="Controls the FASTA header format: 'species-coords-id' (default, includes species, coordinates, and region ID if present),"
+                "'species-coords' (species and coordinates only), or 'species-only' (just the species name)."
+    )
+
+    parser.add_argument(
         "--processes", "-p", type=int, default=1,
         help="Number of parallel processes to use (default: 1)"
     )
@@ -113,15 +123,26 @@ def optParse():
     )
 
     parser.add_argument(
-        "--single-output", "-s", action="store_true", default=False,
-        help="If set, output all blocks to a single MAF file specified by --output (default: maf-fetch.maf)."
+        "--single-output", action="store_true", default=False,
+        help=argparse.SUPPRESS
     )
 
     return parser.parse_args()
 
 #############################################################################
 
-def parseIndex(index_file, mode="block"):
+def pick_chunk_size(num_regions, num_procs, min_size=100):
+    n_batches = max(num_procs * 2, 1)
+    batch_size = max(min_size, (num_regions + n_batches - 1) // n_batches)
+    return batch_size
+
+def chunker(seq, size=1000):
+    for pos in range(0, len(seq), size):
+        yield seq[pos:pos+size]
+
+#############################################################################
+
+def parseIndex(index_file, LOG, mode="block"):
     """
     Parses either a block-level or region-level index file.
 
@@ -141,7 +162,7 @@ def parseIndex(index_file, mode="block"):
 
             if mode == "block":
                 if len(fields) < 7:
-                    print(f"[WARN] Skipping malformed index line: {line.strip()}", file=sys.stderr)
+                    LOG.warning(f"Skipping malformed index line: {line.strip()}", file=sys.stderr)
                     continue
                 scaffold = fields[0]
                 try:
@@ -163,7 +184,7 @@ def parseIndex(index_file, mode="block"):
 
             elif mode == "scaffold":
                 if len(fields) != 3:
-                    print(f"[WARN] Skipping malformed index line: {line.strip()}", file=sys.stderr)
+                    LOG.warning(f"Skipping malformed index line: {line.strip()}", file=sys.stderr)
                     continue
                 scaffold = fields[0]
                 try:
@@ -182,7 +203,7 @@ def parseIndex(index_file, mode="block"):
 
 #############################################################################
 
-def parseBed(bed_file, mode="block"):
+def parseBed(bed_file, LOG, mode="block"):
     """
     Parses the BED file into a list of region dictionaries.
 
@@ -215,7 +236,7 @@ def parseBed(bed_file, mode="block"):
                     region = {"scaffold": scaffold, "start": start, "end": end, "id": fields[3] if len(fields) >= 4 else None}
                     regions.append(region)
                 except (IndexError, ValueError):
-                    print(f"Skipping malformed BED line: {line}", file=sys.stderr)
+                    LOG.warning(f"Skipping malformed BED line: {line}", file=sys.stderr)
                     continue
     return regions
 
@@ -246,47 +267,69 @@ def getMAFHeader(maf_file, maf_compression):
 
 #############################################################################
 
-def mafBlockToFasta(block_text, region=None):
+def mafBlockToFasta(block_text, region):
     """
     Converts a (trimmed) MAF block to multi-FASTA format. 
+    Each FASTA header includes the species, chrom, strand, and the (possibly trimmed) coordinates.
     Optionally, include region/scaffold in headers.
     """
-    fasta_lines = defaultdict(str)
+    fasta_lines = defaultdict(dict)
     lines = block_text.strip().splitlines()
-    
-    if region:
-        if "scaffold" in region and "start" in region and "end" in region:
-            ref_region_header = f"{region['scaffold']}:{region['start']}-{region['end']}"
-        # Add id if present
-        if "id" in region and region["id"]:
-            id_header = f"id:{region['id']}"
-    
-    first_seq = True
+
     for line in lines:
-        if re.match(r"^s\s", line):
+        if line.startswith("s "):
             fields = line.split()
-            src = fields[1]
+            src = fields[1]  # species.chrom
+            #chrom = ".".join(src.split(".")[1:]) if "." in src else src
+            #sp = src.split(".")[0] if "." in src else src
+            start = int(fields[2])
+            size = int(fields[3])
+            strand = fields[4]
+            #srcSize = fields[5]
             seq = fields[6]
+            
+            # Compute 1-based closed interval for clarity (as in FASTA tools)
+            if strand == "+":
+                end = start + size
+            else:
+                # For negative strand, coordinates can be reported as on "forward" chromosome (for clarity, as in MAF)
+                end = start + size
 
-            description = "";
-            if id_header:
-                description += f" {id_header}"
-            if first_seq:
-                first_seq = False
-                description += f" {ref_region_header}"
+            fasta_lines[src] = {'seq': seq, 'start': start, 'end': end, 'strand': strand}
 
-            header = f">{src}"
-            if description:
-                header += f"{description}"
-            fasta_lines[header] = seq
-            #fasta_lines.append(header)
-            #fasta_lines.append(seq)
-    #return "\n".join(fasta_lines)
     return fasta_lines
 
 #############################################################################
 
-def trimMafBlock(block_text, bed_start, bed_end):
+def writeFASTA(fasta_seqs, region, fasta_stream, BATCHLOG, fasta_header=False):
+
+    fasta_output = {}
+    for sp, details in fasta_seqs.items():
+        if fasta_header == "species-only":
+            header = f">{sp}"
+        else:
+            region_start = min(details['starts'])
+            region_end = max(details['ends'])
+            strand = list(set(details['strands']))
+            
+            if len(strand) == 1:
+                region_strand = strand[0]
+            else:
+                region_strand = "."
+                BATCHLOG.warning(f"Multiple strands found for species {sp} in region {region['scaffold']}:{region['start']}-{region['end']}. Using '.' in header.")
+
+            if fasta_header == "species-coords":
+                header = f">{sp}:{region_start}-{region_end}({region_strand})"
+            elif fasta_header == "species-coords-id":
+                if "id" in region and region["id"]:
+                    id_str = f"id:{region['id']}"
+                header = f">{sp}:{region_start}-{region_end}({region_strand}) {id_str}"
+
+        fasta_stream.write(f"{header}\n{''.join(details['seq'])}\n")
+
+#############################################################################
+
+def trimMafBlock(block_text, bed_start, bed_end, BATCHLOG):
     """
     Trims a MAF block to exactly the portion overlapping [bed_start, bed_end)
     on the reference sequence. Assumes the reference sequence is given in the
@@ -313,17 +356,20 @@ def trimMafBlock(block_text, bed_start, bed_end):
     new_ref_start = None
     new_ref_size = None
     for line in lines[1:]:
+
         fields = line.split()
+
         if not fields or fields[0] != "s":
             trimmed_lines.append(line)
             continue
+
         if not ref_line_found:
             ref_line_found = True
             try:
                 block_ref_start = int(fields[2])
                 block_ref_size = int(fields[3])
             except ValueError:
-                sys.exit("[ERROR] Error parsing reference coordinates in MAF block.")
+                BATCHLOG.error("Error parsing reference coordinates in MAF block.")
             ref_seq = fields[6]
             # Determine overlap with the block.
             overlap_start = max(bed_start, block_ref_start)
@@ -358,29 +404,48 @@ def trimMafBlock(block_text, bed_start, bed_end):
                 extracted_ref_bases = sum(1 for c in ref_seq[col_start:col_end] if c != '-')
                 expected_bases = overlap_end - overlap_start
                 if extracted_ref_bases != expected_bases:
-                        print(f"[WARN] Expected {expected_bases} bases but extracted {extracted_ref_bases} for region {overlap_start}-{overlap_end}")   
+                    BATCHLOG.warning(f"Expected {expected_bases} bases but extracted {extracted_ref_bases} for region {overlap_start}-{overlap_end}")   
 
             ref_col_start = col_start
             ref_col_end = col_end       
             new_ref_start = overlap_start
             new_ref_size = sum(1 for c in ref_seq[ref_col_start:ref_col_end] if c != '-')
+            new_ref_end = new_ref_start + new_ref_size
             new_fields = fields.copy()
             new_fields[2] = str(new_ref_start)
             new_fields[3] = str(new_ref_size)
             new_fields[6] = ref_seq[ref_col_start:ref_col_end]
             trimmed_lines.append(" ".join(new_fields))
+
         else:
+            species_seq = fields[6]
+            offset_bases = sum(1 for c in species_seq[:ref_col_start] if c != '-')
+
+            trimmed_seq = species_seq[ref_col_start:ref_col_end]
+            trimmed_size = sum(1 for c in trimmed_seq if c != '-')       
+
+            original_start = int(fields[2])
+            strand = fields[4]
+            original_size = int(fields[3])
+            new_start = original_start + offset_bases
+            # if strand == '+':
+            #     new_start = original_start + offset_bases
+            # else:
+            #     new_start = original_start + (original_size - offset_bases - trimmed_size)                
+
             new_fields = fields.copy()
-            new_fields[6] = fields[6][ref_col_start:ref_col_end]
-            trimmed_lines.append(" ".join(new_fields))
+            new_fields[2] = str(new_start)
+            new_fields[3] = str(trimmed_size)
+            new_fields[6] = trimmed_seq
+            trimmed_lines.append(' '.join(new_fields))
 
     #print(f"DEBUG: bed_interval=[{bed_start},{bed_end}), block_ref=[{block_ref_start},{block_ref_start + block_ref_size}), extracted_cols=[{ref_col_start}:{ref_col_end}], ref_seq_sample='{ref_seq[ref_col_start:ref_col_end] if ref_col_start is not None else 'None'}'", file=sys.stderr)
 
-    return "\n".join(trimmed_lines)
+    return "\n".join(trimmed_lines), [new_ref_start, new_ref_end, new_ref_size]
 
 #############################################################################
 
-def fetchByRegion(region, header, maf_file, maf_compression, index, output, single_output=False, as_fasta=False):
+def fetchByRegion(region, header, maf_fp, index, output, BATCHLOG, single_output=False, as_fasta=False, fasta_header=False):
     """
     Worker function to process a single BED region:
         - Opens the MAF file independently.
@@ -395,14 +460,17 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
     bed_start = region["start"]
     bed_end = region["end"]
     out_basename = region["output_basename"]
+    region_str = f"{scaffold}\t{bed_start}\t{bed_end}\t{out_basename}"
+    # Parse region details
 
-    # if bed_start not in ["9547874", 9547874]:
-    #     return
+    block_lengths = []  # Holds lengths of each block written
+    block_stats = []  # Holds [new_ref_start, new_ref_end, new_ref_size] for each block
+    total_ref_bases = 0 # Total ref bases across all blocks
 
     if as_fasta:
-        fasta_seqs = defaultdict(str);
+        fasta_seqs = defaultdict(dict);
         species_order = []
-        block_lengths = []    
+    # For fasta output, hold sequences per species
 
     if not single_output:
         output_filename = os.path.join(output, out_basename + ".maf")
@@ -411,32 +479,27 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
         out_stream = open(output_filename, "w", encoding="utf-8")
     else:
         current_blocks = []
-
-    # Open the MAF file using the appropriate opener.
-    if maf_compression == "gz":
-        opener = gzip.open;
-    else:
-        opener = open;
-
-    try:
-        maf_fp = opener(maf_file, "rb")
-    except Exception as e:
-        if not single_output:
-            out_stream.close()
-        sys.exit(f"[ERROR] Region {scaffold}:{bed_start}-{bed_end}: Error opening MAF file: {e}");
+    # Single output mode being developed !
 
     blocks_written = 0;
 
-    print(f">>> Region {scaffold}:{bed_start}-{bed_end}")
     if scaffold not in index:
-        maf_fp.close()
         if not single_output:
             out_stream.close()
         return f"{output_filename}: No index entries for scaffold {scaffold}"
 
+    blocks_written = 0
+
     for entry in index[scaffold]:
         block_ref_start = entry["ref_start"]
         block_ref_end = block_ref_start + entry["ref_length"]
+
+        if block_ref_end <= bed_start:
+            continue  # block before region
+
+        if block_ref_start >= bed_end:
+            break     # block after region
+
         if bed_start < block_ref_end and bed_end > block_ref_start:
             try:
                 maf_fp.seek(entry["offset_start"])
@@ -444,34 +507,49 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
                 block_text = block_bytes.decode("utf-8", errors="replace")
                 #print(block_text.splitlines()[1])
             except Exception as e:
-                maf_fp.close()
                 if not single_output:
                     out_stream.close()
-                sys.exit(f"[ERROR] Error fetching block: {e}\n");
+                BATCHLOG.error(f"Error fetching block: {e}\n");
 
-            trimmed = trimMafBlock(block_text, bed_start, bed_end)
+            trimmed, trimmed_info = trimMafBlock(block_text, bed_start, bed_end, BATCHLOG)
+
             if not single_output:
+                block_stats.append(trimmed_info)
+                total_ref_bases += trimmed_info[2]                
+
                 if blocks_written == 0 and not as_fasta:
                     out_stream.write(header)
+                    out_stream.write("## Extracted by maf_fetch.py\n")
+                    out_stream.write("## Source MAF: " + os.path.basename(maf_fp.name) + "\n")
+                    out_stream.write(f"## Reference region: {region_str}\n")
+                    
                 if as_fasta:
+                    
                     # Output as fasta
                     return_fasta_seqs = mafBlockToFasta(trimmed, region)
-                    block_len = len(next(iter(return_fasta_seqs.values())))
+                    #fasta_lines[src] = {'header': header, 'seq': seq, 'start': start, 'end': end, 'strand': strand}
+                    block_len = len(next(iter(return_fasta_seqs.values()))['seq'])
                     block_lengths.append(block_len)
-                    block_species = list(return_fasta_seqs)
 
                     # For any new species, add to order and backfill
-                    for sp in block_species:
+                    for sp in return_fasta_seqs:
                         if sp not in species_order:
                             species_order.append(sp)
                         if sp not in fasta_seqs:
                             # Backfill for all previous blocks
-                            fasta_seqs[sp] = ''.join('-'*l for l in block_lengths[:-1])
+                            fasta_seqs[sp]['seq'] = ['-'*l for l in block_lengths[:-1]]
+                            fasta_seqs[sp]['starts'] = []
+                            fasta_seqs[sp]['ends'] = []
+                            fasta_seqs[sp]['strands'] = []
 
                     # After establishing all species, append current block or pad as needed
                     for sp in species_order:
-                        seq = return_fasta_seqs.get(sp, '-'*block_len)
-                        fasta_seqs[sp] += seq
+                        seq = return_fasta_seqs[sp]['seq'] if sp in return_fasta_seqs else '-'*block_len
+                        fasta_seqs[sp]['seq'].append(seq)
+                        if sp in return_fasta_seqs:
+                            fasta_seqs[sp]['starts'].append(return_fasta_seqs[sp]['start'])
+                            fasta_seqs[sp]['ends'].append(return_fasta_seqs[sp]['end'])
+                            fasta_seqs[sp]['strands'].append(return_fasta_seqs[sp]['strand'])
                 else:
                     out_stream.write(trimmed + "\n")
                 blocks_written += 1
@@ -481,26 +559,69 @@ def fetchByRegion(region, header, maf_file, maf_compression, index, output, sing
                 else:
                     current_blocks.append(trimmed + "\n")
 
-    maf_fp.close()
-
     if as_fasta:
         # Write all fasta sequences to the output
-        for sp in species_order:
-            seq = fasta_seqs[sp]
-            out_stream.write(f"{sp}\n{seq}\n")
+        fasta_output = writeFASTA(fasta_seqs, region, out_stream, BATCHLOG, fasta_header=fasta_header)
 
     if not blocks_written:
-        print(f"{scaffold}:{bed_start}-{bed_end} No overlapping blocks found.\n");
+        BATCHLOG.warning(f"{scaffold}:{bed_start}-{bed_end} No overlapping blocks found.\n");
 
     if not single_output:
         out_stream.close()
-        return f"{output_filename}: Wrote {blocks_written} blocks for region {scaffold}:{bed_start}-{bed_end}";
+        # --- BEGIN SUMMARY REPORT ---
+        # Collect region info
+        block_stats.sort()
+        
+        interblock_spaces = [
+            block_stats[i][0] - block_stats[i-1][1]
+            for i in range(1, len(block_stats))
+        ] if len(block_stats) > 1 else []
+
+        num_blocks = len(block_stats)
+        blocks_length = sum(info[2] for info in block_stats)
+        space_str = str(interblock_spaces) if interblock_spaces else "NA"
+        summary = (f"{region_str}\t{num_blocks}\t{blocks_length}\t{space_str}\t{len(species_order) if as_fasta else 'NA'}")
+        return summary
+
     else:
         return current_blocks;
 
 #############################################################################
 
-def fetchByScaffold(scaffold, start_end, maf_file, maf_header, maf_compression, out_dir):
+def fetchByBatch(batch, header, maf_file, maf_compression, index, output, batch_num, single_output=False, as_fasta=False, fasta_header=False):
+
+    BATCHLOG = logging.getLogger("maf_fetch_logger")
+    plural = "s" if len(batch) > 1 else ""
+    BATCHLOG.info(f"Processing batch {batch_num} with {len(batch)} region{plural}")
+    BATCHLOG.debug(f">> (first: {batch[0]['scaffold']}:{batch[0]['start']}-{batch[0]['end']}, last: {batch[-1]['scaffold']}:{batch[-1]['start']}-{batch[-1]['end']})")
+    # Initialize batch-specific logger
+
+    opener = gzip.open if maf_compression == "gz" else open
+    try:
+        maf_fp = opener(maf_file, "rb")
+    except Exception as e:
+        BATCHLOG.error(f"Batch {batch_num}: Error opening MAF file: {e}");
+    # Open the MAF file once per batch
+
+    batch_results = []
+    region_num = 0
+
+    for region in batch:
+        region_num += 1
+
+        batch_str = f" [batch {batch_num}.{region_num}]"
+        BATCHLOG.debug(f">>>{batch_str} Region {region["scaffold"]}:{region["start"]}-{region["end"]}")
+
+        batch_results.append(fetchByRegion(region, header, maf_fp, index, output, BATCHLOG, as_fasta=as_fasta, fasta_header=fasta_header))
+
+    maf_fp.close()
+    # Close MAF file
+
+    return batch_results
+
+#############################################################################
+
+def fetchByScaffold(scaffold, start_end, maf_file, maf_header, maf_compression, out_dir, LOG):
     """
     Worker function to extract one scaffold from the MAF file.
     start_end is a tuple (start_byte, end_byte).
@@ -513,13 +634,13 @@ def fetchByScaffold(scaffold, start_end, maf_file, maf_header, maf_compression, 
 
     try:
         with opener(maf_file, "rb") as mfp, open(output_path, "wb") as outfp:
-            print(f">>> Scaffold {scaffold}");
+            LOG.info(f">>> Scaffold {scaffold}");
             mfp.seek(start)
             data = mfp.read(end - start)
             outfp.write(maf_header.encode("utf-8"))
             outfp.write(data)
     except Exception as e:
-        return f"[ERROR] {scaffold}: {e}"
+        LOG.error(f"{scaffold}: {e}")
     
     return f"{output_path}: Wrote {scaffold}";
 
@@ -527,92 +648,110 @@ def fetchByScaffold(scaffold, start_end, maf_file, maf_header, maf_compression, 
 #############################################################################
 
 def main():
-    # if len(sys.argv) < 4 or " -h" in sys.argv or "--help" in sys.argv:
-    #     print(__doc__);
-    #     sys.exit("Usage: python maf_fetch.py <maf_file> <index_file> <bed_file> [output_directory] [max_processes] [mode=block|scaffold]");
-    # Print help message and exit if not enough arguments are provided.
-
     args = optParse()
-
-    maf_file = args.maf_file
-    index_file = args.index_file
-    bed_file = args.bed_file
-    output = args.output
-    single_output = args.single_output
-    max_processes = args.processes
-    run_mode = args.mode
     # Get inputs from command line
 
-    if run_mode not in ("block", "scaffold"):
-        sys.exit(f"[ERROR] Invalid mode: '{run_mode}'. Must be 'block' or 'scaffold'.")
+    logfilename = os.path.join(args.output, "maf_fetch.log") if os.path.isdir(args.output) else "maf_fetch.log"
+    maf_fetch_logger = LOGINIT.configureLogging(log_level="INFO", log_verbosity="BOTH", log_filename=logfilename, logger_name="maf_fetch_logger")
+    LOG = logging.getLogger(maf_fetch_logger)
+    # Set up logging
 
-    maf_compression = COMMON.detectCompression(maf_file);
-    if not single_output:
-        os.makedirs(output, exist_ok=True);
+    LOG.info(f"maf_fetch.py called as: {' '.join(sys.argv)}");
+    LOG.info("-" * 40);
+    for arg, value in vars(args).items():
+        valstr = str(value)
+        if len(valstr) > 80:
+            valstr = valstr[:77] + "..."
+        LOG.info(f"{arg:20} : {valstr}")
+    LOG.info("-" * 40 )
+    # Log the command line arguments
+
+    if args.mode not in ("block", "scaffold"):
+        LOG.error(f"Invalid mode: '{args.mode}'. Must be 'block' or 'scaffold'.")
+        sys.exit(1)
+    # Validate mode
+
+    maf_compression = COMMON.detectCompression(args.maf_file);
+    if not args.single_output:
+        os.makedirs(args.output, exist_ok=True);
     # Create output directory if it doesn't exist
 
-    print(f"Parsing index file.... {index_file}");
-    index = parseIndex(index_file, run_mode);
+    LOG.info(f"Parsing index file.... {args.index_file}");
+    index = parseIndex(args.index_file, LOG, args.mode);
 
-    print(f"Parsing BED file...... {bed_file}");
-    regions = parseBed(bed_file, run_mode);
+    LOG.info(f"Parsing BED file...... {args.bed_file}");
+    regions = parseBed(args.bed_file, LOG, args.mode);
 
-    print(f"Getting MAF header.... {maf_file}");
-    maf_header = getMAFHeader(maf_file, maf_compression);
+    LOG.info(f"Getting MAF header.... {args.maf_file}");
+    maf_header = getMAFHeader(args.maf_file, maf_compression);
 
     ##############################
     # SCAFFOLD MODE
     ##############################
 
-    if run_mode == "scaffold":
-        if single_output:
-            sys.exit("[ERROR] --single-output cannot be used in scaffold mode.");
+    if args.mode == "scaffold":
+        if args.single_output:
+            LOG.error("--single-output cannot be used in scaffold mode.");
+            sys.exit(1)
 
         if args.fasta:
-            sys.exit("[ERROR] FASTA output not supported in scaffold mode.")
+            LOG.error("FASTA output not supported in scaffold mode.")
+            sys.exit(1)
 
-        print(f"[INFO] Running in SCAFFOLD mode with BED + region index");
+        LOG.info(f"Running in SCAFFOLD mode with BED + region index");
         
         # Parse the BED file to get a set of scaffolds to extract
         scaffold_set = set(region["scaffold"] for region in regions);
-        print(f"[INFO] Extracting {len(scaffold_set)} scaffolds from scaffold index: {scaffold_set}");
+        LOG.info(f"Extracting {len(scaffold_set)} scaffolds from scaffold index: {scaffold_set}");
 
         # Extract from MAF using the region index for matching scaffolds
-        with ProcessPoolExecutor(max_workers=max_processes) as executor:
+        with ProcessPoolExecutor(max_workers=args.processes) as executor:
             futures = []
             for scaffold in scaffold_set:
                 if scaffold not in index:
-                    sys.exit(f"[ERROR] Scaffold '{scaffold}' not found in index.")
+                    LOG.error(f"Scaffold '{scaffold}' not found in index.")
+                    sys.exit(1)
                 start, end = index[scaffold]
                 futures.append(executor.submit(
                     fetchByScaffold,
                     scaffold,
                     (start, end),
-                    maf_file,
+                    args.maf_file,
                     maf_header,
                     maf_compression,
-                    output
+                    args.output,
+                    LOG
                 ))
             for future in futures:
                 result = future.result()
-                print(result)
+                LOG.info(result)
         return;  # Done with scaffold mode
 
     ##############################
     # BLOCK MODE (default)
     ##############################
 
-    print(f"[INFO] Running in BLOCK mode");
+    LOG.info(f"Running in BLOCK mode");
+
+    num_regions = len(regions);
+    batch_size = pick_chunk_size(num_regions, args.processes);
+    if batch_size >= num_regions:
+        batch_size = 1
+    LOG.info(f"Using batch size of {batch_size} regions for {num_regions} total regions with {args.processes} processes.");
+    batches = list(chunker(regions, size=batch_size))
+    LOG.info(f"Divided {len(regions)} regions into {len(batches)} batches of up to {batch_size} regions each.");
+    # Region batching for parallel processing
 
     if args.single_output:
-        # NEW: Single output mode
         if args.output == "." or os.path.isdir(args.output):
             output_file = "maf-fetch.maf"
         else:
             if os.path.isdir(args.output):
-                sys.exit("[ERROR] --single-output cannot be used with --outdir. Use current directory only.");
+                LOG.error("--single-output cannot be used with --outdir. Use current directory only.");
+                sys.exit(1)
             output_file = args.output
-        print(f"[INFO] Using single output file: {output_file}")
+        LOG.info(f"Using single output file: {output_file}")
+    ## Single output mode being developed !
 
     # Pre-assign output basenames for regions.
     # For regions missing a 4th column (basename), assign a unique counter per scaffold.
@@ -627,7 +766,7 @@ def main():
             if region.get("id"):
                 region["output_basename"] = region["id"]
             else:
-                sys.exit(f"[ERROR] Basename mode set to 'id', but '{region}' lacks an ID (4th column).");
+                LOG.error(f"Basename mode set to 'id', but '{region}' lacks an ID (4th column).");
         elif basename_mode == "count":
             count = region_counter.get(scaffold, 0) + 1
             region_counter[scaffold] = count
@@ -635,42 +774,59 @@ def main():
         else: # basename_mode == "coords":
             region["output_basename"] = f"{scaffold}-{start}-{end}"
 
-    # Process each region in parallel.
+    info_outfile = os.path.join(args.output, "maf_fetch_summary.tsv")
+
+    # if args.fasta_header and not args.fasta:
+    #     LOG.warning("--fasta-header is only used with --fasta output. Ignoring.");
+
+    # Process each batch in parallel.
     results = [];
-    with ProcessPoolExecutor(max_workers=max_processes) as executor:
+    batch_counter = 1;
+    with ProcessPoolExecutor(max_workers=args.processes) as executor, open(info_outfile, "w") as info_out:
+        summary_headers = ["scaffold", "start", "end", "basename", "n.overlapping.blocks", "block.lengths", "interblock.distances", "n.sequences"]
+        info_out.write("\t".join(summary_headers) + "\n")
+
         futures = [];
-        for region in regions:
+        for batch in batches:
             futures.append(executor.submit(
-                fetchByRegion,
-                region,
+                fetchByBatch,
+                batch,
                 maf_header,
-                maf_file,
+                args.maf_file,
                 maf_compression,
                 index,
-                output,
-                single_output,
-                args.fasta
+                args.output,
+                batch_counter,
+                args.single_output,
+                args.fasta,
+                args.fasta_header                
             ));
+            batch_counter += 1;
+
         for future in futures:
             result = future.result();
-            if not single_output:
-                print(result);
+            if not args.single_output:
+                if isinstance(result, list):
+                    for r in result:
+                        info_out.write(r + "\n")
+                else:
+                    info_out.write(result + "\n")
             else:
-                results.append(result);
+                results.append(result)
 
-    if single_output:
-        with open(output_file, "w", encoding="utf-8") as out_stream:
-            if not args.fasta:
-                out_stream.write(maf_header)  # Write header to single output file
+    # if args.single_output:
+    #     with open(output_file, "w", encoding="utf-8") as out_stream:
+    #         if not args.fasta:
+    #             out_stream.write(maf_header)  # Write header to single output file
 
-            total_blocks = 0
-            for block_list in results:
-                if block_list:  # block_list is now a list of strings
-                    for block in block_list:
-                        out_stream.write(block)
-                        total_blocks += 1
+    #         total_blocks = 0
+    #         for block_list in results:
+    #             if block_list:  # block_list is now a list of strings
+    #                 for block in block_list:
+    #                     out_stream.write(block)
+    #                     total_blocks += 1
 
-        print(f"Single output file written: {output_file} ({total_blocks} blocks)")
+    #     LOG.info(f"Single output file written: {output_file} ({total_blocks} blocks)")
 
 if __name__ == "__main__":
     main();
