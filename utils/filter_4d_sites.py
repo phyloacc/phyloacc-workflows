@@ -88,7 +88,7 @@ for line in open(ss_file):
         site_count = int(line[2]);
         # Split the line for each site by tabs and get the number of times this site occurs
 
-        num_missing = line[1].count("*") * site_count;
+        num_missing = line[1].count("*")# * site_count;
         summary_stats["total.missing.cols"]["pre.filter"] += num_missing;
         # Count the number of missing sequences in this site
 

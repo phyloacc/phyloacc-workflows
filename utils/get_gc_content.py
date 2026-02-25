@@ -16,7 +16,12 @@ import json
 now = datetime.datetime.now()
 date_time_string = now.strftime("%Y-%m-%d %H:%M:%S")
 
-sample_file, output_file, avg_gc_file = sys.argv[1:];
+# Get the input file names and optional accession header name from the command line
+if len(sys.argv) < 4 or len(sys.argv) > 5:
+    print("Usage: {} sample_file output_file avg_gc_file [accession_header]".format(sys.argv[0]))
+    sys.exit(1)
+sample_file, output_file, avg_gc_file = sys.argv[1:4]
+accession_header = sys.argv[4] if len(sys.argv) == 5 else False
 # Get the input file name from the command line
 
 #file_extension = os.path.splitext(sample_file)[1];
@@ -46,15 +51,23 @@ with open(output_file, "w") as out_stream:
             headers = [ col.lower() for col in line_list ];
             # The first line without a comment is the header line
 
-            accession_columns = [i for i, col in enumerate(headers) if "accession" in col.lower()]
-            if len(accession_columns) == 0:
-                print("Error: No column with 'accession' found in headers")
-                sys.exit(1)
-            elif len(accession_columns) > 1:
-                print("Error: Multiple columns with 'accession' found in headers")
-                sys.exit(1)
+            if accession_header:
+                if accession_header.lower() not in headers:
+                    print("Error: Specified accession header \"" + accession_header + "\" not found in headers");
+                    sys.exit(1);
+                else:
+                    accession_index = headers.index(accession_header.lower());
+
             else:
-                accession_index = accession_columns[0]
+                accession_columns = [i for i, col in enumerate(headers) if "accession" in col.lower()]
+                if len(accession_columns) == 0:
+                    print("Error: No column with 'accession' found in headers")
+                    sys.exit(1)
+                elif len(accession_columns) > 1:
+                    print("Error: Multiple columns with 'accession' found in headers")
+                    sys.exit(1)
+                else:
+                    accession_index = accession_columns[0]
 
             # if "accession" not in headers:
             #     print("Error: \"accession\" not found in headers");

@@ -1,0 +1,200 @@
+# Dependencies:
+# - snakemake (minimal)
+# - snakemake slurm plugin
+# - phast
+# - ncbi-datasets-cli
+# - hdbscan
+# - picard
+
+# snakemake -s 01_run_phylofit_phylop.smk --configfile cfgs/bird-cfg.yaml --dryrun
+
+sample_file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/bird-samples.csv
+# This is a csv file that at minimum must have a column called "accession" for each sample in the MAF
+# The accession should be an NCBI Assembly accession number and will be used to look up the GC content of the genome
+# for modFreqs
+# Alternatively, if a column called "gc" is present, the GC content will be taken from that column
+
+prefix: cricetid-14spec
+# A prefix for some of the output files
+
+#ref_chromosome_groups: { 'all-scaffolds' : ["NC_050068.2", "NC_050069.1", "NC_050070.1", "NC_050071.1", "NC_050072.1", "NC_050073.1", "NC_050074.1", "NC_050075.1", "NC_050076.1", "NC_050077.1", "NC_050078.2", "NC_050079.1", "NC_050080.1", "NC_050081.1", "NC_050082.1", "NC_050083.1", "NC_050084.1", "NC_050085.1", "NC_050086.2", "NC_050087.2", "NC_050088.1", "NC_050089.1", "NC_050090.1", "NC_050091.1", "NC_050092.1", "NC_050093.1", "NC_050094.1", "NC_050095.1"] }
+ref_chromosome_groups:
+  group1:
+    - "chr19"
+    - "chr10"
+  group2:
+    - "chr20"
+    - "chrW"
+# The chromosomes listed in the gff file that you want to run phyloFit on
+# Should also be how the chromosomes are listed in the reference genome index file (.fai)
+# Structuring this with groups now for further development: each group will be its own sub-folder/subset of analyses for certain steps
+
+alpha: 0.05
+# The significance level for calling a site conserved after running phyloP
+
+output_dir: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/test-split-workflows1/
+# The main output directory for the workflow
+
+tmp_dir: /n/holylfs05/LABS/informatics/Users/gthomas/tmp/
+# A directory for some temporary files - should have lots of space
+
+maf: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/multiz45way.maf.gz
+#maf: /n/holylfs05/LABS/informatics/Users/gthomas/cactus-snakemake/turtles/cactus-out/turtles.Dcoriacea.nodupes.maf.gz
+# The multiple alignment file
+
+maf_split_dir: 
+# The directory where the MAF will be split by chromosome/scaffold
+# If blank, it will be set to output_dir/mafs/
+
+maf_ref_id: "galGal6"
+maf_chr_prefix: ""
+maf_ref_chr_joiner: "."
+# The chromosome IDs in the split gffs must match those in the maf
+# In case the chromosomes are labeled differently in the gff and the maf, use the maf_ref_chr_joiner and maf_chr_prefix
+# Chromosome IDs in the split gffs will be maf_ref_id + maf_ref_chr_joiner + maf_chr_prefix
+# If the chromosomes are labeled the same, just set maf_chr_prefix to an empty string, ""
+
+tree_file: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/multiz45way.tre
+# The species tree in Newick format
+
+filter_threshold_4d: 0.5
+# The fraction of sequences in the MAF required for a 4d site pattern to be filtered for phyloFit
+# e.g. if num_seqs = 10 and threshold = 0.2, then all sites that have missing data in 10 * 0.2 sequences (2) will be filtered
+
+ref_fasta: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/GCF_000002315.6_GRCg6a_genomic.RENAMED.fna
+
+ref_gff: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/GCF_000002315.6_GRCg6a_genomic.RENAMED.gff
+# The GFF annotation of the reference genome in the MAF
+
+ref_fasta_index: /n/holylfs05/LABS/informatics/Users/gthomas/phyloacc-workflows/data/birds/GCF_000002315.6_GRCg6a_genomic.RENAMED.fna.fai
+# The reference genome index file (.fai), used for splitting the MAF file by chromosome/scaffold
+
+##########################################
+
+# INTERVALS
+
+window_size: 100000
+# For bed windows
+
+min_Ns_to_split_by: 500
+# For N intervals
+
+##########################################
+
+# HDBSCAN cluster benchmarking
+
+min_cluster_sizes: [20, 35, 50]
+min_samples: [1, 10, 25, 50, 75]
+
+#############################################################################
+# Resources
+
+rule_resources:
+  default:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60  
+
+  maf_index:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60
+
+  make_group_beds:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 30
+
+  maf_split_chr_by_group:
+    partition: shared
+    mem_mb: 64000
+    cpus: 12
+    time: 60
+
+  ref_gff_split_by_chr:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60
+
+  extract_4d_codons_by_chr:
+    partition: shared
+    mem_mb: 128000
+    cpus: 1
+    time: 1440
+
+  extract_4d_sites:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60    
+
+  filter_4d_sites:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60 
+
+  run_phylofit:
+    partition: shared
+    mem_mb: 16000
+    cpus: 1
+    time: 1440      
+
+  get_gc_content:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60
+
+  run_mod_freqs:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60    
+
+  run_phylop:
+    partition: shared
+    mem_mb: 64000
+    cpus: 1
+    time: 1440       
+
+  convert_wig_to_bed:
+    partition: shared
+    mem_mb: 12000
+    cpus: 1
+    time: 240      
+
+  adjust_pvals:
+    partition: shared
+    mem_mb: 24000
+    cpus: 32
+    time: 720    
+
+  get_conserved_sites:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 10
+
+  get_accelerated_sites:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 10
+
+  site_counts:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 10   
+
+
+  fetch_window_mafs:
+      partition: shared
+      mem_mb: 12000
+      cpus: 12
+      time: 480

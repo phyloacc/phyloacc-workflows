@@ -55,6 +55,7 @@ getRuleResources = partial(COMMON.getResources, config)
 # Input files and output paths
 
 SAMPLE_FILE = config["sample_file"];
+ACCESSION_HEADER = config.get("accession_header", False);
 sample_file_extension = os.path.splitext(SAMPLE_FILE)[1];
 gc_sample_path = SAMPLE_FILE.replace(sample_file_extension, "-gc" + sample_file_extension);
 avg_gc_path = SAMPLE_FILE.replace(sample_file_extension, "-avg-gc" + sample_file_extension);
@@ -367,6 +368,12 @@ rule ref_gff_split_by_chr:
     run:
         with open(log.job_log, "w") as log_stream, open(output.chromosome_gff, "w") as out_stream:
             try:
+                # Runs awk with an external AWK program to process the input GFF file.
+                # - Passes AWK variable "chr" = params.ref_chr via -v chr=...
+                # - Passes AWK variable "prefix" = params.prefix via -v prefix=...
+                # - Uses the AWK script file specified by params.script_path with -f
+                # The AWK program reads input.gff and performs whatever filtering/transformation is implemented
+                # in params.script_path, using the provided "chr" and "prefix" variables.
                 cmd = [ "awk",
                         "-v", f"chr={params.ref_chr}",
                         "-v", f"prefix={params.prefix}",
@@ -553,6 +560,7 @@ rule get_gc_content:
         gc_sample_file = GC_SAMPLE_FILE,
         avg_gc_file = AVG_GC_FILE
     params:
+        accession_header = ACCESSION_HEADER,
         script_path = os.path.join(PIPELINE_DIR, "utils", "get_gc_content.py")
     log:
         job_log = os.path.join(OUTPUT_DIR, "logs", "get-gc-content.log")
@@ -565,6 +573,9 @@ rule get_gc_content:
                         input.sample_file,
                         output.gc_sample_file,
                         output.avg_gc_file ];
+
+                if params.accession_header:
+                    cmd.extend([str(params.accession_header)]);
 
                 COMMON.runCommand(cmd, log_stream, log_stream, "get_gc_content");
             except Exception as e:
