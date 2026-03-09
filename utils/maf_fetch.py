@@ -610,7 +610,7 @@ def fetchByBatch(batch, header, maf_file, maf_compression, index, output, batch_
         region_num += 1
 
         batch_str = f" [batch {batch_num}.{region_num}]"
-        BATCHLOG.debug(f">>>{batch_str} Region {region["scaffold"]}:{region["start"]}-{region["end"]}")
+        BATCHLOG.debug(f">>>{batch_str} Region {region['scaffold']}:{region['start']}-{region['end']}")
 
         batch_results.append(fetchByRegion(region, header, maf_fp, index, output, BATCHLOG, as_fasta=as_fasta, fasta_header=fasta_header))
 
