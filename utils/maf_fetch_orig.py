@@ -59,37 +59,13 @@ import sys
 import os
 import re
 import argparse
-import atexit
 import gzip
 import logging
-import bisect
-import time
-from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
-from collections import defaultdict, OrderedDict
+from concurrent.futures import ProcessPoolExecutor
+from collections import defaultdict
 
 import lib.loginit as LOGINIT
 import lib.common as COMMON
-
-#############################################################################
-
-MAX_NO_OVERLAP_REGIONS_DEFAULT = 10000
-MAX_NO_OVERLAP_FRACTION_DEFAULT = 0.10
-WORKER_BLOCK_CACHE_MAX = 2048
-
-WORKER_HEADER = None
-WORKER_MAF_FILE = None
-WORKER_MAF_COMPRESSION = None
-WORKER_INDEX = None
-WORKER_OUTPUT = None
-WORKER_SINGLE_OUTPUT = None
-WORKER_AS_FASTA = None
-WORKER_FASTA_HEADER = None
-WORKER_EXPECTED_SPECIES = None
-WORKER_FASTA_DEDUPE = None
-WORKER_VERBOSE = None
-WORKER_PROFILE = None
-WORKER_MAF_FP = None
-WORKER_BLOCK_CACHE = None
 
 #############################################################################
 
@@ -138,23 +114,6 @@ def optParse():
     )
 
     parser.add_argument(
-        "--expected-species",
-        default="",
-        help="Comma-separated species list expected in FASTA output; missing species are filled per block with Ns."
-    )
-    parser.add_argument(
-        "--expected-species-file",
-        default="",
-        help="File with one expected species name per line for FASTA missing-species filling."
-    )
-    parser.add_argument(
-        "--fasta-dedupe",
-        choices=["none", "most-seq"],
-        default="none",
-        help="When outputting FASTA, collapse duplicate species per block; 'most-seq' keeps the copy with most non-gap bases."
-    )
-
-    parser.add_argument(
         "--processes", "-p", type=int, default=1,
         help="Number of parallel processes to use (default: 1)"
     )
@@ -167,63 +126,8 @@ def optParse():
         "--single-output", action="store_true", default=False,
         help=argparse.SUPPRESS
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        default=False,
-        help="Print every warning line after each batch completes.",
-    )
-    parser.add_argument(
-        "--profile",
-        action="store_true",
-        default=False,
-        help="Log aggregate timing breakdowns for internal fetch steps.",
-    )
-    # parser.add_argument(
-    #     "--max-no-overlap-regions",
-    #     type=int,
-    #     default=-1,
-    #     help=(
-    #         "Fail if the number of regions with zero overlapping MAF blocks exceeds this value. "
-    #         "Use -1 to disable (default: -1)."
-    #     ),
-    # )
-    # parser.add_argument(
-    #     "--max-no-overlap-fraction",
-    #     type=float,
-    #     default=1.0,
-    #     help=(
-    #         "Fail if the fraction of regions with zero overlapping MAF blocks exceeds this value "
-    #         "(range 0..1, default: 1.0)."
-    #     ),
-    # )
 
     return parser.parse_args()
-
-#############################################################################
-
-def parseExpectedSpecies(args):
-    expected = []
-    seen = set()
-
-    if args.expected_species:
-        for sp in args.expected_species.split(","):
-            sp = sp.strip()
-            if sp and sp not in seen:
-                expected.append(sp)
-                seen.add(sp)
-
-    if args.expected_species_file:
-        with open(args.expected_species_file, "r", encoding="utf-8") as fp:
-            for line in fp:
-                line = line.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if line not in seen:
-                    expected.append(line)
-                    seen.add(line)
-
-    return expected
 
 #############################################################################
 
@@ -235,63 +139,6 @@ def pick_chunk_size(num_regions, num_procs, min_size=100):
 def chunker(seq, size=1000):
     for pos in range(0, len(seq), size):
         yield seq[pos:pos+size]
-
-#############################################################################
-
-def initBatchWorker(
-    header,
-    maf_file,
-    maf_compression,
-    index,
-    output,
-    single_output,
-    as_fasta,
-    fasta_header,
-    expected_species,
-    fasta_dedupe,
-    verbose,
-    profile,
-):
-    global WORKER_HEADER
-    global WORKER_MAF_FILE
-    global WORKER_MAF_COMPRESSION
-    global WORKER_INDEX
-    global WORKER_OUTPUT
-    global WORKER_SINGLE_OUTPUT
-    global WORKER_AS_FASTA
-    global WORKER_FASTA_HEADER
-    global WORKER_EXPECTED_SPECIES
-    global WORKER_FASTA_DEDUPE
-    global WORKER_VERBOSE
-    global WORKER_PROFILE
-    global WORKER_MAF_FP
-    global WORKER_BLOCK_CACHE
-
-    WORKER_HEADER = header
-    WORKER_MAF_FILE = maf_file
-    WORKER_MAF_COMPRESSION = maf_compression
-    WORKER_INDEX = index
-    WORKER_OUTPUT = output
-    WORKER_SINGLE_OUTPUT = single_output
-    WORKER_AS_FASTA = as_fasta
-    WORKER_FASTA_HEADER = fasta_header
-    WORKER_EXPECTED_SPECIES = expected_species
-    WORKER_FASTA_DEDUPE = fasta_dedupe
-    WORKER_VERBOSE = verbose
-    WORKER_PROFILE = profile
-    WORKER_BLOCK_CACHE = OrderedDict()
-
-    opener = gzip.open if maf_compression == "gz" else open
-    WORKER_MAF_FP = opener(maf_file, "rb")
-    atexit.register(closeBatchWorker)
-
-#############################################################################
-
-def closeBatchWorker():
-    global WORKER_MAF_FP
-    if WORKER_MAF_FP is not None:
-        WORKER_MAF_FP.close()
-        WORKER_MAF_FP = None
 
 #############################################################################
 
@@ -351,10 +198,6 @@ def parseIndex(index_file, LOG, mode="block"):
     if mode == "block":
         for scaffold in index:
             index[scaffold].sort(key=lambda x: x["ref_start"])
-            index[scaffold] = {
-                "entries": index[scaffold],
-                "starts": [entry["ref_start"] for entry in index[scaffold]],
-            }
 
     return index
 
@@ -424,64 +267,7 @@ def getMAFHeader(maf_file, maf_compression):
 
 #############################################################################
 
-def speciesFromSrc(src):
-    return src.split(".", 1)[0] if "." in src else src
-
-#############################################################################
-
-def appendWarning(warning_state, message):
-    if warning_state is None:
-        return
-
-    warning_state["count"] += 1
-    if warning_state["messages"] is not None:
-        warning_state["messages"].append(message)
-
-
-def getFillString(fill_cache, fill_char, block_len):
-    cache_key = (fill_char, block_len)
-    if cache_key not in fill_cache:
-        fill_cache[cache_key] = fill_char * block_len
-    return fill_cache[cache_key]
-
-
-def getCachedBlockText(maf_fp, entry):
-    cache_key = (entry["offset_start"], entry["offset_end"])
-    if cache_key in WORKER_BLOCK_CACHE:
-        WORKER_BLOCK_CACHE.move_to_end(cache_key)
-        return WORKER_BLOCK_CACHE[cache_key]
-
-    maf_fp.seek(entry["offset_start"])
-    block_bytes = maf_fp.read(entry["offset_end"] - entry["offset_start"])
-    block_text = block_bytes.decode("utf-8", errors="replace")
-    WORKER_BLOCK_CACHE[cache_key] = block_text
-    if len(WORKER_BLOCK_CACHE) > WORKER_BLOCK_CACHE_MAX:
-        WORKER_BLOCK_CACHE.popitem(last=False)
-    return block_text
-
-
-def initProfileState():
-    return {
-        "regions": 0,
-        "candidate_entries": 0,
-        "overlap_blocks": 0,
-        "time_batch_total": 0.0,
-        "time_region_total": 0.0,
-        "time_index_scan": 0.0,
-        "time_read_decode": 0.0,
-        "time_trim": 0.0,
-        "time_block_to_fasta": 0.0,
-        "time_fasta_stitch": 0.0,
-        "time_write_fasta": 0.0,
-    }
-
-
-def addProfile(profile_state, key, value):
-    if profile_state is not None:
-        profile_state[key] += value
-
-
-def mafBlockToFasta(block_text, region, dedupe_mode="none", use_species_keys=False):
+def mafBlockToFasta(block_text, region):
     """
     Converts a (trimmed) MAF block to multi-FASTA format. 
     Each FASTA header includes the species, chrom, strand, and the (possibly trimmed) coordinates.
@@ -489,13 +275,11 @@ def mafBlockToFasta(block_text, region, dedupe_mode="none", use_species_keys=Fal
     """
     fasta_lines = defaultdict(dict)
     lines = block_text.strip().splitlines()
-    block_len = 0
 
     for line in lines:
         if line.startswith("s "):
             fields = line.split()
             src = fields[1]  # species.chrom
-            species = speciesFromSrc(src)
             #chrom = ".".join(src.split(".")[1:]) if "." in src else src
             #sp = src.split(".")[0] if "." in src else src
             start = int(fields[2])
@@ -503,9 +287,6 @@ def mafBlockToFasta(block_text, region, dedupe_mode="none", use_species_keys=Fal
             strand = fields[4]
             #srcSize = fields[5]
             seq = fields[6]
-            block_len = len(seq)
-            key = species if use_species_keys else src
-            nongap = sum(1 for c in seq if c != "-")
             
             # Compute 1-based closed interval for clarity (as in FASTA tools)
             if strand == "+":
@@ -514,47 +295,28 @@ def mafBlockToFasta(block_text, region, dedupe_mode="none", use_species_keys=Fal
                 # For negative strand, coordinates can be reported as on "forward" chromosome (for clarity, as in MAF)
                 end = start + size
 
-            if key in fasta_lines and dedupe_mode == "most-seq":
-                if nongap > fasta_lines[key]["nongap"]:
-                    fasta_lines[key] = {'seq': seq, 'start': start, 'end': end, 'strand': strand, 'nongap': nongap}
-            elif key not in fasta_lines:
-                fasta_lines[key] = {'seq': seq, 'start': start, 'end': end, 'strand': strand, 'nongap': nongap}
-            elif dedupe_mode == "none":
-                # Preserve previous behavior when dedupe is off by keeping src keys unique.
-                # If duplicate src appears, keep first occurrence.
-                pass
+            fasta_lines[src] = {'seq': seq, 'start': start, 'end': end, 'strand': strand}
 
-    for key in list(fasta_lines.keys()):
-        if "nongap" in fasta_lines[key]:
-            del fasta_lines[key]["nongap"]
-
-    return fasta_lines, block_len
+    return fasta_lines
 
 #############################################################################
 
-def writeFASTA(fasta_seqs, region, fasta_stream, BATCHLOG, fasta_header=False, verbose=False, warning_state=None):
+def writeFASTA(fasta_seqs, region, fasta_stream, BATCHLOG, fasta_header=False):
 
     fasta_output = {}
     for sp, details in fasta_seqs.items():
         if fasta_header == "species-only":
-            header = f">{speciesFromSrc(sp)}"
+            header = f">{sp}"
         else:
-            if details['starts'] and details['ends']:
-                region_start = min(details['starts'])
-                region_end = max(details['ends'])
-            else:
-                region_start = region['start']
-                region_end = region['end']
-            strand = list(set(details['strands'])) if details['strands'] else ["."]
+            region_start = min(details['starts'])
+            region_end = max(details['ends'])
+            strand = list(set(details['strands']))
             
             if len(strand) == 1:
                 region_strand = strand[0]
             else:
                 region_strand = "."
-                appendWarning(
-                    warning_state,
-                    f"Multiple strands found for species {sp} in region {region['scaffold']}:{region['start']}-{region['end']}. Using '.' in header.",
-                )
+                BATCHLOG.warning(f"Multiple strands found for species {sp} in region {region['scaffold']}:{region['start']}-{region['end']}. Using '.' in header.")
 
             if fasta_header == "species-coords":
                 header = f">{sp}:{region_start}-{region_end}({region_strand})"
@@ -567,7 +329,7 @@ def writeFASTA(fasta_seqs, region, fasta_stream, BATCHLOG, fasta_header=False, v
 
 #############################################################################
 
-def trimMafBlock(block_text, bed_start, bed_end, BATCHLOG, verbose=False, warning_state=None):
+def trimMafBlock(block_text, bed_start, bed_end, BATCHLOG):
     """
     Trims a MAF block to exactly the portion overlapping [bed_start, bed_end)
     on the reference sequence. Assumes the reference sequence is given in the
@@ -642,10 +404,7 @@ def trimMafBlock(block_text, bed_start, bed_end, BATCHLOG, verbose=False, warnin
                 extracted_ref_bases = sum(1 for c in ref_seq[col_start:col_end] if c != '-')
                 expected_bases = overlap_end - overlap_start
                 if extracted_ref_bases != expected_bases:
-                    appendWarning(
-                        warning_state,
-                        f"Expected {expected_bases} bases but extracted {extracted_ref_bases} for region {overlap_start}-{overlap_end}",
-                    )
+                    BATCHLOG.warning(f"Expected {expected_bases} bases but extracted {extracted_ref_bases} for region {overlap_start}-{overlap_end}")   
 
             ref_col_start = col_start
             ref_col_end = col_end       
@@ -686,22 +445,7 @@ def trimMafBlock(block_text, bed_start, bed_end, BATCHLOG, verbose=False, warnin
 
 #############################################################################
 
-def fetchByRegion(
-    region,
-    header,
-    maf_fp,
-    index,
-    output,
-    BATCHLOG,
-    single_output=False,
-    as_fasta=False,
-    fasta_header=False,
-    expected_species=None,
-    fasta_dedupe="none",
-    verbose=False,
-    warning_state=None,
-    profile_state=None,
-):
+def fetchByRegion(region, header, maf_fp, index, output, BATCHLOG, single_output=False, as_fasta=False, fasta_header=False):
     """
     Worker function to process a single BED region:
         - Opens the MAF file independently.
@@ -717,7 +461,6 @@ def fetchByRegion(
     bed_end = region["end"]
     out_basename = region["output_basename"]
     region_str = f"{scaffold}\t{bed_start}\t{bed_end}\t{out_basename}"
-    region_timer_start = time.perf_counter() if profile_state is not None else None
     # Parse region details
 
     block_lengths = []  # Holds lengths of each block written
@@ -726,37 +469,28 @@ def fetchByRegion(
 
     if as_fasta:
         fasta_seqs = defaultdict(dict);
-        species_order = expected_species[:] if expected_species else []
-        expected_species_set = set(expected_species) if expected_species else set()
-        use_species_keys = bool(expected_species) or fasta_dedupe != "none"
-        fill_cache = {}
+        species_order = []
     # For fasta output, hold sequences per species
 
-    output_filename = os.path.join(output, out_basename + (".fa" if as_fasta else ".maf"))
-    out_stream = None
-
-    if single_output:
+    if not single_output:
+        output_filename = os.path.join(output, out_basename + ".maf")
+        if as_fasta:
+            output_filename = os.path.join(output, out_basename + ".fa")
+        out_stream = open(output_filename, "w", encoding="utf-8")
+    else:
         current_blocks = []
     # Single output mode being developed !
 
     blocks_written = 0;
 
     if scaffold not in index:
-        appendWarning(warning_state, f"{scaffold}:{bed_start}-{bed_end} No index entries for scaffold.")
-        summary = f"{region_str}\t0\t0\tNA\t0"
-        return summary if not single_output else []
+        if not single_output:
+            out_stream.close()
+        return f"{output_filename}: No index entries for scaffold {scaffold}"
 
     blocks_written = 0
 
-    scaffold_index = index[scaffold]
-    candidate_idx = bisect.bisect_left(scaffold_index["starts"], bed_start)
-    if candidate_idx > 0:
-        candidate_idx -= 1
-
-    scan_timer_start = time.perf_counter() if profile_state is not None else None
-    for entry in scaffold_index["entries"][candidate_idx:]:
-        if profile_state is not None:
-            profile_state["candidate_entries"] += 1
+    for entry in index[scaffold]:
         block_ref_start = entry["ref_start"]
         block_ref_end = block_ref_start + entry["ref_length"]
 
@@ -767,41 +501,23 @@ def fetchByRegion(
             break     # block after region
 
         if bed_start < block_ref_end and bed_end > block_ref_start:
-            if profile_state is not None:
-                profile_state["overlap_blocks"] += 1
             try:
-                read_timer_start = time.perf_counter() if profile_state is not None else None
                 maf_fp.seek(entry["offset_start"])
                 block_bytes = maf_fp.read(entry["offset_end"] - entry["offset_start"])
                 block_text = block_bytes.decode("utf-8", errors="replace")
-                if profile_state is not None:
-                    addProfile(profile_state, "time_read_decode", time.perf_counter() - read_timer_start)
                 #print(block_text.splitlines()[1])
             except Exception as e:
-                BATCHLOG.error(f"Error fetching block: {e}")
-                raise
+                if not single_output:
+                    out_stream.close()
+                BATCHLOG.error(f"Error fetching block: {e}\n");
 
-            trim_timer_start = time.perf_counter() if profile_state is not None else None
-            trimmed_result = trimMafBlock(
-                block_text,
-                bed_start,
-                bed_end,
-                BATCHLOG,
-                verbose=verbose,
-                warning_state=warning_state,
-            )
-            if profile_state is not None:
-                addProfile(profile_state, "time_trim", time.perf_counter() - trim_timer_start)
-            if trimmed_result is None:
-                continue
-            trimmed, trimmed_info = trimmed_result
+            trimmed, trimmed_info = trimMafBlock(block_text, bed_start, bed_end, BATCHLOG)
 
-            if not single_output and trimmed is not None:
+            if not single_output:
                 block_stats.append(trimmed_info)
                 total_ref_bases += trimmed_info[2]                
 
                 if blocks_written == 0 and not as_fasta:
-                    out_stream = open(output_filename, "w", encoding="utf-8")
                     out_stream.write(header)
                     out_stream.write("## Extracted by maf_fetch.py\n")
                     out_stream.write("## Source MAF: " + os.path.basename(maf_fp.name) + "\n")
@@ -810,28 +526,10 @@ def fetchByRegion(
                 if as_fasta:
                     
                     # Output as fasta
-                    fasta_block_timer_start = time.perf_counter() if profile_state is not None else None
-                    return_fasta_seqs, block_len = mafBlockToFasta(
-                        trimmed,
-                        region,
-                        dedupe_mode=fasta_dedupe,
-                        use_species_keys=use_species_keys
-                    )
-                    if profile_state is not None:
-                        addProfile(profile_state, "time_block_to_fasta", time.perf_counter() - fasta_block_timer_start)
+                    return_fasta_seqs = mafBlockToFasta(trimmed, region)
                     #fasta_lines[src] = {'header': header, 'seq': seq, 'start': start, 'end': end, 'strand': strand}
+                    block_len = len(next(iter(return_fasta_seqs.values()))['seq'])
                     block_lengths.append(block_len)
-
-                    stitch_timer_start = time.perf_counter() if profile_state is not None else None
-                    if expected_species:
-                        for sp in expected_species:
-                            if sp not in return_fasta_seqs:
-                                return_fasta_seqs[sp] = {
-                                    'seq': getFillString(fill_cache, "N", block_len),
-                                    'start': None,
-                                    'end': None,
-                                    'strand': None
-                                }
 
                     # For any new species, add to order and backfill
                     for sp in return_fasta_seqs:
@@ -839,65 +537,37 @@ def fetchByRegion(
                             species_order.append(sp)
                         if sp not in fasta_seqs:
                             # Backfill for all previous blocks
-                            fasta_seqs[sp]['seq'] = [getFillString(fill_cache, "-", l) for l in block_lengths[:-1]]
+                            fasta_seqs[sp]['seq'] = ['-'*l for l in block_lengths[:-1]]
                             fasta_seqs[sp]['starts'] = []
                             fasta_seqs[sp]['ends'] = []
                             fasta_seqs[sp]['strands'] = []
 
                     # After establishing all species, append current block or pad as needed
                     for sp in species_order:
-                        if sp in return_fasta_seqs:
-                            seq = return_fasta_seqs[sp]['seq']
-                        else:
-                            fill_char = "N" if sp in expected_species_set else "-"
-                            seq = getFillString(fill_cache, fill_char, block_len)
+                        seq = return_fasta_seqs[sp]['seq'] if sp in return_fasta_seqs else '-'*block_len
                         fasta_seqs[sp]['seq'].append(seq)
                         if sp in return_fasta_seqs:
-                            if return_fasta_seqs[sp]['start'] is not None:
-                                fasta_seqs[sp]['starts'].append(return_fasta_seqs[sp]['start'])
-                            if return_fasta_seqs[sp]['end'] is not None:
-                                fasta_seqs[sp]['ends'].append(return_fasta_seqs[sp]['end'])
-                            if return_fasta_seqs[sp]['strand'] is not None:
-                                fasta_seqs[sp]['strands'].append(return_fasta_seqs[sp]['strand'])
-                    if profile_state is not None:
-                        addProfile(profile_state, "time_fasta_stitch", time.perf_counter() - stitch_timer_start)
+                            fasta_seqs[sp]['starts'].append(return_fasta_seqs[sp]['start'])
+                            fasta_seqs[sp]['ends'].append(return_fasta_seqs[sp]['end'])
+                            fasta_seqs[sp]['strands'].append(return_fasta_seqs[sp]['strand'])
                 else:
                     out_stream.write(trimmed + "\n")
                 blocks_written += 1
-            elif single_output and trimmed is not None:
+            else:
                 if as_fasta:
-                    return_fasta_seqs, _ = mafBlockToFasta(
-                        trimmed,
-                        region,
-                        dedupe_mode=fasta_dedupe,
-                        use_species_keys=use_species_keys
-                    )
-                    current_blocks.append(return_fasta_seqs)
+                    current_blocks.append(mafBlockToFasta(trimmed, region) + "\n")
                 else:
                     current_blocks.append(trimmed + "\n")
 
-    if as_fasta and not single_output and blocks_written > 0:
-        out_stream = open(output_filename, "w", encoding="utf-8")
+    if as_fasta:
         # Write all fasta sequences to the output
-        write_timer_start = time.perf_counter() if profile_state is not None else None
-        writeFASTA(
-            fasta_seqs,
-            region,
-            out_stream,
-            BATCHLOG,
-            fasta_header=fasta_header,
-            verbose=verbose,
-            warning_state=warning_state,
-        )
-        if profile_state is not None:
-            addProfile(profile_state, "time_write_fasta", time.perf_counter() - write_timer_start)
+        fasta_output = writeFASTA(fasta_seqs, region, out_stream, BATCHLOG, fasta_header=fasta_header)
 
     if not blocks_written:
-        appendWarning(warning_state, f"{scaffold}:{bed_start}-{bed_end} No overlapping blocks found.")
+        BATCHLOG.warning(f"{scaffold}:{bed_start}-{bed_end} No overlapping blocks found.\n");
 
     if not single_output:
-        if out_stream is not None:
-            out_stream.close()
+        out_stream.close()
         # --- BEGIN SUMMARY REPORT ---
         # Collect region info
         block_stats.sort()
@@ -910,26 +580,15 @@ def fetchByRegion(
         num_blocks = len(block_stats)
         blocks_length = sum(info[2] for info in block_stats)
         space_str = str(interblock_spaces) if interblock_spaces else "NA"
-        if profile_state is not None:
-            profile_state["regions"] += 1
-            addProfile(profile_state, "time_index_scan", time.perf_counter() - scan_timer_start)
-            addProfile(profile_state, "time_region_total", time.perf_counter() - region_timer_start)
         summary = (f"{region_str}\t{num_blocks}\t{blocks_length}\t{space_str}\t{len(species_order) if as_fasta else 'NA'}")
         return summary
 
     else:
-        if profile_state is not None:
-            profile_state["regions"] += 1
-            addProfile(profile_state, "time_index_scan", time.perf_counter() - scan_timer_start)
-            addProfile(profile_state, "time_region_total", time.perf_counter() - region_timer_start)
         return current_blocks;
 
 #############################################################################
 
-def fetchByBatch(
-    batch,
-    batch_num,
-):
+def fetchByBatch(batch, header, maf_file, maf_compression, index, output, batch_num, single_output=False, as_fasta=False, fasta_header=False):
 
     BATCHLOG = logging.getLogger("maf_fetch_logger")
     plural = "s" if len(batch) > 1 else ""
@@ -937,74 +596,28 @@ def fetchByBatch(
     BATCHLOG.debug(f">> (first: {batch[0]['scaffold']}:{batch[0]['start']}-{batch[0]['end']}, last: {batch[-1]['scaffold']}:{batch[-1]['start']}-{batch[-1]['end']})")
     # Initialize batch-specific logger
 
-    maf_fp = WORKER_MAF_FP
-    if maf_fp is None:
-        BATCHLOG.error(f"Batch {batch_num}: Worker MAF handle is not initialized.")
-        raise RuntimeError("Worker MAF handle is not initialized.")
+    opener = gzip.open if maf_compression == "gz" else open
+    try:
+        maf_fp = opener(maf_file, "rb")
+    except Exception as e:
+        BATCHLOG.error(f"Batch {batch_num}: Error opening MAF file: {e}");
+    # Open the MAF file once per batch
 
-    batch_results = [None] * len(batch)
+    batch_results = []
     region_num = 0
-    zero_overlap_regions = 0
-    success_regions = 0
-    warning_state = {"count": 0, "messages": [] if WORKER_VERBOSE else None}
-    profile_state = initProfileState() if WORKER_PROFILE else None
-    batch_timer_start = time.perf_counter() if WORKER_PROFILE else None
 
-    ordered_regions = sorted(
-        enumerate(batch),
-        key=lambda item: (
-            item[1]["scaffold"],
-            item[1]["start"],
-            item[1]["end"],
-            item[0],
-        ),
-    )
-
-    for batch_order, (result_idx, region) in enumerate(ordered_regions, start=1):
+    for region in batch:
         region_num += 1
 
-        batch_str = f" [batch {batch_num}.{batch_order}]"
+        batch_str = f" [batch {batch_num}.{region_num}]"
         BATCHLOG.debug(f">>>{batch_str} Region {region['scaffold']}:{region['start']}-{region['end']}")
 
-        region_result = fetchByRegion(
-            region,
-            WORKER_HEADER,
-            maf_fp,
-            WORKER_INDEX,
-            WORKER_OUTPUT,
-            BATCHLOG,
-            as_fasta=WORKER_AS_FASTA,
-            fasta_header=WORKER_FASTA_HEADER,
-            expected_species=WORKER_EXPECTED_SPECIES,
-            fasta_dedupe=WORKER_FASTA_DEDUPE,
-            verbose=WORKER_VERBOSE,
-            warning_state=warning_state,
-            profile_state=profile_state,
-        )
-        batch_results[result_idx] = region_result
-        if not WORKER_SINGLE_OUTPUT:
-            fields = region_result.split("\t")
-            if len(fields) >= 5:
-                try:
-                    if int(fields[4]) == 0:
-                        zero_overlap_regions += 1
-                    else:
-                        success_regions += 1
-                except ValueError:
-                    pass
-    if profile_state is not None:
-        profile_state["time_batch_total"] = time.perf_counter() - batch_timer_start
+        batch_results.append(fetchByRegion(region, header, maf_fp, index, output, BATCHLOG, as_fasta=as_fasta, fasta_header=fasta_header))
 
-    return {
-        "results": batch_results,
-        "processed_regions": len(batch_results),
-        "zero_overlap_regions": zero_overlap_regions,
-        "batch_num": batch_num,
-        "success_regions": success_regions,
-        "warning_count": warning_state["count"],
-        "warning_messages": warning_state["messages"],
-        "profile": profile_state,
-    }
+    maf_fp.close()
+    # Close MAF file
+
+    return batch_results
 
 #############################################################################
 
@@ -1057,12 +670,6 @@ def main():
         LOG.error(f"Invalid mode: '{args.mode}'. Must be 'block' or 'scaffold'.")
         sys.exit(1)
     # Validate mode
-    # if args.max_no_overlap_regions < -1:
-    #     LOG.error("--max-no-overlap-regions must be >= -1.")
-    #     sys.exit(1)
-    # if args.max_no_overlap_fraction < 0.0 or args.max_no_overlap_fraction > 1.0:
-    #     LOG.error("--max-no-overlap-fraction must be between 0 and 1.")
-    #     sys.exit(1)
 
     maf_compression = COMMON.detectCompression(args.maf_file);
     if not args.single_output:
@@ -1074,10 +681,6 @@ def main():
 
     LOG.info(f"Parsing BED file...... {args.bed_file}");
     regions = parseBed(args.bed_file, LOG, args.mode);
-
-    expected_species = parseExpectedSpecies(args)
-    if expected_species:
-        LOG.info(f"Loaded {len(expected_species)} expected species for FASTA missing-species filling.")
 
     LOG.info(f"Getting MAF header.... {args.maf_file}");
     maf_header = getMAFHeader(args.maf_file, maf_compression);
@@ -1093,12 +696,6 @@ def main():
 
         if args.fasta:
             LOG.error("FASTA output not supported in scaffold mode.")
-            sys.exit(1)
-        if expected_species:
-            LOG.error("--expected-species/--expected-species-file can only be used in block mode with --fasta.")
-            sys.exit(1)
-        if args.fasta_dedupe != "none":
-            LOG.error("--fasta-dedupe can only be used in block mode with --fasta.")
             sys.exit(1)
 
         LOG.info(f"Running in SCAFFOLD mode with BED + region index");
@@ -1135,12 +732,6 @@ def main():
     ##############################
 
     LOG.info(f"Running in BLOCK mode");
-    if expected_species and not args.fasta:
-        LOG.error("--expected-species/--expected-species-file require --fasta.")
-        sys.exit(1)
-    if args.fasta_dedupe != "none" and not args.fasta:
-        LOG.error("--fasta-dedupe requires --fasta.")
-        sys.exit(1)
 
     num_regions = len(regions);
     batch_size = pick_chunk_size(num_regions, args.processes);
@@ -1190,155 +781,38 @@ def main():
 
     # Process each batch in parallel.
     results = [];
-    total_regions_reported = 0
-    zero_overlap_regions = 0
-    fail_fast_triggered = False
-    fail_fast_message = None
-    profile_totals = initProfileState() if args.profile else None
-    profiled_batches = 0
-    with ProcessPoolExecutor(
-        max_workers=args.processes,
-        initializer=initBatchWorker,
-        initargs=(
-            maf_header,
-            args.maf_file,
-            maf_compression,
-            index,
-            args.output,
-            args.single_output,
-            args.fasta,
-            args.fasta_header,
-            expected_species,
-            args.fasta_dedupe,
-            args.verbose,
-            args.profile,
-        ),
-    ) as executor, open(info_outfile, "w") as info_out:
+    batch_counter = 1;
+    with ProcessPoolExecutor(max_workers=args.processes) as executor, open(info_outfile, "w") as info_out:
         summary_headers = ["scaffold", "start", "end", "basename", "n.overlapping.blocks", "block.lengths", "interblock.distances", "n.sequences"]
         info_out.write("\t".join(summary_headers) + "\n")
 
-        futures = {}
-        for batch_num, batch in enumerate(batches, start=1):
-            future = executor.submit(
+        futures = [];
+        for batch in batches:
+            futures.append(executor.submit(
                 fetchByBatch,
                 batch,
-                batch_num,
-            )
-            futures[future] = batch_num
+                maf_header,
+                args.maf_file,
+                maf_compression,
+                index,
+                args.output,
+                batch_counter,
+                args.single_output,
+                args.fasta,
+                args.fasta_header                
+            ));
+            batch_counter += 1;
 
-        while futures:
-            done, _pending = wait(list(futures.keys()), return_when=FIRST_COMPLETED)
-            for future in done:
-                batch_num = futures.pop(future)
-                result = future.result()
-                if args.profile and result["profile"] is not None:
-                    profiled_batches += 1
-                    for key, value in result["profile"].items():
-                        profile_totals[key] += value
-
-                if not args.single_output:
-                    for r in result["results"]:
+        for future in futures:
+            result = future.result();
+            if not args.single_output:
+                if isinstance(result, list):
+                    for r in result:
                         info_out.write(r + "\n")
-                    total_regions_reported += result["processed_regions"]
-                    zero_overlap_regions += result["zero_overlap_regions"]
-
-                    if result["warning_count"] > 0:
-                        if args.verbose:
-                            for warning_message in result["warning_messages"]:
-                                LOG.warning(warning_message)
-                        else:
-                            LOG.warning(
-                                "Batch %d produced %d warning%s.",
-                                result["batch_num"],
-                                result["warning_count"],
-                                "" if result["warning_count"] == 1 else "s",
-                            )
-
-                    zero_overlap_fraction_final_floor = zero_overlap_regions / num_regions if num_regions else 0.0
-
-                    LOG.info(
-                        "Completed batch %d: %d successful / %d warn / %d total",
-                        result["batch_num"],
-                        result["success_regions"],
-                        result["zero_overlap_regions"],
-                        result["processed_regions"],
-                    )
-
-                    if zero_overlap_regions > MAX_NO_OVERLAP_REGIONS_DEFAULT:
-                        fail_fast_triggered = True
-                        fail_fast_message = (
-                            f"Zero-overlap regions ({zero_overlap_regions}) exceeded hardcoded max "
-                            f"({MAX_NO_OVERLAP_REGIONS_DEFAULT}). Failing run."
-                        )
-                    elif zero_overlap_fraction_final_floor > MAX_NO_OVERLAP_FRACTION_DEFAULT:
-                        fail_fast_triggered = True
-                        fail_fast_message = (
-                            f"Zero-overlap fraction cannot recover below hardcoded max "
-                            f"({MAX_NO_OVERLAP_FRACTION_DEFAULT:.6f}); current lower bound is "
-                            f"{zero_overlap_fraction_final_floor:.6f}. Failing run."
-                        )
                 else:
-                    results.append(result["results"])
-
-            if fail_fast_triggered:
-                for pending_future in futures:
-                    pending_future.cancel()
-                break
-
-    if fail_fast_triggered:
-        LOG.error(fail_fast_message)
-        sys.exit(2)
-
-    if args.profile and profile_totals is not None and profiled_batches > 0:
-        LOG.info("Profile summary across %d batch(es):", profiled_batches)
-        LOG.info(
-            "Profile regions=%d candidate_entries=%d overlap_blocks=%d",
-            profile_totals["regions"],
-            profile_totals["candidate_entries"],
-            profile_totals["overlap_blocks"],
-        )
-        LOG.info(
-            "Profile time_batch_total=%.3fs time_region_total=%.3fs time_index_scan=%.3fs "
-            "time_read_decode=%.3fs time_trim=%.3fs time_block_to_fasta=%.3fs "
-            "time_fasta_stitch=%.3fs time_write_fasta=%.3fs",
-            profile_totals.get("time_batch_total", 0.0),
-            profile_totals["time_region_total"],
-            profile_totals["time_index_scan"],
-            profile_totals["time_read_decode"],
-            profile_totals["time_trim"],
-            profile_totals["time_block_to_fasta"],
-            profile_totals["time_fasta_stitch"],
-            profile_totals["time_write_fasta"],
-        )
-
-    if not args.single_output and total_regions_reported > 0 and zero_overlap_regions > 0:
-        zero_overlap_fraction = zero_overlap_regions / total_regions_reported
-        LOG.warning(
-            "%d of %d regions had no overlapping MAF blocks (%.6f).",
-            zero_overlap_regions,
-            total_regions_reported,
-            zero_overlap_fraction,
-        )
-        if zero_overlap_regions == total_regions_reported:
-            LOG.error("No regions overlapped any MAF block. Failing run.")
-            sys.exit(2)
-        if (
-            MAX_NO_OVERLAP_REGIONS_DEFAULT >= 0
-            and zero_overlap_regions > MAX_NO_OVERLAP_REGIONS_DEFAULT
-        ):
-            LOG.error(
-                "Zero-overlap regions (%d) exceeded hardcoded max (%d). Failing run.",
-                zero_overlap_regions,
-                MAX_NO_OVERLAP_REGIONS_DEFAULT,
-            )
-            sys.exit(2)
-        if zero_overlap_fraction > MAX_NO_OVERLAP_FRACTION_DEFAULT:
-            LOG.error(
-                "Zero-overlap fraction (%.6f) exceeded hardcoded max (%.6f). Failing run.",
-                zero_overlap_fraction,
-                MAX_NO_OVERLAP_FRACTION_DEFAULT,
-            )
-            sys.exit(2)
+                    info_out.write(result + "\n")
+            else:
+                results.append(result)
 
     # if args.single_output:
     #     with open(output_file, "w", encoding="utf-8") as out_stream:

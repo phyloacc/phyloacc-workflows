@@ -1,0 +1,4 @@
+species	blocks_present	blocks_missing	presence_fraction	copy_lines	duplicated_blocks	duplicate_copies_total	gaps_total	nongaps_total	gap_fraction_cells	avg_gaps_per_present_block	avg_gap_fraction_per_present_block	all_gap_blocks
+chimp	8	2	0.80000000	8	0	0	11	41	0.21153846	1.37500000	0.21071429	0
+gorilla	2	8	0.20000000	2	0	0	1	8	0.11111111	0.50000000	0.10000000	0
+human	10	0	1.00000000	10	0	0	3	58	0.04918033	0.30000000	0.03857143	0

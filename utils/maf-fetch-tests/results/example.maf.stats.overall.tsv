@@ -1,0 +1,12 @@
+metric	value
+total_blocks	10
+total_species	3
+total_alignment_columns	61
+total_sequence_lines	20
+avg_species_per_block	2.00000000
+avg_duplicate_species_per_block	0.00000000
+avg_gap_fraction_per_block	0.11357143
+global_gap_fraction_cells	0.12295082
+avg_species_coverage_per_block	0.66666667
+total_parse_errors	0
+blocks_with_zero_parsed_seq_lines_but_index_nonzero	0

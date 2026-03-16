@@ -11815,3 +11815,1075 @@
 [ 2025-09-11 14:14:20 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
 [ 2025-09-11 14:14:20 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
 [ 2025-09-11 14:14:20 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:29:50 - INFO ] maf_fetch.py called as: ../maf_fetch.py example.maf example.maf.block.idx example.bed -b id -o results -f -fh species-coords-id
+[ 2026-03-09 14:29:50 - INFO ] ----------------------------------------
+[ 2026-03-09 14:29:50 - INFO ] maf_file             : example.maf
+[ 2026-03-09 14:29:50 - INFO ] index_file           : example.maf.block.idx
+[ 2026-03-09 14:29:50 - INFO ] bed_file             : example.bed
+[ 2026-03-09 14:29:50 - INFO ] basename             : id
+[ 2026-03-09 14:29:50 - INFO ] output               : results
+[ 2026-03-09 14:29:50 - INFO ] fasta                : True
+[ 2026-03-09 14:29:50 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:29:50 - INFO ] expected_species     : 
+[ 2026-03-09 14:29:50 - INFO ] expected_species_file : 
+[ 2026-03-09 14:29:50 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:29:50 - INFO ] processes            : 1
+[ 2026-03-09 14:29:50 - INFO ] mode                 : block
+[ 2026-03-09 14:29:50 - INFO ] single_output        : False
+[ 2026-03-09 14:29:50 - INFO ] ----------------------------------------
+[ 2026-03-09 14:29:50 - INFO ] Parsing index file.... example.maf.block.idx
+[ 2026-03-09 14:29:50 - INFO ] Parsing BED file...... example.bed
+[ 2026-03-09 14:29:50 - INFO ] Getting MAF header.... example.maf
+[ 2026-03-09 14:29:50 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:29:50 - INFO ] Using batch size of 1 regions for 10 total regions with 1 processes.
+[ 2026-03-09 14:29:50 - INFO ] Divided 10 regions into 10 batches of up to 1 regions each.
+[ 2026-03-09 14:29:50 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 2 with 1 region
+[ 2026-03-09 14:29:51 - WARNING ] Expected 2 bases but extracted 1 for region 8-10
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 3 with 1 region
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 4 with 1 region
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 5 with 1 region
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 6 with 1 region
+[ 2026-03-09 14:29:51 - WARNING ] chr1:100-200 No overlapping blocks found.
+
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 7 with 1 region
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 8 with 1 region
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 9 with 1 region
+[ 2026-03-09 14:29:51 - INFO ] Processing batch 10 with 1 region
+[ 2026-03-09 14:30:16 - INFO ] maf_fetch.py called as: ../maf_fetch.py example.maf example.maf.block.idx crossblocks-missing-species.bed -b id -o results -f -fh species-only --expected-species human,chimp,gorilla --fasta-dedupe most-seq
+[ 2026-03-09 14:30:16 - INFO ] ----------------------------------------
+[ 2026-03-09 14:30:16 - INFO ] maf_file             : example.maf
+[ 2026-03-09 14:30:16 - INFO ] index_file           : example.maf.block.idx
+[ 2026-03-09 14:30:16 - INFO ] bed_file             : crossblocks-missing-species.bed
+[ 2026-03-09 14:30:16 - INFO ] basename             : id
+[ 2026-03-09 14:30:16 - INFO ] output               : results
+[ 2026-03-09 14:30:16 - INFO ] fasta                : True
+[ 2026-03-09 14:30:16 - INFO ] fasta_header         : species-only
+[ 2026-03-09 14:30:16 - INFO ] expected_species     : human,chimp,gorilla
+[ 2026-03-09 14:30:16 - INFO ] expected_species_file : 
+[ 2026-03-09 14:30:16 - INFO ] fasta_dedupe         : most-seq
+[ 2026-03-09 14:30:16 - INFO ] processes            : 1
+[ 2026-03-09 14:30:16 - INFO ] mode                 : block
+[ 2026-03-09 14:30:16 - INFO ] single_output        : False
+[ 2026-03-09 14:30:16 - INFO ] ----------------------------------------
+[ 2026-03-09 14:30:16 - INFO ] Parsing index file.... example.maf.block.idx
+[ 2026-03-09 14:30:16 - INFO ] Parsing BED file...... crossblocks-missing-species.bed
+[ 2026-03-09 14:30:16 - INFO ] Loaded 3 expected species for FASTA missing-species filling.
+[ 2026-03-09 14:30:16 - INFO ] Getting MAF header.... example.maf
+[ 2026-03-09 14:30:16 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:30:16 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:30:16 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:30:16 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:32:21 - INFO ] maf_fetch.py called as: ../maf_fetch.py example.maf example.maf.block.idx crossblocks-missing-species.bed -b id -o results -f -fh species-coords-id
+[ 2026-03-09 14:32:21 - INFO ] ----------------------------------------
+[ 2026-03-09 14:32:21 - INFO ] maf_file             : example.maf
+[ 2026-03-09 14:32:21 - INFO ] index_file           : example.maf.block.idx
+[ 2026-03-09 14:32:21 - INFO ] bed_file             : crossblocks-missing-species.bed
+[ 2026-03-09 14:32:21 - INFO ] basename             : id
+[ 2026-03-09 14:32:21 - INFO ] output               : results
+[ 2026-03-09 14:32:21 - INFO ] fasta                : True
+[ 2026-03-09 14:32:21 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:32:21 - INFO ] expected_species     : 
+[ 2026-03-09 14:32:21 - INFO ] expected_species_file : 
+[ 2026-03-09 14:32:21 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:32:21 - INFO ] processes            : 1
+[ 2026-03-09 14:32:21 - INFO ] mode                 : block
+[ 2026-03-09 14:32:21 - INFO ] single_output        : False
+[ 2026-03-09 14:32:21 - INFO ] ----------------------------------------
+[ 2026-03-09 14:32:21 - INFO ] Parsing index file.... example.maf.block.idx
+[ 2026-03-09 14:32:21 - INFO ] Parsing BED file...... crossblocks-missing-species.bed
+[ 2026-03-09 14:32:21 - INFO ] Getting MAF header.... example.maf
+[ 2026-03-09 14:32:21 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:32:21 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:32:21 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:32:21 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:33:00 - INFO ] maf_fetch.py called as: ../maf_fetch.py example.maf example.maf.block.idx crossblocks-missing-species.bed -b id -o results -f -fh species-coords --expected-species human,chimp,gorilla,mouse --fasta-dedupe most-seq
+[ 2026-03-09 14:33:00 - INFO ] ----------------------------------------
+[ 2026-03-09 14:33:00 - INFO ] maf_file             : example.maf
+[ 2026-03-09 14:33:00 - INFO ] index_file           : example.maf.block.idx
+[ 2026-03-09 14:33:00 - INFO ] bed_file             : crossblocks-missing-species.bed
+[ 2026-03-09 14:33:00 - INFO ] basename             : id
+[ 2026-03-09 14:33:00 - INFO ] output               : results
+[ 2026-03-09 14:33:00 - INFO ] fasta                : True
+[ 2026-03-09 14:33:00 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:33:00 - INFO ] expected_species     : human,chimp,gorilla,mouse
+[ 2026-03-09 14:33:00 - INFO ] expected_species_file : 
+[ 2026-03-09 14:33:00 - INFO ] fasta_dedupe         : most-seq
+[ 2026-03-09 14:33:00 - INFO ] processes            : 1
+[ 2026-03-09 14:33:00 - INFO ] mode                 : block
+[ 2026-03-09 14:33:00 - INFO ] single_output        : False
+[ 2026-03-09 14:33:00 - INFO ] ----------------------------------------
+[ 2026-03-09 14:33:00 - INFO ] Parsing index file.... example.maf.block.idx
+[ 2026-03-09 14:33:00 - INFO ] Parsing BED file...... crossblocks-missing-species.bed
+[ 2026-03-09 14:33:00 - INFO ] Loaded 4 expected species for FASTA missing-species filling.
+[ 2026-03-09 14:33:00 - INFO ] Getting MAF header.... example.maf
+[ 2026-03-09 14:33:00 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:33:00 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:33:00 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:33:00 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:33:00 - WARNING ] Multiple strands found for species gorilla in region chr4:4-8. Using '.' in header.
+[ 2026-03-09 14:33:00 - WARNING ] Multiple strands found for species chimp in region chr4:4-8. Using '.' in header.
+[ 2026-03-09 14:33:33 - INFO ] maf_fetch.py called as: ../maf_fetch.py example.maf example.maf.block.idx crossblocks-missing-species.bed -b id -o results -f -fh species-coords --expected-species human,chimp,gorilla,mouse --fasta-dedupe most-seq
+[ 2026-03-09 14:33:33 - INFO ] ----------------------------------------
+[ 2026-03-09 14:33:33 - INFO ] maf_file             : example.maf
+[ 2026-03-09 14:33:33 - INFO ] index_file           : example.maf.block.idx
+[ 2026-03-09 14:33:33 - INFO ] bed_file             : crossblocks-missing-species.bed
+[ 2026-03-09 14:33:33 - INFO ] basename             : id
+[ 2026-03-09 14:33:33 - INFO ] output               : results
+[ 2026-03-09 14:33:33 - INFO ] fasta                : True
+[ 2026-03-09 14:33:33 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:33:33 - INFO ] expected_species     : human,chimp,gorilla,mouse
+[ 2026-03-09 14:33:33 - INFO ] expected_species_file : 
+[ 2026-03-09 14:33:33 - INFO ] fasta_dedupe         : most-seq
+[ 2026-03-09 14:33:33 - INFO ] processes            : 1
+[ 2026-03-09 14:33:33 - INFO ] mode                 : block
+[ 2026-03-09 14:33:33 - INFO ] single_output        : False
+[ 2026-03-09 14:33:33 - INFO ] ----------------------------------------
+[ 2026-03-09 14:33:33 - INFO ] Parsing index file.... example.maf.block.idx
+[ 2026-03-09 14:33:33 - INFO ] Parsing BED file...... crossblocks-missing-species.bed
+[ 2026-03-09 14:33:33 - INFO ] Loaded 4 expected species for FASTA missing-species filling.
+[ 2026-03-09 14:33:33 - INFO ] Getting MAF header.... example.maf
+[ 2026-03-09 14:33:33 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:33:33 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:33:33 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:33:33 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:52 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/01-singleblock-gap.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:52 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:52 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] basename             : id
+[ 2026-03-09 14:54:52 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] fasta                : False
+[ 2026-03-09 14:54:52 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:52 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:52 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:52 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:52 - INFO ] processes            : 1
+[ 2026-03-09 14:54:52 - INFO ] mode                 : block
+[ 2026-03-09 14:54:52 - INFO ] single_output        : False
+[ 2026-03-09 14:54:52 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:52 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:52 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/01-singleblock-gap.bed
+[ 2026-03-09 14:54:52 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:52 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:52 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:52 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:52 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:52 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/02-truncatedblock.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:52 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:52 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] basename             : id
+[ 2026-03-09 14:54:52 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] fasta                : False
+[ 2026-03-09 14:54:52 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:52 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:52 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:52 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:52 - INFO ] processes            : 1
+[ 2026-03-09 14:54:52 - INFO ] mode                 : block
+[ 2026-03-09 14:54:52 - INFO ] single_output        : False
+[ 2026-03-09 14:54:52 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:52 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:52 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/02-truncatedblock.bed
+[ 2026-03-09 14:54:52 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:52 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:52 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:52 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:52 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:52 - WARNING ] Expected 2 bases but extracted 1 for region 8-10
+[ 2026-03-09 14:54:52 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/03-crossblocks-missing.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:52 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:52 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] basename             : id
+[ 2026-03-09 14:54:52 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:52 - INFO ] fasta                : False
+[ 2026-03-09 14:54:52 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:52 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:52 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:52 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:52 - INFO ] processes            : 1
+[ 2026-03-09 14:54:52 - INFO ] mode                 : block
+[ 2026-03-09 14:54:52 - INFO ] single_output        : False
+[ 2026-03-09 14:54:52 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:52 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:52 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/03-crossblocks-missing.bed
+[ 2026-03-09 14:54:52 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:52 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:52 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:52 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:52 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:53 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/04-singleblock.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:53 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:53 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] basename             : id
+[ 2026-03-09 14:54:53 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] fasta                : False
+[ 2026-03-09 14:54:53 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:53 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:53 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:53 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:53 - INFO ] processes            : 1
+[ 2026-03-09 14:54:53 - INFO ] mode                 : block
+[ 2026-03-09 14:54:53 - INFO ] single_output        : False
+[ 2026-03-09 14:54:53 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:53 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:53 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/04-singleblock.bed
+[ 2026-03-09 14:54:53 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:53 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:53 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:53 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:53 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:53 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/05-crossblocks.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:53 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:53 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] basename             : id
+[ 2026-03-09 14:54:53 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] fasta                : False
+[ 2026-03-09 14:54:53 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:53 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:53 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:53 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:53 - INFO ] processes            : 1
+[ 2026-03-09 14:54:53 - INFO ] mode                 : block
+[ 2026-03-09 14:54:53 - INFO ] single_output        : False
+[ 2026-03-09 14:54:53 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:53 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:53 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/05-crossblocks.bed
+[ 2026-03-09 14:54:53 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:53 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:53 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:53 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:53 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:53 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/06-noalign.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:53 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:53 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] basename             : id
+[ 2026-03-09 14:54:53 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:53 - INFO ] fasta                : False
+[ 2026-03-09 14:54:53 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:53 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:53 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:53 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:53 - INFO ] processes            : 1
+[ 2026-03-09 14:54:53 - INFO ] mode                 : block
+[ 2026-03-09 14:54:53 - INFO ] single_output        : False
+[ 2026-03-09 14:54:53 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:53 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:53 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/06-noalign.bed
+[ 2026-03-09 14:54:53 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:53 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:53 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:53 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:53 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:53 - WARNING ] chr1:100-200 No overlapping blocks found.
+
+[ 2026-03-09 14:54:54 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/07-negstrand.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:54 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:54 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] basename             : id
+[ 2026-03-09 14:54:54 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] fasta                : False
+[ 2026-03-09 14:54:54 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:54 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:54 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:54 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:54 - INFO ] processes            : 1
+[ 2026-03-09 14:54:54 - INFO ] mode                 : block
+[ 2026-03-09 14:54:54 - INFO ] single_output        : False
+[ 2026-03-09 14:54:54 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:54 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:54 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/07-negstrand.bed
+[ 2026-03-09 14:54:54 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:54 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:54 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:54 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:54 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:54 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/08-span-multiple-gaps.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:54 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:54 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] basename             : id
+[ 2026-03-09 14:54:54 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] fasta                : False
+[ 2026-03-09 14:54:54 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:54 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:54 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:54 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:54 - INFO ] processes            : 1
+[ 2026-03-09 14:54:54 - INFO ] mode                 : block
+[ 2026-03-09 14:54:54 - INFO ] single_output        : False
+[ 2026-03-09 14:54:54 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:54 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:54 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/08-span-multiple-gaps.bed
+[ 2026-03-09 14:54:54 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:54 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:54 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:54 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:54 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:54 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/09-missingchrom.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:54 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:54 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] basename             : id
+[ 2026-03-09 14:54:54 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:54 - INFO ] fasta                : False
+[ 2026-03-09 14:54:54 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:54 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:54 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:54 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:54 - INFO ] processes            : 1
+[ 2026-03-09 14:54:54 - INFO ] mode                 : block
+[ 2026-03-09 14:54:54 - INFO ] single_output        : False
+[ 2026-03-09 14:54:54 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:54 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:54 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/09-missingchrom.bed
+[ 2026-03-09 14:54:54 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:54 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:54 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:54 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:54 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:55 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/10-crossblocks-missing-species.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-09 14:54:55 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:55 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] basename             : id
+[ 2026-03-09 14:54:55 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] fasta                : False
+[ 2026-03-09 14:54:55 - INFO ] fasta_header         : species-coords
+[ 2026-03-09 14:54:55 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:55 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:55 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:55 - INFO ] processes            : 1
+[ 2026-03-09 14:54:55 - INFO ] mode                 : block
+[ 2026-03-09 14:54:55 - INFO ] single_output        : False
+[ 2026-03-09 14:54:55 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:55 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:55 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/10-crossblocks-missing-species.bed
+[ 2026-03-09 14:54:55 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:55 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:55 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:55 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:55 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:55 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/01-singleblock-gap.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:55 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:55 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] basename             : id
+[ 2026-03-09 14:54:55 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] fasta                : True
+[ 2026-03-09 14:54:55 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:55 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:55 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:55 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:55 - INFO ] processes            : 1
+[ 2026-03-09 14:54:55 - INFO ] mode                 : block
+[ 2026-03-09 14:54:55 - INFO ] single_output        : False
+[ 2026-03-09 14:54:55 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:55 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:55 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/01-singleblock-gap.bed
+[ 2026-03-09 14:54:55 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:55 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:55 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:55 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:55 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:55 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/02-truncatedblock.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:55 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:55 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] basename             : id
+[ 2026-03-09 14:54:55 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:55 - INFO ] fasta                : True
+[ 2026-03-09 14:54:55 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:55 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:55 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:55 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:55 - INFO ] processes            : 1
+[ 2026-03-09 14:54:55 - INFO ] mode                 : block
+[ 2026-03-09 14:54:55 - INFO ] single_output        : False
+[ 2026-03-09 14:54:55 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:55 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:55 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/02-truncatedblock.bed
+[ 2026-03-09 14:54:55 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:55 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:55 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:55 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:55 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:55 - WARNING ] Expected 2 bases but extracted 1 for region 8-10
+[ 2026-03-09 14:54:56 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/03-crossblocks-missing.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:56 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:56 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] basename             : id
+[ 2026-03-09 14:54:56 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] fasta                : True
+[ 2026-03-09 14:54:56 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:56 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:56 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:56 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:56 - INFO ] processes            : 1
+[ 2026-03-09 14:54:56 - INFO ] mode                 : block
+[ 2026-03-09 14:54:56 - INFO ] single_output        : False
+[ 2026-03-09 14:54:56 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:56 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:56 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/03-crossblocks-missing.bed
+[ 2026-03-09 14:54:56 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:56 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:56 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:56 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:56 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:56 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/04-singleblock.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:56 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:56 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] basename             : id
+[ 2026-03-09 14:54:56 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] fasta                : True
+[ 2026-03-09 14:54:56 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:56 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:56 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:56 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:56 - INFO ] processes            : 1
+[ 2026-03-09 14:54:56 - INFO ] mode                 : block
+[ 2026-03-09 14:54:56 - INFO ] single_output        : False
+[ 2026-03-09 14:54:56 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:56 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:56 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/04-singleblock.bed
+[ 2026-03-09 14:54:56 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:56 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:56 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:56 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:56 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:56 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/05-crossblocks.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:56 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:56 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] basename             : id
+[ 2026-03-09 14:54:56 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] fasta                : True
+[ 2026-03-09 14:54:56 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:56 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:56 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:56 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:56 - INFO ] processes            : 1
+[ 2026-03-09 14:54:56 - INFO ] mode                 : block
+[ 2026-03-09 14:54:56 - INFO ] single_output        : False
+[ 2026-03-09 14:54:56 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:56 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:56 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/05-crossblocks.bed
+[ 2026-03-09 14:54:56 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:56 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:56 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:56 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:56 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:56 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/06-noalign.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:56 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:56 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] basename             : id
+[ 2026-03-09 14:54:56 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:56 - INFO ] fasta                : True
+[ 2026-03-09 14:54:56 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:56 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:56 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:56 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:56 - INFO ] processes            : 1
+[ 2026-03-09 14:54:56 - INFO ] mode                 : block
+[ 2026-03-09 14:54:56 - INFO ] single_output        : False
+[ 2026-03-09 14:54:56 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:56 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:56 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/06-noalign.bed
+[ 2026-03-09 14:54:56 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:56 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:56 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:56 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:56 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:56 - WARNING ] chr1:100-200 No overlapping blocks found.
+
+[ 2026-03-09 14:54:57 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/07-negstrand.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:57 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:57 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] basename             : id
+[ 2026-03-09 14:54:57 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] fasta                : True
+[ 2026-03-09 14:54:57 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:57 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:57 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:57 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:57 - INFO ] processes            : 1
+[ 2026-03-09 14:54:57 - INFO ] mode                 : block
+[ 2026-03-09 14:54:57 - INFO ] single_output        : False
+[ 2026-03-09 14:54:57 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:57 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:57 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/07-negstrand.bed
+[ 2026-03-09 14:54:57 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:57 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:57 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:57 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:57 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:57 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/08-span-multiple-gaps.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:57 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:57 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] basename             : id
+[ 2026-03-09 14:54:57 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] fasta                : True
+[ 2026-03-09 14:54:57 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:57 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:57 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:57 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:57 - INFO ] processes            : 1
+[ 2026-03-09 14:54:57 - INFO ] mode                 : block
+[ 2026-03-09 14:54:57 - INFO ] single_output        : False
+[ 2026-03-09 14:54:57 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:57 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:57 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/08-span-multiple-gaps.bed
+[ 2026-03-09 14:54:57 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:57 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:57 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:57 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:57 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:57 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/09-missingchrom.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:57 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:57 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] basename             : id
+[ 2026-03-09 14:54:57 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:57 - INFO ] fasta                : True
+[ 2026-03-09 14:54:57 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:57 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:57 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:57 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:57 - INFO ] processes            : 1
+[ 2026-03-09 14:54:57 - INFO ] mode                 : block
+[ 2026-03-09 14:54:57 - INFO ] single_output        : False
+[ 2026-03-09 14:54:57 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:57 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:57 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/09-missingchrom.bed
+[ 2026-03-09 14:54:57 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:57 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:57 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:57 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:57 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-09 14:54:58 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/10-crossblocks-missing-species.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-09 14:54:58 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:58 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:58 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:58 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:58 - INFO ] basename             : id
+[ 2026-03-09 14:54:58 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-09 14:54:58 - INFO ] fasta                : True
+[ 2026-03-09 14:54:58 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-09 14:54:58 - INFO ] expected_species     : 
+[ 2026-03-09 14:54:58 - INFO ] expected_species_file : 
+[ 2026-03-09 14:54:58 - INFO ] fasta_dedupe         : none
+[ 2026-03-09 14:54:58 - INFO ] processes            : 1
+[ 2026-03-09 14:54:58 - INFO ] mode                 : block
+[ 2026-03-09 14:54:58 - INFO ] single_output        : False
+[ 2026-03-09 14:54:58 - INFO ] ----------------------------------------
+[ 2026-03-09 14:54:58 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-09 14:54:58 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/10-crossblocks-missing-species.bed
+[ 2026-03-09 14:54:58 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-09 14:54:58 - INFO ] Running in BLOCK mode
+[ 2026-03-09 14:54:58 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-09 14:54:58 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-09 14:54:58 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:18:57 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/01-singleblock-gap.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:18:57 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:57 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:57 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:57 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:57 - INFO ] basename             : id
+[ 2026-03-10 12:18:57 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:57 - INFO ] fasta                : False
+[ 2026-03-10 12:18:57 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:18:57 - INFO ] expected_species     : 
+[ 2026-03-10 12:18:57 - INFO ] expected_species_file : 
+[ 2026-03-10 12:18:57 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:18:57 - INFO ] processes            : 1
+[ 2026-03-10 12:18:57 - INFO ] mode                 : block
+[ 2026-03-10 12:18:57 - INFO ] single_output        : False
+[ 2026-03-10 12:18:57 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:57 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:18:57 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/01-singleblock-gap.bed
+[ 2026-03-10 12:18:57 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:18:57 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:18:57 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:18:57 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:18:57 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:18:57 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/02-truncatedblock.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:18:57 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:57 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:57 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:57 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:57 - INFO ] basename             : id
+[ 2026-03-10 12:18:57 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:57 - INFO ] fasta                : False
+[ 2026-03-10 12:18:57 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:18:57 - INFO ] expected_species     : 
+[ 2026-03-10 12:18:57 - INFO ] expected_species_file : 
+[ 2026-03-10 12:18:57 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:18:57 - INFO ] processes            : 1
+[ 2026-03-10 12:18:57 - INFO ] mode                 : block
+[ 2026-03-10 12:18:57 - INFO ] single_output        : False
+[ 2026-03-10 12:18:57 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:57 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:18:57 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/02-truncatedblock.bed
+[ 2026-03-10 12:18:57 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:18:57 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:18:57 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:18:57 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:18:57 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:18:57 - WARNING ] Expected 2 bases but extracted 1 for region 8-10
+[ 2026-03-10 12:18:58 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/03-crossblocks-missing.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:18:58 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:58 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] basename             : id
+[ 2026-03-10 12:18:58 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] fasta                : False
+[ 2026-03-10 12:18:58 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:18:58 - INFO ] expected_species     : 
+[ 2026-03-10 12:18:58 - INFO ] expected_species_file : 
+[ 2026-03-10 12:18:58 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:18:58 - INFO ] processes            : 1
+[ 2026-03-10 12:18:58 - INFO ] mode                 : block
+[ 2026-03-10 12:18:58 - INFO ] single_output        : False
+[ 2026-03-10 12:18:58 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:58 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:18:58 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/03-crossblocks-missing.bed
+[ 2026-03-10 12:18:58 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:18:58 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:18:58 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:18:58 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:18:58 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:18:58 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/04-singleblock.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:18:58 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:58 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] basename             : id
+[ 2026-03-10 12:18:58 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] fasta                : False
+[ 2026-03-10 12:18:58 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:18:58 - INFO ] expected_species     : 
+[ 2026-03-10 12:18:58 - INFO ] expected_species_file : 
+[ 2026-03-10 12:18:58 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:18:58 - INFO ] processes            : 1
+[ 2026-03-10 12:18:58 - INFO ] mode                 : block
+[ 2026-03-10 12:18:58 - INFO ] single_output        : False
+[ 2026-03-10 12:18:58 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:58 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:18:58 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/04-singleblock.bed
+[ 2026-03-10 12:18:58 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:18:58 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:18:58 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:18:58 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:18:58 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:18:58 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/05-crossblocks.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:18:58 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:58 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] basename             : id
+[ 2026-03-10 12:18:58 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:58 - INFO ] fasta                : False
+[ 2026-03-10 12:18:58 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:18:58 - INFO ] expected_species     : 
+[ 2026-03-10 12:18:58 - INFO ] expected_species_file : 
+[ 2026-03-10 12:18:58 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:18:58 - INFO ] processes            : 1
+[ 2026-03-10 12:18:58 - INFO ] mode                 : block
+[ 2026-03-10 12:18:58 - INFO ] single_output        : False
+[ 2026-03-10 12:18:58 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:58 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:18:58 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/05-crossblocks.bed
+[ 2026-03-10 12:18:58 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:18:58 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:18:58 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:18:58 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:18:59 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:18:59 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/06-noalign.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:18:59 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:59 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:59 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:59 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:59 - INFO ] basename             : id
+[ 2026-03-10 12:18:59 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:59 - INFO ] fasta                : False
+[ 2026-03-10 12:18:59 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:18:59 - INFO ] expected_species     : 
+[ 2026-03-10 12:18:59 - INFO ] expected_species_file : 
+[ 2026-03-10 12:18:59 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:18:59 - INFO ] processes            : 1
+[ 2026-03-10 12:18:59 - INFO ] mode                 : block
+[ 2026-03-10 12:18:59 - INFO ] single_output        : False
+[ 2026-03-10 12:18:59 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:59 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:18:59 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/06-noalign.bed
+[ 2026-03-10 12:18:59 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:18:59 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:18:59 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:18:59 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:18:59 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:18:59 - WARNING ] chr1:100-200 No overlapping blocks found.
+[ 2026-03-10 12:18:59 - WARNING ] 1 of 1 processed regions had no overlapping MAF blocks; final fraction cannot go below 1.000000.
+[ 2026-03-10 12:18:59 - ERROR ] Zero-overlap fraction cannot recover below hardcoded max (0.100000); current lower bound is 1.000000. Failing run.
+[ 2026-03-10 12:18:59 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/07-negstrand.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:18:59 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:59 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:59 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:59 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:59 - INFO ] basename             : id
+[ 2026-03-10 12:18:59 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:18:59 - INFO ] fasta                : False
+[ 2026-03-10 12:18:59 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:18:59 - INFO ] expected_species     : 
+[ 2026-03-10 12:18:59 - INFO ] expected_species_file : 
+[ 2026-03-10 12:18:59 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:18:59 - INFO ] processes            : 1
+[ 2026-03-10 12:18:59 - INFO ] mode                 : block
+[ 2026-03-10 12:18:59 - INFO ] single_output        : False
+[ 2026-03-10 12:18:59 - INFO ] ----------------------------------------
+[ 2026-03-10 12:18:59 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:18:59 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/07-negstrand.bed
+[ 2026-03-10 12:18:59 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:18:59 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:18:59 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:18:59 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:18:59 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:00 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/08-span-multiple-gaps.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:19:00 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:00 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:00 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:00 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:00 - INFO ] basename             : id
+[ 2026-03-10 12:19:00 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:00 - INFO ] fasta                : False
+[ 2026-03-10 12:19:00 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:19:00 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:00 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:00 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:00 - INFO ] processes            : 1
+[ 2026-03-10 12:19:00 - INFO ] mode                 : block
+[ 2026-03-10 12:19:00 - INFO ] single_output        : False
+[ 2026-03-10 12:19:00 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:00 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:00 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/08-span-multiple-gaps.bed
+[ 2026-03-10 12:19:00 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:00 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:00 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:00 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:00 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:00 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/09-missingchrom.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:19:00 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:00 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:00 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:00 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:00 - INFO ] basename             : id
+[ 2026-03-10 12:19:00 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:00 - INFO ] fasta                : False
+[ 2026-03-10 12:19:00 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:19:00 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:00 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:00 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:00 - INFO ] processes            : 1
+[ 2026-03-10 12:19:00 - INFO ] mode                 : block
+[ 2026-03-10 12:19:00 - INFO ] single_output        : False
+[ 2026-03-10 12:19:00 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:00 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:00 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/09-missingchrom.bed
+[ 2026-03-10 12:19:00 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:00 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:00 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:00 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:00 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:00 - WARNING ] chrZ:0-10 No index entries for scaffold.
+[ 2026-03-10 12:19:00 - WARNING ] 1 of 1 processed regions had no overlapping MAF blocks; final fraction cannot go below 1.000000.
+[ 2026-03-10 12:19:00 - ERROR ] Zero-overlap fraction cannot recover below hardcoded max (0.100000); current lower bound is 1.000000. Failing run.
+[ 2026-03-10 12:19:01 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/10-crossblocks-missing-species.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results
+[ 2026-03-10 12:19:01 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:01 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] basename             : id
+[ 2026-03-10 12:19:01 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] fasta                : False
+[ 2026-03-10 12:19:01 - INFO ] fasta_header         : species-coords
+[ 2026-03-10 12:19:01 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:01 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:01 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:01 - INFO ] processes            : 1
+[ 2026-03-10 12:19:01 - INFO ] mode                 : block
+[ 2026-03-10 12:19:01 - INFO ] single_output        : False
+[ 2026-03-10 12:19:01 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:01 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:01 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/10-crossblocks-missing-species.bed
+[ 2026-03-10 12:19:01 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:01 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:01 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:01 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:01 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:01 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/01-singleblock-gap.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:01 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:01 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] basename             : id
+[ 2026-03-10 12:19:01 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] fasta                : True
+[ 2026-03-10 12:19:01 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:01 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:01 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:01 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:01 - INFO ] processes            : 1
+[ 2026-03-10 12:19:01 - INFO ] mode                 : block
+[ 2026-03-10 12:19:01 - INFO ] single_output        : False
+[ 2026-03-10 12:19:01 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:01 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:01 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/01-singleblock-gap.bed
+[ 2026-03-10 12:19:01 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:01 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:01 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:01 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:01 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:01 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/02-truncatedblock.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:01 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:01 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] basename             : id
+[ 2026-03-10 12:19:01 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:01 - INFO ] fasta                : True
+[ 2026-03-10 12:19:01 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:01 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:01 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:01 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:01 - INFO ] processes            : 1
+[ 2026-03-10 12:19:01 - INFO ] mode                 : block
+[ 2026-03-10 12:19:01 - INFO ] single_output        : False
+[ 2026-03-10 12:19:01 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:01 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:01 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/02-truncatedblock.bed
+[ 2026-03-10 12:19:01 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:01 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:01 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:01 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:01 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:01 - WARNING ] Expected 2 bases but extracted 1 for region 8-10
+[ 2026-03-10 12:19:02 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/03-crossblocks-missing.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:02 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:02 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] basename             : id
+[ 2026-03-10 12:19:02 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] fasta                : True
+[ 2026-03-10 12:19:02 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:02 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:02 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:02 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:02 - INFO ] processes            : 1
+[ 2026-03-10 12:19:02 - INFO ] mode                 : block
+[ 2026-03-10 12:19:02 - INFO ] single_output        : False
+[ 2026-03-10 12:19:02 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:02 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:02 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/03-crossblocks-missing.bed
+[ 2026-03-10 12:19:02 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:02 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:02 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:02 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:02 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:02 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/04-singleblock.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:02 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:02 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] basename             : id
+[ 2026-03-10 12:19:02 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] fasta                : True
+[ 2026-03-10 12:19:02 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:02 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:02 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:02 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:02 - INFO ] processes            : 1
+[ 2026-03-10 12:19:02 - INFO ] mode                 : block
+[ 2026-03-10 12:19:02 - INFO ] single_output        : False
+[ 2026-03-10 12:19:02 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:02 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:02 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/04-singleblock.bed
+[ 2026-03-10 12:19:02 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:02 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:02 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:02 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:02 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:02 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/05-crossblocks.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:02 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:02 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] basename             : id
+[ 2026-03-10 12:19:02 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:02 - INFO ] fasta                : True
+[ 2026-03-10 12:19:02 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:02 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:02 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:02 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:02 - INFO ] processes            : 1
+[ 2026-03-10 12:19:02 - INFO ] mode                 : block
+[ 2026-03-10 12:19:02 - INFO ] single_output        : False
+[ 2026-03-10 12:19:02 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:02 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:02 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/05-crossblocks.bed
+[ 2026-03-10 12:19:02 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:02 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:02 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:02 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:02 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:03 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/06-noalign.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:03 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:03 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:03 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:03 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:03 - INFO ] basename             : id
+[ 2026-03-10 12:19:03 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:03 - INFO ] fasta                : True
+[ 2026-03-10 12:19:03 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:03 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:03 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:03 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:03 - INFO ] processes            : 1
+[ 2026-03-10 12:19:03 - INFO ] mode                 : block
+[ 2026-03-10 12:19:03 - INFO ] single_output        : False
+[ 2026-03-10 12:19:03 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:03 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:03 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/06-noalign.bed
+[ 2026-03-10 12:19:03 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:03 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:03 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:03 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:03 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:03 - WARNING ] chr1:100-200 No overlapping blocks found.
+[ 2026-03-10 12:19:03 - WARNING ] 1 of 1 processed regions had no overlapping MAF blocks; final fraction cannot go below 1.000000.
+[ 2026-03-10 12:19:03 - ERROR ] Zero-overlap fraction cannot recover below hardcoded max (0.100000); current lower bound is 1.000000. Failing run.
+[ 2026-03-10 12:19:03 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/07-negstrand.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:03 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:03 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:03 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:03 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:03 - INFO ] basename             : id
+[ 2026-03-10 12:19:03 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:03 - INFO ] fasta                : True
+[ 2026-03-10 12:19:03 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:03 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:03 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:03 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:03 - INFO ] processes            : 1
+[ 2026-03-10 12:19:03 - INFO ] mode                 : block
+[ 2026-03-10 12:19:03 - INFO ] single_output        : False
+[ 2026-03-10 12:19:03 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:03 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:03 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/07-negstrand.bed
+[ 2026-03-10 12:19:03 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:03 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:03 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:03 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:03 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:04 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/08-span-multiple-gaps.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:04 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:04 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] basename             : id
+[ 2026-03-10 12:19:04 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] fasta                : True
+[ 2026-03-10 12:19:04 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:04 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:04 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:04 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:04 - INFO ] processes            : 1
+[ 2026-03-10 12:19:04 - INFO ] mode                 : block
+[ 2026-03-10 12:19:04 - INFO ] single_output        : False
+[ 2026-03-10 12:19:04 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:04 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:04 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/08-span-multiple-gaps.bed
+[ 2026-03-10 12:19:04 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:04 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:04 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:04 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:04 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:04 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/09-missingchrom.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:04 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:04 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] basename             : id
+[ 2026-03-10 12:19:04 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] fasta                : True
+[ 2026-03-10 12:19:04 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:04 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:04 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:04 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:04 - INFO ] processes            : 1
+[ 2026-03-10 12:19:04 - INFO ] mode                 : block
+[ 2026-03-10 12:19:04 - INFO ] single_output        : False
+[ 2026-03-10 12:19:04 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:04 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:04 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/09-missingchrom.bed
+[ 2026-03-10 12:19:04 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:04 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:04 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:04 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:04 - INFO ] Processing batch 1 with 1 region
+[ 2026-03-10 12:19:04 - WARNING ] chrZ:0-10 No index entries for scaffold.
+[ 2026-03-10 12:19:04 - WARNING ] 1 of 1 processed regions had no overlapping MAF blocks; final fraction cannot go below 1.000000.
+[ 2026-03-10 12:19:04 - ERROR ] Zero-overlap fraction cannot recover below hardcoded max (0.100000); current lower bound is 1.000000. Failing run.
+[ 2026-03-10 12:19:04 - INFO ] maf_fetch.py called as: ../maf_fetch.py /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/10-crossblocks-missing-species.bed -b id -o /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results -f -fh species-coords-id
+[ 2026-03-10 12:19:04 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:04 - INFO ] maf_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] index_file           : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] bed_file             : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] basename             : id
+[ 2026-03-10 12:19:04 - INFO ] output               : /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/u...
+[ 2026-03-10 12:19:04 - INFO ] fasta                : True
+[ 2026-03-10 12:19:04 - INFO ] fasta_header         : species-coords-id
+[ 2026-03-10 12:19:04 - INFO ] expected_species     : 
+[ 2026-03-10 12:19:04 - INFO ] expected_species_file : 
+[ 2026-03-10 12:19:04 - INFO ] fasta_dedupe         : none
+[ 2026-03-10 12:19:04 - INFO ] processes            : 1
+[ 2026-03-10 12:19:04 - INFO ] mode                 : block
+[ 2026-03-10 12:19:04 - INFO ] single_output        : False
+[ 2026-03-10 12:19:04 - INFO ] ----------------------------------------
+[ 2026-03-10 12:19:04 - INFO ] Parsing index file.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf.block.idx
+[ 2026-03-10 12:19:04 - INFO ] Parsing BED file...... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/results/10-crossblocks-missing-species.bed
+[ 2026-03-10 12:19:04 - INFO ] Getting MAF header.... /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/utils/maf-fetch-tests/example.maf
+[ 2026-03-10 12:19:04 - INFO ] Running in BLOCK mode
+[ 2026-03-10 12:19:04 - INFO ] Using batch size of 1 regions for 1 total regions with 1 processes.
+[ 2026-03-10 12:19:04 - INFO ] Divided 1 regions into 1 batches of up to 1 regions each.
+[ 2026-03-10 12:19:04 - INFO ] Processing batch 1 with 1 region
