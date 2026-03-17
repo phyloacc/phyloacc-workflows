@@ -183,7 +183,11 @@ def _as_bool(x, default=False):
         return False
     raise ValueError(f"Cannot interpret boolean value from '{x}'")
 
-CLEANUP_CHUNK_INTERMEDIATES = _as_bool(config.get("cleanup_chunk_intermediates", True), True)
+DEBUG_KEEP_INTERMEDIATES = _as_bool(config.get("debug_keep_intermediates", False), False)
+CLEANUP_CHUNK_INTERMEDIATES = _as_bool(
+    config.get("cleanup_chunk_intermediates", not DEBUG_KEEP_INTERMEDIATES),
+    not DEBUG_KEEP_INTERMEDIATES,
+)
 RHO_ONLY = _as_bool(config.get("rho_only", False), False)
 
 # Rho mode:
@@ -224,7 +228,10 @@ if CNE_EXTRACT_FORMAT in {"fa", "fna"}:
 if CNE_EXTRACT_FORMAT not in {"fasta", "maf"}:
     raise ValueError("cne_extract_format must be 'fasta' or 'maf'.")
 CNE_FASTA_HEADER = str(config.get("cne_fasta_header", "species-coords-id")).strip()
-KEEP_CNEE_SIDECARS = _as_bool(config.get("keep_cnee_sidecars", False), False)
+KEEP_CNEE_SIDECARS = _as_bool(
+    config.get("keep_cnee_sidecars", DEBUG_KEEP_INTERMEDIATES),
+    DEBUG_KEEP_INTERMEDIATES,
+)
 
 ALL_BED_TARGETS = expand(
     os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}.phastcon-conserved.bed"),

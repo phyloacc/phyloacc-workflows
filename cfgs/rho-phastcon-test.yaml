@@ -66,6 +66,10 @@ make_cnees: true
 make_cnee_mafs: true
 # (false, if not needed) If true, create 07-CNEE_mafs/{group}/{chrom}/ with one MAF per CNEE and a manifest.txt.
 
+debug_keep_intermediates: false
+# If true, keep large intermediate files and sidecars for debugging.
+# If false, delete chunk-level intermediates and extra sidecars after final outputs are produced.
+
 cnee_ces_merge_gap_bp: 5
 # Merge conserved-element intervals within this bp gap before CDS subtraction to make CNEEs.
 
