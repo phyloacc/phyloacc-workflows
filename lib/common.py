@@ -364,16 +364,12 @@ def runCommand(cmd, log_stream, out_stream, rule, wc=""):
     # Run the command and write the output to the log file
 
     rcode = proc.returncode;
-    print(f"{fmtDT()} - RULE {rule}{wc} - INFO - Command finished with return code: {rcode}", log_stream);
     printWrite(f"{fmtDT()} - RULE {rule}{wc} - INFO - Command finished with return code: {rcode}", log_stream);
     # Get the return code
 
     if rcode != 0:
-        tb = traceback.format_exc()
         printWrite(f"{fmtDT()} - RULE {rule}{wc} - ERROR - Command failed: {cmd_str}", log_stream);
-        printWrite(f"{fmtDT()} - RULE {rule}{wc} - ERROR - Traceback:\n{tb}", log_stream);
-        raise
-        # raise Exception(f"{fmtDT()} - RULE {rule}{wc} - ERROR - Command failed: {cmd_str}");
+        raise RuntimeError(f"Command failed with return code {rcode}: {cmd_str}");
     # If the command failed, raise an exception
 
 #############################################################################

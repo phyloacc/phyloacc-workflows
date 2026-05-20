@@ -1,0 +1,213 @@
+# Dependencies:
+# - snakemake (minimal)
+# - snakemake slurm plugin
+# - phast
+# - ncbi-datasets-cli
+# - hdbscan
+
+run_phylofit: false
+run_phylop: false
+run_phastcons: true
+build_cnees: true
+split_strategy: Ns
+window_overlap_bp: 0
+phylop_alpha: 0.05
+naive_merge_gap_bp: 20
+naive_min_region_sites: 5
+naive_min_region_len_bp: 20
+
+ref_chromosome_groups:
+  scaffold:
+    - NC_085107.1
+    - NC_085108.1
+    - NC_085109.1
+    - NC_085110.1
+    - NC_085111.1
+    - NC_085112.1
+    - NC_085113.1
+    - NC_085114.1
+    - NC_085115.1
+    - NC_085116.1
+    - NC_085117.1
+    - NC_085118.1
+    - NC_085119.1
+    - NC_085120.1
+    - NC_085121.1
+    - NC_085122.1
+    - NC_085123.1
+    - NC_085124.1
+    - NC_085125.1
+    - NC_085126.1
+    - NC_085127.1
+    - NC_085128.1
+    - NC_085129.1
+    - NC_085130.1
+    - NC_085131.1
+    - NC_085132.1
+    - NC_085133.1
+    - NC_085134.1
+
+output_dir:  /n/holylfs05/LABS/informatics/Lab/projects/asaha/phyloacc-workflows-dev/summary-data/Split_by_Ns_B_mori_Bombycoidea
+# The main output directory for the workflow
+
+tmp_dir: /n/holylfs05/LABS/informatics/Lab/projects/asaha/tmp
+# A directory for some temporary files - should have lots of space
+
+
+maf_split_chr_dir: /n/holylfs05/LABS/informatics/Lab/projects/asaha/phyloacc-workflows-dev/summary-data/B_mori_only_Bombycoidea/mafs
+
+maf_ref_id: "bombyx_mori"
+maf_chr_prefix: ""
+maf_ref_chr_joiner: "."
+# The chromosome IDs in the split gffs must match those in the maf
+# In case the chromosomes are labeled differently in the gff and the maf, use the maf_ref_chr_joiner and maf_chr_prefix
+# Chromosome IDs in the split gffs will be maf_ref_id + maf_ref_chr_joiner + maf_chr_prefix
+# If the chromosomes are labeled the same, just set maf_chr_prefix to an empty string, ""
+
+tree_file: /n/holylfs05/LABS/informatics/Lab/projects/asaha/phyloacc-workflows-dev/data/tree/bombyx_neighbors12_subtree.tre
+# The species tree in Newick format
+
+ref_gff: /n/holylfs05/LABS/informatics/Lab/projects/asaha/phyloacc-workflows-dev/data/gff/GCF_030269925.1_ASM3026992v2_genomic.gff
+# The GFF annotation of the reference genome in the MAF
+
+make_cnees: true
+#(false, if not needed) If true, create 06-CNEES/{group}/{chrom}.cnees.bed by subtracting CDS intervals from
+# 04-conserved/{group}/{chrom}.phastcon-conserved.bed.
+
+cnee_output_format: fasta
+# Per-CNEE alignment extraction output: none, fasta, or maf.
+
+debug_keep_intermediates: false
+# If true, keep large intermediate files and sidecars for debugging.
+# If false, delete chunk-level intermediates and extra sidecars after final outputs are produced.
+
+cnee_ces_merge_gap_bp: 5
+# Merge conserved-element intervals within this bp gap before CDS subtraction to make CNEEs.
+
+cnee_min_len_bp: 50
+# Keep only CNEEs with length > cnee_min_len_bp before generating CNE MAFs.
+
+cnee_fasta_header: species-coords-id
+# FASTA header mode passed to maf_fetch.py when cnee_output_format: fasta.
+
+ref_fasta: /n/holylfs05/LABS/informatics/Lab/projects/asaha/phyloacc-workflows-dev/data/assembly/Bombyx_mori_gca030269925v1rs.ASM3026992v2.dna_rm.toplevel.fa
+# hardmasked genome fasta (usually available in ENCODE)
+
+phylofit_chr_dir: /n/holylfs05/LABS/informatics/Lab/projects/asaha/phyloacc-workflows-dev/summary-data/B_mori_only_Bombycoidea/03-phylofit
+
+min_Ns_to_split_by: 100
+
+min_cluster_sizes: [20, 35, 50]
+min_samples: [1, 10, 25, 50, 75]
+
+#############################################################################
+# Resources
+
+rule_resources:
+  default:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60  
+
+  maf_index:
+    partition: shared
+    mem_mb: 64000
+    cpus: 1
+    time: 2880
+
+  make_group_beds:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 30
+
+  maf_split_chr_by_group:
+    partition: sapphire
+    mem_mb: 240000
+    cpus: 2
+    time: 720
+
+  ref_gff_split_by_chr:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 20
+
+  extract_4d_codons_by_chr:
+    partition: shared
+    mem_mb: 128000
+    cpus: 1
+    time: 1440
+
+  extract_4d_sites:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60    
+
+  filter_4d_sites:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60 
+
+  run_phylofit:
+    partition: shared
+    mem_mb: 16000
+    cpus: 1
+    time: 1440      
+
+  get_gc_content:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60
+
+  run_mod_freqs:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 60    
+
+  run_phylop:
+    partition: shared
+    mem_mb: 64000
+    cpus: 1
+    time: 1440       
+
+  convert_wig_to_bed:
+    partition: shared
+    mem_mb: 12000
+    cpus: 1
+    time: 240      
+
+  adjust_pvals:
+    partition: shared
+    mem_mb: 24000
+    cpus: 32
+    time: 720    
+
+  get_conserved_sites:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 10
+
+  get_accelerated_sites:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 10
+
+  site_counts:
+    partition: shared
+    mem_mb: 4000
+    cpus: 1
+    time: 10   
+
+  filter_ns_bed_minlen:
+    mem_mb: 4000
+    time: 60
+    cpus: 1
+    partition: shared

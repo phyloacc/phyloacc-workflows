@@ -1,8 +1,0 @@
-##maf version=1
-## Extracted by maf_fetch.py
-## Source MAF: example.maf
-## Reference region: chr1	2	6	01-singleblock-gap
-a score=1000
-s human.chr1 2 4 + 1000 CTG-A
-s chimp.chr1 2 4 + 1000 -TGAA
-
