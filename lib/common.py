@@ -315,6 +315,21 @@ def writeBedManifest(bed_file, manifest_file):
 
 #############################################################################
 
+def hasSnakemakeOption(option, args=None):
+    # Detect a Snakemake CLI option in either "--flag value" or "--flag=value" form.
+
+    if args is None:
+        args = sys.argv
+
+    return any(arg == option or arg.startswith(option + "=") for arg in args)
+
+def hasAutoPartitionSelection(args=None):
+    # The slurm executor plugin can auto-select a partition when this option is provided.
+
+    return hasSnakemakeOption("--slurm-partition-config", args)
+
+#############################################################################
+
 def getResources(config, rule_name, keys=("partition", "mem_mb", "cpus", "time")):
 # Return dict of all requested resource keys for a rule (with fallback to defaults).
     
@@ -322,10 +337,12 @@ def getResources(config, rule_name, keys=("partition", "mem_mb", "cpus", "time")
                             "cpus" : "cpus_per_task", "time" : "runtime" };
     # Because I use slightly different resource names from what snakemake does for slurm
 
-    rule_resources = {
-        slurm_resource_map[resource] : getResource(config, rule_name, resource)
-        for resource in keys
-    }
+    rule_resources = {};
+    for resource in keys:
+        resource_value = getResource(config, rule_name, resource);
+        if resource == "partition" and resource_value is None:
+            continue;
+        rule_resources[slurm_resource_map[resource]] = resource_value;
 
     # for key, value in rule_resources.items():
     #     meta_logger.info(f"Rule {rule_name} resource '{key}' set to {value}");
@@ -341,6 +358,8 @@ def getResource(config, rule_name, resource):
         return rule_val
     elif default_val is not None:
         return default_val
+    elif resource == "partition" and hasAutoPartitionSelection():
+        return None
     else:
         meta_logger.error(f"Missing resource '{resource}' for rule '{rule_name}' and no default set.");
         raise ValueError();
