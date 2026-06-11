@@ -21,6 +21,9 @@ import traceback
 meta_logger = logging.getLogger('META')
 # Get the logger for the cactuslib module
 
+TOP_LEVEL_EXECUTOR_FILE = "top-level-executor.txt"
+TOP_LEVEL_AUTO_PARTITION_FILE = "top-level-auto-partition.txt"
+
 #############################################################################
 
 # Example of your ColoredFormatter
@@ -144,6 +147,43 @@ def getInfo(version_flag, info_flag, args):
 
 #############################################################################
 
+def getExecutor(args, config):
+    # Extract the executor name from Snakemake CLI arguments.
+
+    for i, arg in enumerate(args):
+        if arg in ("--executor", "-e"):
+            if i + 1 < len(args):
+                return args[i + 1];
+            return "unknown";
+        elif arg.startswith("--executor="):
+            return arg.split("=", 1)[1];
+        elif arg.startswith("-e="):
+            return arg.split("=", 1)[1];
+
+    return config.get("executor", "none");
+
+def getPipelineStateDir(workflow):
+    snakefile_dir = os.path.dirname(os.path.abspath(workflow.snakefile));
+    if os.path.basename(snakefile_dir) == "workflow":
+        snakefile_dir = os.path.dirname(snakefile_dir);
+    return os.path.join(snakefile_dir, ".snakemake");
+
+def getPipelineStateFile(workflow, filename):
+    return os.path.join(getPipelineStateDir(workflow), filename);
+
+def readPipelineStateFlag(filepath):
+    with open(filepath, "r") as handle:
+        value = handle.read().strip().lower();
+
+    if value == "true":
+        return True;
+    if value == "false":
+        return False;
+
+    raise ValueError(f"Invalid boolean pipeline state in {filepath}: '{value}'");
+
+#############################################################################
+
 def pipelineSetup(config, args, version_flag, info_flag, config_flag, debug, workflow):
     main_flag = True;
     if "__main__.py" in args[0]:
@@ -158,6 +198,38 @@ def pipelineSetup(config, args, version_flag, info_flag, config_flag, debug, wor
     if any([arg in args for arg in ["--dry-run", "--dryrun", "-n"]]):
         dry_run_flag = True;
     # Whether the pipeline is running in dry-run mode
+
+    state_dir = getPipelineStateDir(workflow);
+    executor_state_file = getPipelineStateFile(workflow, TOP_LEVEL_EXECUTOR_FILE);
+    auto_partition_state_file = getPipelineStateFile(workflow, TOP_LEVEL_AUTO_PARTITION_FILE);
+
+    if main_flag:
+        top_level_executor = getExecutor(args, config);
+        auto_partition_enabled = hasSnakemakeOption("--slurm-partition-config", args);
+
+        if not os.path.isdir(state_dir):
+            os.makedirs(state_dir);
+
+        with open(executor_state_file, "w") as handle:
+            handle.write(top_level_executor);
+        with open(auto_partition_state_file, "w") as handle:
+            handle.write("true" if auto_partition_enabled else "false");
+    else:
+        if not os.path.exists(executor_state_file):
+            raise FileNotFoundError(
+                f"Missing pipeline state file '{executor_state_file}' for worker Snakemake invocation."
+            );
+        if not os.path.exists(auto_partition_state_file):
+            raise FileNotFoundError(
+                f"Missing pipeline state file '{auto_partition_state_file}' for worker Snakemake invocation."
+            );
+
+        with open(executor_state_file, "r") as handle:
+            top_level_executor = handle.read().strip();
+        auto_partition_enabled = readPipelineStateFlag(auto_partition_state_file);
+
+    config["__top_level_executor__"] = top_level_executor;
+    config["__auto_partition_enabled__"] = auto_partition_enabled;
 
     log_level = "info";
     if any([arg in args for arg in ["--rulegraph", "--dag"]]):
@@ -192,6 +264,8 @@ def pipelineSetup(config, args, version_flag, info_flag, config_flag, debug, wor
     if config_flag or debug:
         pad = 30;
         meta_logger.debug(spacedOut("Config file", pad) + os.path.abspath(workflow.configfiles[0])); 
+        meta_logger.debug(spacedOut("Top-level executor", pad) + str(top_level_executor));
+        meta_logger.debug(spacedOut("Auto partition", pad) + str(auto_partition_enabled));
         meta_logger.debug("---");   
         for key, value in config.items():
             meta_logger.debug(spacedOut(key, pad) + str(value));
@@ -323,8 +397,15 @@ def hasSnakemakeOption(option, args=None):
 
     return any(arg == option or arg.startswith(option + "=") for arg in args)
 
-def hasAutoPartitionSelection(args=None):
-    # The slurm executor plugin can auto-select a partition when this option is provided.
+def hasAutoPartitionSelection(config, args=None):
+    # Auto-partitioning is only valid when the top-level executor was Slurm-like
+    # and the main Snakemake process was started with --slurm-partition-config.
+
+    top_level_executor = config.get("__top_level_executor__", "");
+    auto_partition_enabled = bool(config.get("__auto_partition_enabled__", False));
+
+    if top_level_executor in ["slurm", "cannon"]:
+        return auto_partition_enabled;
 
     return hasSnakemakeOption("--slurm-partition-config", args)
 
@@ -358,7 +439,7 @@ def getResource(config, rule_name, resource):
         return rule_val
     elif default_val is not None:
         return default_val
-    elif resource == "partition" and hasAutoPartitionSelection():
+    elif resource == "partition" and hasAutoPartitionSelection(config):
         return None
     else:
         meta_logger.error(f"Missing resource '{resource}' for rule '{rule_name}' and no default set.");
