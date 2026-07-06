@@ -46,8 +46,16 @@ MAF_PREP_DIR = os.path.join(OUTPUT_DIR, "01-maf-prep")
 NEUTRAL_MODEL_DIR = os.path.join(OUTPUT_DIR, "02-neutral-model")
 PHYLOP_STAGE_DIR = os.path.join(OUTPUT_DIR, "03-phylop")
 
-MAF_SPLIT_BY_CHROM_DIR = config.get("maf_split_chr_dir", os.path.join(MAF_PREP_DIR, "maf-by-chromosome"))
-PHYLOFIT_DIR = config.get("phylofit_chr_dir", os.path.join(NEUTRAL_MODEL_DIR, "phylofit"))
+MAF_SPLIT_BY_CHROM_DIR = COMMON.getOptionalConfigPath(
+    config,
+    "maf_split_chr_dir",
+    os.path.join(MAF_PREP_DIR, "maf-by-chromosome"),
+)
+PHYLOFIT_DIR = COMMON.getOptionalConfigPath(
+    config,
+    "phylofit_chr_dir",
+    os.path.join(NEUTRAL_MODEL_DIR, "phylofit"),
+)
 
 MAF_REF_ID = config["maf_ref_id"]
 MAF_CHR_PREFIX = config["maf_chr_prefix"]
