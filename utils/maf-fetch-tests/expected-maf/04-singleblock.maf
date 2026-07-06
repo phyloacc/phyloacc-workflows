@@ -1,8 +1,0 @@
-##maf version=1
-## Extracted by maf_fetch.py
-## Source MAF: example.maf
-## Reference region: chr2	5	10	04-singleblock
-a score=300
-s human.chr2 5 5 + 2000 AAACC
-s chimp.chr2 5 5 + 2000 GAACC
-
