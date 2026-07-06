@@ -198,10 +198,18 @@ NS_INTERVALS_RAW_DIR = os.path.join(NS_INTERVALS_DIR, "raw")
 NS_INTERVALS_FILTERED_DIR = os.path.join(NS_INTERVALS_DIR, "filtered")
 CHUNK_BEDS_DIR = os.path.join(MAF_PREP_DIR, "chunk-beds")
 CHUNKED_MAFS_DIR = os.path.join(MAF_PREP_DIR, "chunked-mafs")
-MAF_SPLIT_BY_CHROM_DIR = config.get("maf_split_chr_dir", os.path.join(MAF_PREP_DIR, "maf-by-chromosome"))
+MAF_SPLIT_BY_CHROM_DIR = COMMON.getOptionalConfigPath(
+    config,
+    "maf_split_chr_dir",
+    os.path.join(MAF_PREP_DIR, "maf-by-chromosome"),
+)
 
 NEUTRAL_MODEL_DIR = os.path.join(OUTPUT_DIR, "02-neutral-model")
-PHYLOFIT_DIR = config.get("phylofit_chr_dir", os.path.join(NEUTRAL_MODEL_DIR, "phylofit"))
+PHYLOFIT_DIR = COMMON.getOptionalConfigPath(
+    config,
+    "phylofit_chr_dir",
+    os.path.join(NEUTRAL_MODEL_DIR, "phylofit"),
+)
 
 PHASTCONS_DIR = os.path.join(OUTPUT_DIR, "04-phastcons")
 CONSERVE_DIR = os.path.join(PHASTCONS_DIR, "regions")

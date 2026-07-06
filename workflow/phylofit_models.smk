@@ -105,7 +105,11 @@ REFERENCE_GFF_DIR = os.path.join(REFERENCE_DIR, "gffs")
 GROUP_BEDS_DIR = os.path.join(REFERENCE_DIR, "group-beds")
 
 MAF_PREP_DIR = os.path.join(OUTPUT_DIR, "01-maf-prep")
-MAF_SPLIT_DIR = config.get("maf_split_chr_dir", os.path.join(MAF_PREP_DIR, "maf-by-chromosome"))
+MAF_SPLIT_DIR = COMMON.getOptionalConfigPath(
+    config,
+    "maf_split_chr_dir",
+    os.path.join(MAF_PREP_DIR, "maf-by-chromosome"),
+)
 
 NEUTRAL_MODEL_DIR = os.path.join(OUTPUT_DIR, "02-neutral-model")
 CODONS_DIR = os.path.join(NEUTRAL_MODEL_DIR, "4d-codons")
@@ -113,7 +117,11 @@ SITES_DIR = os.path.join(NEUTRAL_MODEL_DIR, "4d-sites")
 SITES_RAW_DIR = os.path.join(SITES_DIR, "raw")
 SITES_FILTERED_DIR = os.path.join(SITES_DIR, "filtered")
 NEUTRAL_SUMMARY_DIR = os.path.join(NEUTRAL_MODEL_DIR, "summary")
-PHYLOFIT_DIR = config.get("phylofit_chr_dir", os.path.join(NEUTRAL_MODEL_DIR, "phylofit"))
+PHYLOFIT_DIR = COMMON.getOptionalConfigPath(
+    config,
+    "phylofit_chr_dir",
+    os.path.join(NEUTRAL_MODEL_DIR, "phylofit"),
+)
 PHYLOFIT_UNCORRECTED_DIR = os.path.join(PHYLOFIT_DIR, "{chromosome_group}", "uncorrected-mods")
 USE_GC_CORRECTED_MODELS = _as_bool(
     config.get("use_gc_corrected_models", config.get("apply_gc_correction", True)),

@@ -184,6 +184,19 @@ def readPipelineStateFlag(filepath):
 
 #############################################################################
 
+def getOptionalConfigPath(config, key, default):
+    value = config.get(key)
+    if value is None:
+        return default
+
+    value = str(value).strip()
+    if value == "":
+        return default
+
+    return value
+
+#############################################################################
+
 def pipelineSetup(config, args, version_flag, info_flag, config_flag, debug, workflow):
     main_flag = True;
     if "__main__.py" in args[0]:
