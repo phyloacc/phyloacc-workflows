@@ -8,7 +8,6 @@ import sys
 import os
 import shutil
 import re
-import requests
 import subprocess
 import logging
 from datetime import datetime

@@ -1,0 +1,16 @@
+name: phyloacc-workflows2
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python>=3.11,<3.13  # cap avoids a broken 3.14.0rc1 bioconda build; raise once 3.14 is stable
+  - snakemake-minimal
+  - snakemake-executor-plugin-slurm
+  - samtools
+  - picard
+  - phast
+  - ncbi-datasets-cli
+  - pyyaml
+  - pip
+  - pip:
+      - mafutils==0.1.1
