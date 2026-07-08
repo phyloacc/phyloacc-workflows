@@ -264,7 +264,7 @@ if not bool(config.get("__ref_fasta_index_rule_defined__", False)):
         log:
             job_log = os.path.join(LOG_DIR, "ref_fasta_index", "run.log")
         resources:
-            **getRuleResources("make_group_beds")
+            **getRuleResources("ref_fasta_index")
         run:
             with open(log.job_log, "w") as log_stream:
                 try:

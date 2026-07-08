@@ -482,7 +482,7 @@ if not bool(config.get("__ref_fasta_index_rule_defined__", False)):
         log:
             job_log = os.path.join(LOG_DIR, "ref_fasta_index", "run.log")
         resources:
-            **getRuleResources("picard_scatter_by_ns")
+            **getRuleResources("ref_fasta_index")
         run:
             with open(log.job_log, "w") as log_stream:
                 try:
@@ -504,11 +504,11 @@ if not bool(config.get("__ref_fasta_dict_rule_defined__", False)):
         log:
             job_log = os.path.join(LOG_DIR, "ref_fasta_dict", "run.log")
         resources:
-            **getRuleResources("picard_scatter_by_ns")
+            **getRuleResources("ref_fasta_dict")
         run:
             with open(log.job_log, "w") as log_stream:
                 try:
-                    mem = config.get("rule_resources", {}).get("picard_scatter_by_ns", {}).get("mem_mb", 4000)
+                    mem = config.get("rule_resources", {}).get("ref_fasta_dict", {}).get("mem_mb", 4000)
                     cmd = [
                         "picard",
                         "CreateSequenceDictionary",
@@ -638,7 +638,7 @@ rule fixed_windows_bed:
     log:
         job_log = os.path.join(LOG_DIR, "fixed_windows_bed", "{chromosome_group}", "{ref_chromosome}.log")
     resources:
-        **getRuleResources("default")
+        **getRuleResources("fixed_windows_bed")
     run:
         with open(log.job_log, "w") as log_stream:
             try:
@@ -1270,7 +1270,7 @@ rule extract_cds_bed_chr:
     log:
         job_log = os.path.join(LOG_DIR, "extract_cds_bed_chr", "{chromosome_group}", "{ref_chromosome}.log")
     resources:
-        **getRuleResources("get_conserved_sites")
+        **getRuleResources("extract_cds_bed_chr")
     run:
         import os
         import traceback
@@ -1310,7 +1310,7 @@ rule cnees_from_conserved_chr:
     log:
         job_log = os.path.join(LOG_DIR, "cnees_from_conserved_chr", "{chromosome_group}", "{ref_chromosome}.log")
     resources:
-        **getRuleResources("get_conserved_sites")
+        **getRuleResources("cnees_from_conserved_chr")
     run:
         import os
         import traceback
@@ -1410,7 +1410,7 @@ rule cnees_to_bed4_chr:
     log:
         job_log = os.path.join(LOG_DIR, "cnees_to_bed4_chr", "{chromosome_group}", "{ref_chromosome}.log")
     resources:
-        **getRuleResources("get_conserved_sites")
+        **getRuleResources("cnees_to_bed4_chr")
     run:
         import os
         import traceback
@@ -1467,7 +1467,7 @@ rule cnee_mafs_chr:
     log:
         job_log = os.path.join(LOG_DIR, "cnee_mafs_chr", "{chromosome_group}", "{ref_chromosome}.log")
     resources:
-        **getRuleResources("maf_split_by_ns_minlen")
+        **getRuleResources("cnee_mafs_chr")
     run:
         import glob
         import os

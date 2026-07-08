@@ -308,7 +308,7 @@ rule naive_cluster_conserved_sites:
     log:
         job_log = os.path.join(LOG_DIR, "naive_cluster_conserved_sites", "{chromosome_group}", "{ref_chromosome}.log")
     resources:
-        **getRuleResources("get_conserved_sites")
+        **getRuleResources("naive_cluster_conserved_sites")
     run:
         with open(log.job_log, "w") as log_stream:
             try:
