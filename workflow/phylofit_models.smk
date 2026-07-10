@@ -145,7 +145,11 @@ AVG_GC_FILE = os.path.join(GC_SUMMARY_DIR, avg_gc_basename);
 # Various output sub-directories
 
 REF_FASTA = config["ref_fasta"];
-REF_INDEX = config.get("ref_fasta_index", config.get("ref_genome_index", REF_FASTA + ".fai"));
+REF_INDEX = COMMON.getOptionalConfigPath(
+    config,
+    "ref_fasta_index",
+    COMMON.getOptionalConfigPath(config, "ref_genome_index", REF_FASTA + ".fai"),
+);
 if os.path.abspath(REF_INDEX) != os.path.abspath(REF_FASTA + ".fai"):
     raise ValueError(
         f"ref_fasta_index must match ref_fasta + '.fai' because samtools faidx writes next to the FASTA. "

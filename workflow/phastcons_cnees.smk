@@ -217,9 +217,12 @@ RHO_STATS_DIR = os.path.join(PHASTCONS_DIR, "rho")
 
 CNEES_ROOT_DIR = os.path.join(OUTPUT_DIR, "05-cnees", "phastcons")
 CNEES_DIR = os.path.join(CNEES_ROOT_DIR, "bed")
-CNEE_MAF_DIR = os.path.join(CNEES_ROOT_DIR, "maf")
 REF_FASTA = config["ref_fasta"]
-REF_INDEX = config.get("ref_fasta_index", config.get("ref_genome_index", REF_FASTA + ".fai"))
+REF_INDEX = COMMON.getOptionalConfigPath(
+    config,
+    "ref_fasta_index",
+    COMMON.getOptionalConfigPath(config, "ref_genome_index", REF_FASTA + ".fai"),
+)
 if os.path.abspath(REF_INDEX) != os.path.abspath(REF_FASTA + ".fai"):
     raise ValueError(
         f"ref_fasta_index must match ref_fasta + '.fai' because samtools faidx writes next to the FASTA. "
@@ -400,6 +403,7 @@ if CNEE_OUTPUT_FORMAT not in {"none", "fasta", "maf"}:
 if CNEE_OUTPUT_FORMAT != "none" and not MAKE_CNEES:
     raise ValueError("cnee_output_format requires build_cnees=true.")
 MAKE_CNEE_MAFS = CNEE_OUTPUT_FORMAT != "none"
+CNEE_MAF_DIR = os.path.join(CNEES_ROOT_DIR, CNEE_OUTPUT_FORMAT if CNEE_OUTPUT_FORMAT == "fasta" else "maf")
 CNEE_CES_MERGE_GAP_BP = int(config.get("cnee_ces_merge_gap_bp", 5))
 if CNEE_CES_MERGE_GAP_BP < 0:
     raise ValueError("cnee_ces_merge_gap_bp must be >= 0.")
@@ -1454,7 +1458,7 @@ rule cnees_to_bed4_chr:
 
 ####################
 
-rule cnee_mafs_chr:
+rule cnee_alignments_chr:
     input:
         cnees_bed4 = rules.cnees_to_bed4_chr.output.cnees_bed4,
         maf = rules.maf_index_chr.input.maf,
@@ -1463,11 +1467,11 @@ rule cnee_mafs_chr:
         manifest = os.path.join(CNEE_MAF_DIR, "{chromosome_group}", "{ref_chromosome}", "manifest.txt")
     params:
         outdir = os.path.join(CNEE_MAF_DIR, "{chromosome_group}", "{ref_chromosome}"),
-        rule_name = "cnee_mafs_chr"
+        rule_name = "cnee_alignments_chr"
     log:
-        job_log = os.path.join(LOG_DIR, "cnee_mafs_chr", "{chromosome_group}", "{ref_chromosome}.log")
+        job_log = os.path.join(LOG_DIR, "cnee_alignments_chr", "{chromosome_group}", "{ref_chromosome}.log")
     resources:
-        **getRuleResources("cnee_mafs_chr")
+        **getRuleResources("cnee_alignments_chr")
     run:
         import glob
         import os

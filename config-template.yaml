@@ -211,166 +211,199 @@ rule_resources:
     time: 60
 
   maf_index:
+    partition:
     mem_mb: 64000
     cpus: 1
     time: 2880
 
   make_group_beds:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 30
 
   maf_split_chr_by_group:
+    partition:
     mem_mb: 240000
     cpus: 1
     time: 720
 
   ref_gff_split_by_chr:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 20
 
   ref_fasta_index:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 60
 
   extract_4d_codons_by_chr:
+    partition:
     mem_mb: 128000
     cpus: 1
     time: 1440
 
   extract_4d_sites:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 60
 
   filter_4d_sites:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 60
 
   run_phylofit:
+    partition:
     mem_mb: 16000
     cpus: 1
     time: 1440
 
   get_gc_content:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 60
 
   run_mod_freqs:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 60
 
   run_phylop:
+    partition:
     mem_mb: 64000
     cpus: 1
     time: 1440
 
   convert_wig_to_bed:
+    partition:
     mem_mb: 12000
     cpus: 1
     time: 240
 
   adjust_pvals:
+    partition:
     mem_mb: 24000
     cpus: 32
     time: 720
 
   get_conserved_sites:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 10
 
   get_accelerated_sites:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 10
 
   site_counts:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 10
 
   naive_cluster_conserved_sites:
+    partition:
     mem_mb: 8000
     cpus: 1
     time: 120
 
   ref_fasta_dict:
+    partition:
     mem_mb: 8000
     cpus: 1
     time: 120
 
   picard_scatter_by_ns:
+    partition:
     mem_mb: 8000
     cpus: 1
     time: 120
 
   ns_to_bed:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 30
 
   filter_ns_bed_minlen:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 60
 
   ns_minlen_to_bed3:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 30
 
   fixed_windows_bed:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 60
 
   maf_index_chr:
+    partition:
     mem_mb: 16000
     cpus: 1
     time: 240
 
   maf_split_by_ns_minlen:
+    partition:
     mem_mb: 32000
     cpus: 2
     time: 720
 
   filter_maf_by_gap:
+    partition:
     mem_mb: 8000
     cpus: 1
     time: 120
 
   phastcons_chunk:
+    partition:
     mem_mb: 16000
     cpus: 8
     time: 720
 
   phastcons_concat_chr:
+    partition:
     mem_mb: 8000
     cpus: 1
     time: 120
 
   extract_cds_bed_chr:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 60
 
   cnees_from_conserved_chr:
+    partition:
     mem_mb: 8000
     cpus: 1
     time: 120
 
   cnees_to_bed4_chr:
+    partition:
     mem_mb: 4000
     cpus: 1
     time: 30
 
-  cnee_mafs_chr:
+  cnee_alignments_chr:
+    partition:
     mem_mb: 16000
     cpus: 4
     time: 720
