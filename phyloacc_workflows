@@ -1,0 +1,371 @@
+#!/usr/bin/env bash
+# phyloacc-workflows pseudo-CLI. Subcommands:
+#   setup          - create/update (optionally --force recreate) the conda env from envs/environment.yml
+#   setup --export - print 'conda env export' for the current env (redirect to save a lock file)
+#   check          - read-only: report whether the env exists and is up to date; never modifies anything
+#                    (global --verbose adds env paths, hash comparison, and installed tool versions)
+#   run            - activate the env and exec snakemake with all remaining args passed through untouched
+#                    (defaults to -s <this dir>/Snakefile unless -s/--snakefile is already given;
+#                    warns if no --executor/-e is given and no Slurm allocation is detected)
+#   help           - show usage
+#
+# Env name override: --env-name NAME (must come before the subcommand) or the
+# PHYLOACC_ENV_NAME env var; flag takes precedence. Default: phyloacc-workflows.
+# --env-name must precede the subcommand so it never collides with run's
+# "everything after run is untouched snakemake args" contract.
+#
+# --verbose/-v (also global, must precede the subcommand) echoes the underlying
+# conda/mamba/snakemake commands to stderr before running them.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_NAME="${PHYLOACC_ENV_NAME:-phyloacc-workflows}"
+ENV_FILE="$SCRIPT_DIR/envs/environment.yml"
+VERBOSE=0
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [--env-name NAME] [--verbose] <command> [args...]
+
+Global options (must come before the command):
+  --env-name NAME         Name of the conda environment to use. Can also be set 
+                          via the environment variable PHYLOACC_ENV_NAME. Must 
+                          always be provided if not using the default environment 
+                          name. Default: phyloacc-workflows.
+  --verbose, -v           Echo the underlying conda/mamba/snakemake commands to
+                          stderr before running them. For 'check', also prints
+                          env paths, hash comparison, and installed tool versions.
+
+Commands:
+  setup                   Create or update the conda environment from
+                          envs/environment.yml.
+    --force               Delete and recreate the environment from scratch
+                          instead of updating it. Destructive; prompts for
+                          explicit confirmation.
+    --export              Print 'conda env export' for the current environment
+                          instead of creating/updating it (redirect to a file
+                          to save a reproducibility lock file).
+  check                   Report whether the conda environment exists and is
+                          up to date. Read-only; never creates, updates, or
+                          deletes anything.
+  run <snakemake-args>    Activate the environment and run Snakemake, passing
+                          all arguments after 'run' through to snakemake
+                          untouched. Defaults to -s $SCRIPT_DIR/Snakefile
+                          unless -s/--snakefile is already given. Warns if no
+                          --executor/-e is given and no Slurm allocation is
+                          detected.
+  help, -h, --help        Show this help message.
+
+Examples:
+  $(basename "$0") setup
+  $(basename "$0") setup --export > environment-lock.yml
+  $(basename "$0") --verbose check
+  $(basename "$0") run --configfile foo.yaml -j 20 -e slurm --dryrun
+  $(basename "$0") --env-name phyloacc-workflows-test setup
+  PHYLOACC_ENV_NAME=phyloacc-workflows-test $(basename "$0") setup
+EOF
+}
+
+# Echoes "$@" to stderr as a "+ cmd ..." trace line when VERBOSE is set, then runs it.
+run_cmd() {
+    if [[ "$VERBOSE" -eq 1 ]]; then
+        { printf '[phyloacc_workflows] +'; printf ' %q' "$@"; printf '\n'; } >&2
+    fi
+    "$@"
+}
+
+# --- conda context (only computed for setup/check/run) ---------------------------------
+
+init_conda_context() {
+    if ! command -v conda >/dev/null 2>&1; then
+        echo "[phyloacc_workflows] 'conda' was not found on PATH. Load or activate your conda installation (e.g. 'module load miniconda3', or source its conda.sh) and try again." >&2
+        exit 1
+    fi
+
+    if command -v mamba >/dev/null 2>&1; then
+        CONDA_CMD="mamba"
+    else
+        CONDA_CMD="conda"
+    fi
+
+    CONDA_BASE="$(conda info --base)"
+    # shellcheck disable=SC1091
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+
+    ENV_PREFIX="$CONDA_BASE/envs/$ENV_NAME"
+    HASH_FILE="$ENV_PREFIX/.environment.yml.sha256"
+}
+
+current_hash() {
+    sha256sum "$ENV_FILE" | cut -d' ' -f1
+}
+
+# Echoes exactly one of: missing | stale | ok. Always exits 0 - callers branch on the
+# echoed string, not on this function's exit status.
+describe_env_status() {
+    if [[ ! -d "$ENV_PREFIX" ]]; then
+        echo "missing"
+        return
+    fi
+
+    local current
+    current="$(current_hash)"
+
+    if [[ ! -f "$HASH_FILE" ]] || [[ "$(cat "$HASH_FILE")" != "$current" ]]; then
+        echo "stale"
+    else
+        echo "ok"
+    fi
+}
+
+# --- subcommands -------------------------------------------------------------------------
+
+cmd_check() {
+    if [[ $# -gt 0 ]]; then
+        echo "[phyloacc_workflows] check: unknown argument '$1' (did you mean '--verbose' before the command?)" >&2
+        usage >&2
+        exit 1
+    fi
+
+    local status
+    status="$(describe_env_status)"
+
+    case "$status" in
+        missing)
+            echo "[phyloacc_workflows] Environment '$ENV_NAME' is NOT installed. Run: $(basename "$0") setup" >&2
+            print_verbose_env_details
+            return 1
+            ;;
+        stale)
+            echo "[phyloacc_workflows] Environment '$ENV_NAME' exists but is STALE (envs/environment.yml has changed since it was last set up). Run: $(basename "$0") setup" >&2
+            print_verbose_env_details
+            return 1
+            ;;
+        ok)
+            echo "[phyloacc_workflows] Environment '$ENV_NAME' is up to date."
+            print_verbose_env_details
+            return 0
+            ;;
+    esac
+}
+
+# Extra diagnostic detail for global --verbose on `check`: paths, hash comparison, and
+# (if the env exists) installed versions of the packages listed in environment.yml.
+print_verbose_env_details() {
+    if [[ "$VERBOSE" -ne 1 ]]; then
+        return
+    fi
+
+    echo "[phyloacc_workflows]   env prefix:  $ENV_PREFIX" >&2
+    echo "[phyloacc_workflows]   hash file:   $HASH_FILE" >&2
+
+    if [[ -f "$HASH_FILE" ]]; then
+        echo "[phyloacc_workflows]   stored hash: $(cat "$HASH_FILE")" >&2
+    else
+        echo "[phyloacc_workflows]   stored hash: (none)" >&2
+    fi
+    echo "[phyloacc_workflows]   current hash: $(current_hash)" >&2
+
+    if [[ -d "$ENV_PREFIX" ]]; then
+        echo "[phyloacc_workflows]   installed versions:" >&2
+        { conda list -n "$ENV_NAME" 2>/dev/null \
+            | grep -Ei '^(python|snakemake|samtools|picard|phast|ncbi-datasets-cli|pyyaml|mafutils) ' \
+            | sed 's/^/[phyloacc_workflows]     /' >&2; } || true
+    fi
+}
+
+cmd_setup_export() {
+    local status
+    status="$(describe_env_status)"
+
+    if [[ "$status" == "missing" ]]; then
+        echo "[phyloacc_workflows] Environment '$ENV_NAME' is NOT installed; nothing to export. Run: $(basename "$0") setup" >&2
+        exit 1
+    fi
+
+    run_cmd conda env export -n "$ENV_NAME"
+}
+
+cmd_setup() {
+    local force=0
+    local do_export=0
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force)
+                force=1
+                shift
+                ;;
+            --export)
+                do_export=1
+                shift
+                ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            *)
+                echo "[phyloacc_workflows] setup: unknown argument '$1'" >&2
+                usage >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ "$do_export" -eq 1 ]]; then
+        if [[ "$force" -eq 1 ]]; then
+            echo "[phyloacc_workflows] setup: --export and --force cannot be used together" >&2
+            exit 1
+        fi
+        cmd_setup_export
+        return
+    fi
+
+    local status
+    status="$(describe_env_status)"
+
+    if [[ "$force" -eq 1 ]] && [[ "$status" != "missing" ]]; then
+        echo "[phyloacc_workflows] WARNING: --force will DELETE the existing conda environment '$ENV_NAME' ($ENV_PREFIX) and recreate it from scratch. This cannot be undone." >&2
+        read -r -p "[phyloacc_workflows] Type 'yes' to confirm deletion of '$ENV_NAME': " confirm
+        if [[ "$confirm" != "yes" ]]; then
+            echo "[phyloacc_workflows] Aborted; environment was not deleted." >&2
+            exit 1
+        fi
+        echo "[phyloacc_workflows] Removing conda environment '$ENV_NAME' ..."
+        run_cmd "$CONDA_CMD" env remove -n "$ENV_NAME" -y
+        status="missing"
+    fi
+
+    case "$status" in
+        missing)
+            echo "[phyloacc_workflows] Creating conda environment '$ENV_NAME' from $ENV_FILE ..."
+            run_cmd "$CONDA_CMD" env create -n "$ENV_NAME" -f "$ENV_FILE"
+            ;;
+        stale)
+            echo "[phyloacc_workflows] envs/environment.yml has changed; updating '$ENV_NAME' ..."
+            run_cmd "$CONDA_CMD" env update -n "$ENV_NAME" -f "$ENV_FILE" --prune
+            ;;
+        ok)
+            echo "[phyloacc_workflows] Environment '$ENV_NAME' is already up to date; nothing to do. (Use --force to recreate anyway.)"
+            return 0
+            ;;
+    esac
+
+    current_hash > "$HASH_FILE"
+    echo "[phyloacc_workflows] Environment '$ENV_NAME' is ready."
+}
+
+# Warns (non-fatal) if this looks like an unintentional local run: no --executor/-e
+# given, and no active Slurm allocation ($SLURM_JOB_ID unset).
+warn_if_unallocated() {
+    local has_executor_arg=0
+    for arg in "$@"; do
+        case "$arg" in
+            -e|--executor|--executor=*)
+                has_executor_arg=1
+                break
+                ;;
+        esac
+    done
+
+    if [[ "$has_executor_arg" -eq 0 ]] && [[ -z "${SLURM_JOB_ID:-}" ]]; then
+        echo "[phyloacc_workflows] WARNING: no --executor/-e given and no active Slurm allocation detected (\$SLURM_JOB_ID unset)." >&2
+        echo "[phyloacc_workflows]          Snakemake will run entirely on this node. If this is a login node, pass '-e slurm' or request an interactive allocation first." >&2
+    fi
+}
+
+cmd_run() {
+    local status
+    status="$(describe_env_status)"
+
+    if [[ "$status" != "ok" ]]; then
+        echo "[phyloacc_workflows] Environment '$ENV_NAME' is not ready ($status). Run '$(basename "$0") setup' first." >&2
+        exit 1
+    fi
+
+    warn_if_unallocated "$@"
+
+    local has_snakefile_arg=0
+    for arg in "$@"; do
+        case "$arg" in
+            -s|--snakefile|--snakefile=*)
+                has_snakefile_arg=1
+                break
+                ;;
+        esac
+    done
+
+    conda activate "$ENV_NAME"
+
+    if [[ "$has_snakefile_arg" -eq 1 ]]; then
+        if [[ "$VERBOSE" -eq 1 ]]; then
+            { printf '[phyloacc_workflows] +'; printf ' %q' snakemake "$@"; printf '\n'; } >&2
+        fi
+        exec snakemake "$@"
+    else
+        if [[ "$VERBOSE" -eq 1 ]]; then
+            { printf '[phyloacc_workflows] +'; printf ' %q' snakemake -s "$SCRIPT_DIR/Snakefile" "$@"; printf '\n'; } >&2
+        fi
+        exec snakemake -s "$SCRIPT_DIR/Snakefile" "$@"
+    fi
+}
+
+# --- main dispatch -----------------------------------------------------------------------
+
+# Global flags must precede the subcommand. Parsing stops at the first token that
+# isn't a recognized global flag, so it can never consume any of run's passthrough args.
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --env-name)
+            if [[ $# -lt 2 ]]; then
+                echo "[phyloacc_workflows] --env-name requires a value" >&2
+                exit 1
+            fi
+            ENV_NAME="$2"
+            shift 2
+            ;;
+        --env-name=*)
+            ENV_NAME="${1#--env-name=}"
+            shift
+            ;;
+        --verbose|-v)
+            VERBOSE=1
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [[ $# -eq 0 ]]; then
+    usage >&2
+    exit 1
+fi
+
+subcommand="$1"
+shift
+
+case "$subcommand" in
+    help|-h|--help)
+        usage
+        exit 0
+        ;;
+    setup)
+        init_conda_context
+        cmd_setup "$@"
+        ;;
+    check)
+        init_conda_context
+        cmd_check "$@"
+        ;;
+    run)
+        init_conda_context
+        cmd_run "$@"
+        ;;
+    *)
+        echo "[phyloacc_workflows] Unknown command: '$subcommand'" >&2
+        usage >&2
+        exit 1
+        ;;
+esac

@@ -1,0 +1,7 @@
+name: ucsc-bedgraphpack
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - ucsc-bedgraphpack=377=h199ee4e_0
