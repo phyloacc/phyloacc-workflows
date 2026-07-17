@@ -217,7 +217,9 @@ RHO_STATS_DIR = os.path.join(PHASTCONS_DIR, "rho")
 
 CNEES_ROOT_DIR = os.path.join(OUTPUT_DIR, "05-cnees", "phastcons")
 CNEES_DIR = os.path.join(CNEES_ROOT_DIR, "bed")
-REF_FASTA = config["ref_fasta"]
+REF_FASTA = config.get("ref_fasta") or ""
+if not REF_FASTA:
+    raise ValueError("run_phastcons=true requires ref_fasta to be set in config.")
 REF_INDEX = COMMON.getOptionalConfigPath(
     config,
     "ref_fasta_index",
@@ -413,8 +415,8 @@ if CNEE_MIN_LEN_BP < 0:
 CNEE_FASTA_HEADER = str(config.get("cnee_fasta_header", config.get("cne_fasta_header", "species-coords-id"))).strip()
 CNEE_EXPECTED_SPECIES = []
 if CNEE_OUTPUT_FORMAT == "fasta":
-    explicit_species = parse_species_list(str(config.get("cnee_expected_species", "")).strip())
-    explicit_species_file = str(config.get("cnee_expected_species_file", "")).strip()
+    explicit_species = parse_species_list(str(config.get("cnee_expected_species") or "").strip())
+    explicit_species_file = str(config.get("cnee_expected_species_file") or "").strip()
     if explicit_species_file:
         with open(explicit_species_file, "r", encoding="utf-8") as fp:
             for line in fp:
@@ -427,6 +429,11 @@ if CNEE_OUTPUT_FORMAT == "fasta":
         CNEE_EXPECTED_SPECIES = parse_newick_tip_names(TREE_FILE)
         if not CNEE_EXPECTED_SPECIES:
             raise ValueError(f"No tip labels parsed from tree_file '{TREE_FILE}' for CNEE FASTA extraction.")
+    else:
+        raise ValueError(
+            "cnee_output_format=fasta requires species information: set "
+            "cnee_expected_species, cnee_expected_species_file, or tree_file."
+        )
 KEEP_CNEE_SIDECARS = _as_bool(
     config.get("keep_cnee_sidecars", DEBUG_KEEP_INTERMEDIATES),
     DEBUG_KEEP_INTERMEDIATES,
@@ -485,6 +492,8 @@ if not bool(config.get("__ref_fasta_index_rule_defined__", False)):
             ref_fasta_index = REF_INDEX
         log:
             job_log = os.path.join(LOG_DIR, "ref_fasta_index", "run.log")
+        benchmark:
+            os.path.join(LOG_DIR, "benchmarks", "ref_fasta_index", "run.txt")
         resources:
             **getRuleResources("ref_fasta_index")
         run:
@@ -507,6 +516,8 @@ if not bool(config.get("__ref_fasta_dict_rule_defined__", False)):
             ref_fasta_dict = REF_DICT
         log:
             job_log = os.path.join(LOG_DIR, "ref_fasta_dict", "run.log")
+        benchmark:
+            os.path.join(LOG_DIR, "benchmarks", "ref_fasta_dict", "run.txt")
         resources:
             **getRuleResources("ref_fasta_dict")
         run:
@@ -641,6 +652,8 @@ rule fixed_windows_bed:
         chr_bed = os.path.join(CHUNK_BEDS_DIR, "fixed_windows", "{chromosome_group}", "{ref_chromosome}.bed")
     log:
         job_log = os.path.join(LOG_DIR, "fixed_windows_bed", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "fixed_windows_bed", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("fixed_windows_bed")
     run:
@@ -718,7 +731,7 @@ rule maf_split_chunks:
     benchmark:
         os.path.join(LOG_DIR, "benchmarks", "maf_split_chunks", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
-        **getRuleResources("maf_split_by_ns_minlen")
+        **getRuleResources("maf_split_chunks")
     run:
         with open(log.job_log, "w") as log_stream:
             try:
@@ -826,116 +839,8 @@ def beds_for_chr(wc):
     )
 ####################
 
-def rho_values_for_chr(wc):
-    ckpt = checkpoints.filter_maf_by_gap.get(
-        chromosome_group=wc.chromosome_group,
-        ref_chromosome=wc.ref_chromosome
-    )
-    filtered_manifest = ckpt.output.filtered_manifest
-    outdir = os.path.dirname(filtered_manifest)
-
-    rho_files = []
-    with open(filtered_manifest) as mf:
-        for line in mf:
-            line = line.strip()
-            if not line:
-                continue
-            chunk = os.path.splitext(os.path.basename(line))[0]
-            rho_files.append(
-                os.path.join(RHO_STATS_DIR, wc.chromosome_group, wc.ref_chromosome, f"{chunk}.rho.txt")
-            )
-    return rho_files
-
-rule phastcons_estimate_rho_chunk:
-    input:
-        maf = os.path.join(MAF_SPLIT_NS_DIR, "{chromosome_group}", "{ref_chromosome}", "{chunk}.maf"),
-        mod = PHYLOFIT_ACTIVE_MODEL_PATH,
-    output:
-        stderr_file = os.path.join(
-            LOG_DIR,
-            "phastcons_estimate_rho_chunk",
-            "{chromosome_group}",
-            "{ref_chromosome}",
-            "{chunk}.stderr.log",
-        ),
-        rho_value = os.path.join(RHO_STATS_DIR, "{chromosome_group}", "{ref_chromosome}", "{chunk}.rho.txt"),
-    params:
-        outdir = os.path.join(RHO_STATS_DIR, "{chromosome_group}", "{ref_chromosome}"),
-        rho_prefix = os.path.join(RHO_STATS_DIR, "{chromosome_group}", "{ref_chromosome}", "{chunk}.rho", "rho"),
-        rule_name = "phastcons_estimate_rho_chunk",
-    log:
-        job_log = os.path.join(LOG_DIR, "phastcons_estimate_rho_chunk", "{chromosome_group}", "{ref_chromosome}-{chunk}.log"),
-    resources:
-        **getRuleResources("phastcons_chunk")
-    run:
-        import glob, os, re, shlex, subprocess, traceback, math
-
-        with open(log.job_log, "w") as log_stream:
-            try:
-                os.makedirs(params.outdir, exist_ok=True)
-
-                # Count unique sequence IDs without invoking a shell.
-                uniq_ids = 0
-                with open(input.maf) as maf_stream:
-                    uniq_ids = len({line.split()[1] for line in maf_stream if line.startswith("s ")})
-
-                if uniq_ids < 2:
-                    log_stream.write(f"SKIP: only {uniq_ids} unique sequence id(s) in {input.maf}\n")
-                    with open(output.rho_value, "w") as rf:
-                        rf.write("nan\n")
-                    with open(output.stderr_file, "w") as sf:
-                        sf.write(f"SKIP: only {uniq_ids} unique sequence id(s)\n")
-                    return
-
-                tmp_prefix = os.path.join(params.outdir, f".{wildcards.chunk}.estimate_rho.tmp")
-                cmd = [
-                    "phastCons",
-                    input.maf,
-                    input.mod,
-                    "--estimate-rho",
-                    tmp_prefix,
-                ]
-
-                log_stream.write(f"Running: {' '.join(shlex.quote(c) for c in cmd)}\n")
-                log_stream.flush()
-
-                result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
-                stderr_text = result.stderr or ""
-                with open(output.stderr_file, "w") as sf:
-                    sf.write(stderr_text)
-                if stderr_text:
-                    log_stream.write(stderr_text)
-                    log_stream.flush()
-
-                if result.returncode != 0:
-                    # Don't crash pipeline; keep stderr, but make other outputs empty
-                    log_stream.write(f"FAIL: phastCons exit {result.returncode} on {input.maf}\n")
-                    with open(output.rho_value, "w") as rf:
-                        rf.write("nan\n")
-                    return
-
-                # Parse rho directly from phastCons stderr text.
-                rho = float("nan")
-                try:
-                    m_all = re.findall(r"rho\s*=\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)", stderr_text)
-                    if m_all:
-                        rho = float(m_all[-1])
-                except Exception:
-                    pass
-
-                with open(output.rho_value, "w") as rf:
-                    rf.write(f"{rho}\n")
-
-                # Remove temporary files written by --estimate-rho prefix.
-                for fp in glob.glob(tmp_prefix + "*"):
-                    try:
-                        os.remove(fp)
-                    except OSError:
-                        pass
-
-            except Exception:
-                traceback.print_exc(file=log_stream)
-                raise
+# rho_values_for_chr() and rule phastcons_estimate_rho_chunk moved to
+# workflow/stash.smk - dead code, orphaned since global_rho inlined this work.
 
 ####################
 
@@ -951,10 +856,13 @@ rule global_rho:
         )
     log:
         job_log = os.path.join(LOG_DIR, "global_rho", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "global_rho", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
-        **getRuleResources("phastcons_chunk")
+        **(getRuleResources("global_rho") if RHO_MODE == "estimate" else getRuleResources("default"))
     run:
         import glob, math, os, re, shlex, subprocess
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
         with open(log.job_log, "w") as log_stream:
             log_stream.write("START global_rho\n")
@@ -979,12 +887,23 @@ rule global_rho:
             if RHO_MODE == "estimate":
                 os.makedirs(rho_chr_dir, exist_ok=True)
                 os.makedirs(rho_global_dir, exist_ok=True)
-                # Stage 1: per-chunk rho estimation from chunk MAFs.
-                for chunk in chunks:
+                os.makedirs(resources.tmpdir, exist_ok=True)
+
+                # Stage 1: per-chunk rho estimation from chunk MAFs, run concurrently
+                # (each --estimate-rho call is an independent, comparatively expensive
+                # EM fit, unlike the fixed-rho apply in run_phastcons_chr). Per-chunk
+                # scratch files live on resources.tmpdir (node-local scratch), not the
+                # shared output filesystem -- with 100k+ chunks per chromosome, the
+                # small-file traffic from phastCons's own --estimate-rho working files
+                # was bottlenecking on shared-filesystem metadata contention rather
+                # than CPU, which is why run_phastcons_chr (3 known files per chunk,
+                # no globbing) doesn't hit this even at the same chunk counts.
+                def estimate_chunk_rho(chunk):
                     maf_path = os.path.join(maf_dir, f"{chunk}.maf")
-                    rho_txt = os.path.join(rho_chr_dir, f"{chunk}.rho.txt")
-                    rho_stderr = os.path.join(rho_log_dir, f"{chunk}.stderr.log")
-                    tmp_prefix = os.path.join(rho_chr_dir, f".{chunk}.estimate_rho.tmp")
+                    tmp_prefix = os.path.join(
+                        resources.tmpdir,
+                        f"{wildcards.chromosome_group}-{wildcards.ref_chromosome}-{chunk}.estimate_rho.tmp",
+                    )
 
                     cmd = [
                         "phastCons",
@@ -993,13 +912,14 @@ rule global_rho:
                         "--estimate-rho",
                         tmp_prefix,
                     ]
-                    log_stream.write(f"RHO: {' '.join(shlex.quote(c) for c in cmd)}\n")
-                    log_stream.flush()
 
                     result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
                     stderr_text = result.stderr or ""
-                    with open(rho_stderr, "w") as sf:
-                        sf.write(stderr_text)
+
+                    if result.returncode != 0:
+                        rho_stderr = os.path.join(rho_log_dir, f"{chunk}.stderr.log")
+                        with open(rho_stderr, "w") as sf:
+                            sf.write(stderr_text)
 
                     rho_val = float("nan")
                     if result.returncode == 0:
@@ -1009,18 +929,43 @@ rule global_rho:
                                 rho_val = float(m_all[-1])
                         except Exception:
                             pass
-                    else:
-                        log_stream.write(f"RHO FAIL: phastCons exit {result.returncode} on {maf_path}\n")
-
-                    with open(rho_txt, "w") as rf:
-                        rf.write(f"{rho_val}\n")
-                    chunk_rho[chunk] = rho_val
 
                     for fp in glob.glob(tmp_prefix + "*"):
                         try:
                             os.remove(fp)
                         except OSError:
                             pass
+
+                    if DEBUG_KEEP_INTERMEDIATES:
+                        rho_txt = os.path.join(rho_chr_dir, f"{chunk}.rho.txt")
+                        with open(rho_txt, "w") as rf:
+                            rf.write(f"{rho_val}\n")
+
+                    return chunk, maf_path, result.returncode, rho_val
+
+                max_workers = max(1, min(int(resources.cpus_per_task), len(chunks) if chunks else 1))
+                log_stream.write(
+                    f"Estimating rho for {len(chunks)} chunks with parallel_workers={max_workers} "
+                    f"(cpus_per_task={int(resources.cpus_per_task)})\n"
+                )
+                log_stream.flush()
+
+                future_to_chunk = {}
+                with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                    for chunk in chunks:
+                        maf_path = os.path.join(maf_dir, f"{chunk}.maf")
+                        log_stream.write(f"RHO SUBMIT: {maf_path}\n")
+                        future_to_chunk[pool.submit(estimate_chunk_rho, chunk)] = chunk
+                    log_stream.flush()
+
+                    for fut in as_completed(future_to_chunk):
+                        chunk_name, maf_path, rc, rho_val = fut.result()
+                        if rc != 0:
+                            log_stream.write(f"RHO FAIL: phastCons exit {rc} on {maf_path}\n")
+                        else:
+                            log_stream.write(f"RHO DONE: {chunk_name} rho={rho_val}\n")
+                        chunk_rho[chunk_name] = rho_val
+                        log_stream.flush()
 
                 vals = [v for v in chunk_rho.values() if math.isfinite(v) and v > 0.0]
                 if not vals:
@@ -1061,7 +1006,7 @@ rule global_rho:
 
 ####################
 
-rule phastcons_apply_rho_chr:
+rule run_phastcons_chr:
     input:
         manifest = os.path.join(MAF_SPLIT_NS_DIR, "{chromosome_group}", "{ref_chromosome}", "manifest.filtered.txt"),
         mod = PHYLOFIT_ACTIVE_MODEL_PATH,
@@ -1069,9 +1014,11 @@ rule phastcons_apply_rho_chr:
     output:
         chunks_done = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}", "chunks.done")
     log:
-        job_log = os.path.join(LOG_DIR, "phastcons_apply_rho_chr", "{chromosome_group}", "{ref_chromosome}.log")
+        job_log = os.path.join(LOG_DIR, "run_phastcons_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "run_phastcons_chr", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
-        **getRuleResources("phastcons_chunk")
+        **getRuleResources("phastcons_per_chunk")
     run:
         import math, os, shlex, subprocess, traceback
         from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1082,7 +1029,7 @@ rule phastcons_apply_rho_chr:
                 maf_dir = os.path.join(MAF_SPLIT_NS_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
                 chunk_log_dir = os.path.join(
                     LOG_DIR,
-                    "phastcons_apply_rho_chr",
+                    "run_phastcons_chr",
                     wildcards.chromosome_group,
                     wildcards.ref_chromosome,
                 )
@@ -1184,7 +1131,7 @@ rule phastcons_apply_rho_chr:
 rule phastcons_concat_chr:
     input:
         manifest = os.path.join(MAF_SPLIT_NS_DIR, "{chromosome_group}", "{ref_chromosome}", "manifest.filtered.txt"),
-        chunks_done = rules.phastcons_apply_rho_chr.output.chunks_done
+        chunks_done = rules.run_phastcons_chr.output.chunks_done
     output:
         chr_bed = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}.bed")
     params:
@@ -1192,6 +1139,8 @@ rule phastcons_concat_chr:
         cleanup_chunk_intermediates = CLEANUP_CHUNK_INTERMEDIATES
     log:
         job_log = os.path.join(LOG_DIR, "phastcons_concat_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "phastcons_concat_chr", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("phastcons_concat_chr")
     run:
@@ -1273,6 +1222,8 @@ rule extract_cds_bed_chr:
         cds_bed = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}", "{ref_chromosome}.cds.bed")
     log:
         job_log = os.path.join(LOG_DIR, "extract_cds_bed_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "extract_cds_bed_chr", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("extract_cds_bed_chr")
     run:
@@ -1313,6 +1264,8 @@ rule cnees_from_conserved_chr:
         cnees_bed = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cnees.bed")
     log:
         job_log = os.path.join(LOG_DIR, "cnees_from_conserved_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "cnees_from_conserved_chr", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("cnees_from_conserved_chr")
     run:
@@ -1413,6 +1366,8 @@ rule cnees_to_bed4_chr:
         cnees_bed4 = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cnees.bed4")
     log:
         job_log = os.path.join(LOG_DIR, "cnees_to_bed4_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "cnees_to_bed4_chr", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("cnees_to_bed4_chr")
     run:
@@ -1470,6 +1425,8 @@ rule cnee_alignments_chr:
         rule_name = "cnee_alignments_chr"
     log:
         job_log = os.path.join(LOG_DIR, "cnee_alignments_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "cnee_alignments_chr", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("cnee_alignments_chr")
     run:
@@ -1566,116 +1523,8 @@ rule cnee_alignments_chr:
                 traceback.print_exc(file=log_stream)
                 raise
 
+
 ####################
 
-rule phastcons_chunk:
-    input:
-        maf = os.path.join(MAF_SPLIT_NS_DIR, "{chromosome_group}", "{ref_chromosome}", "{chunk}.maf"),
-        mod = PHYLOFIT_ACTIVE_MODEL_PATH,
-        rho_value = (lambda wc: os.path.join(RHO_STATS_DIR, wc.chromosome_group, wc.ref_chromosome, f"{wc.chunk}.rho.txt")
-                     if RHO_MODE == "estimate"
-                     else rules.global_rho.output.global_rho),
-        global_rho = rules.global_rho.output.global_rho,
-    output:
-        bed = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}", "{chunk}.conserved.bed"),
-        wig = temp(os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}", "{chunk}.scores.wig")),
-        err = os.path.join(
-            LOG_DIR,
-            "phastcons_chunk",
-            "{chromosome_group}",
-            "{ref_chromosome}",
-            "{chunk}.stderr.log",
-        ),
-    params:
-        outdir = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}"),
-        rule_name = "phastcons_chunk",
-    log:
-        job_log = os.path.join(LOG_DIR, "phastcons_chunk", "{chromosome_group}", "{ref_chromosome}-{chunk}.log"),
-    resources:
-        **getRuleResources("phastcons_chunk")
-    run:
-        import os, shlex, subprocess, traceback, math
-
-        with open(log.job_log, "w") as log_stream:
-            try:
-                os.makedirs(params.outdir, exist_ok=True)
-
-                # Count unique sequence IDs without invoking a shell.
-                uniq_ids = 0
-                with open(input.maf) as maf_stream:
-                    uniq_ids = len({line.split()[1] for line in maf_stream if line.startswith("s ")})
-
-                if uniq_ids < 2:
-                    log_stream.write(f"SKIP: only {uniq_ids} unique sequence id(s) in {input.maf}\n")
-                    open(output.bed, "w").close()
-                    open(output.wig, "w").close()
-                    with open(output.err, "w") as ef:
-                        ef.write(f"SKIP: only {uniq_ids} unique sequence id(s)\n")
-                    return
-
-                with open(input.global_rho) as gf:
-                    global_str = gf.read().strip()
-                try:
-                    rho_global = float(global_str)
-                except Exception:
-                    rho_global = float("nan")
-
-                if RHO_MODE == "estimate":
-                    with open(input.rho_value) as rf:
-                        rho_str = rf.read().strip()
-                    try:
-                        rho_chunk = float(rho_str)
-                    except Exception:
-                        rho_chunk = float("nan")
-                else:
-                    rho_str = global_str
-                    rho_chunk = rho_global
-
-                if not (rho_global > 0.0 and math.isfinite(rho_global)):
-                    log_stream.write(f"SKIP: invalid global rho '{global_str}'\n")
-                    open(output.bed, "w").close()
-                    open(output.wig, "w").close()
-                    with open(output.err, "w") as ef:
-                        ef.write(f"SKIP: invalid global rho '{global_str}'\n")
-                    return
-
-                if not (rho_chunk > 0.0 and math.isfinite(rho_chunk)):
-                    log_stream.write(f"SKIP: invalid chunk rho '{rho_str}' for {input.maf}\n")
-                    open(output.bed, "w").close()
-                    open(output.wig, "w").close()
-                    with open(output.err, "w") as ef:
-                        ef.write(f"SKIP: invalid chunk rho '{rho_str}'\n")
-                    return
-
-                if rho_chunk > rho_global:
-                    log_stream.write(f"SKIP: rho_chunk {rho_chunk} > global_rho {rho_global}\n")
-                    open(output.bed, "w").close()
-                    open(output.wig, "w").close()
-                    with open(output.err, "w") as ef:
-                        ef.write(f"SKIP: rho_chunk {rho_chunk} > global_rho {rho_global}\n")
-                    return
-
-                # KEEP post probs (do NOT add --no-post-probs)
-                cmd = [
-                    "phastCons",
-                    input.maf,
-                    input.mod,
-                    "--rho",
-                    str(rho_global),
-                    "--most-conserved",
-                    output.bed,
-                ]
-
-                log_stream.write(f"Running: {' '.join(shlex.quote(c) for c in cmd)} > {output.wig} 2> {output.err}\n")
-                log_stream.flush()
-
-                with open(output.wig, "w") as wig_stream, open(output.err, "w") as err_stream:
-                    result = subprocess.run(cmd, stdout=wig_stream, stderr=err_stream, text=True)
-
-                if result.returncode != 0:
-                    log_stream.write(f"FAIL: phastCons exit {result.returncode} on {input.maf}\n")
-                    raise RuntimeError(f"phastCons failed with exit code {result.returncode} on {input.maf}")
-
-            except Exception:
-                traceback.print_exc(file=log_stream)
-                raise
+# rule phastcons_chunk moved to workflow/stash.smk - dead code, orphaned since
+# run_phastcons_chr inlined this per-chunk phastCons scoring work.

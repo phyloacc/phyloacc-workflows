@@ -76,15 +76,32 @@ getRuleResources = partial(COMMON.getResources, config)
 #############################################################################
 # Input files and output paths
 
-SAMPLE_FILE = config["sample_file"];
-sample_file_extension = os.path.splitext(SAMPLE_FILE)[1];
-gc_sample_path = SAMPLE_FILE.replace(sample_file_extension, "-gc" + sample_file_extension);
-avg_gc_path = SAMPLE_FILE.replace(sample_file_extension, "-avg-gc" + sample_file_extension);
+USE_GC_CORRECTED_MODELS = _as_bool(
+    config.get("use_gc_corrected_models", config.get("apply_gc_correction", True)),
+    True,
+)
+SAMPLE_FILE = str(config.get("sample_file") or "").strip()
+if USE_GC_CORRECTED_MODELS:
+    if not SAMPLE_FILE:
+        raise ValueError("use_gc_corrected_models=true requires sample_file to be set in config.")
+else:
+    MLOG.warning(
+        "use_gc_corrected_models=false; skipping GC correction. If the GC content "
+        "of the 4d sites used to fit the neutral model differs from the genome-wide "
+        "GC content, results may be affected."
+    )
 
-gc_sample_basename = os.path.basename(gc_sample_path)
-avg_gc_basename = os.path.basename(avg_gc_path)
+if SAMPLE_FILE:
+    sample_file_extension = os.path.splitext(SAMPLE_FILE)[1];
+    gc_sample_basename = os.path.basename(SAMPLE_FILE.replace(sample_file_extension, "-gc" + sample_file_extension))
+    avg_gc_basename = os.path.basename(SAMPLE_FILE.replace(sample_file_extension, "-avg-gc" + sample_file_extension))
+else:
+    gc_sample_basename = ""
+    avg_gc_basename = ""
 
-MAF_PATH = config["maf"];
+MAF_PATH = config.get("maf") or "";
+if not MAF_PATH:
+    raise ValueError("run_phylofit=true requires maf to be set in config.")
 MAF_FILE = os.path.basename(MAF_PATH);
 MAF_DIR = os.path.dirname(MAF_PATH);
 # MAF info
@@ -123,10 +140,6 @@ PHYLOFIT_DIR = COMMON.getOptionalConfigPath(
     os.path.join(NEUTRAL_MODEL_DIR, "phylofit"),
 )
 PHYLOFIT_UNCORRECTED_DIR = os.path.join(PHYLOFIT_DIR, "{chromosome_group}", "uncorrected-mods")
-USE_GC_CORRECTED_MODELS = _as_bool(
-    config.get("use_gc_corrected_models", config.get("apply_gc_correction", True)),
-    True,
-)
 PHYLOFIT_ACTIVE_MODEL_PATH = (
     os.path.join(PHYLOFIT_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-corrected.mod")
     if USE_GC_CORRECTED_MODELS
@@ -144,7 +157,9 @@ AVG_GC_FILE = os.path.join(GC_SUMMARY_DIR, avg_gc_basename);
 # MAF_SPLIT_CHR_DIR = os.path.join(OUTPUT_DIR, PREFIX + "-mafSplit"); # Maybe this should be in a dir specified by the user?
 # Various output sub-directories
 
-REF_FASTA = config["ref_fasta"];
+REF_FASTA = config.get("ref_fasta") or "";
+if not REF_FASTA:
+    raise ValueError("run_phylofit=true requires ref_fasta to be set in config.")
 REF_INDEX = COMMON.getOptionalConfigPath(
     config,
     "ref_fasta_index",
@@ -155,7 +170,9 @@ if os.path.abspath(REF_INDEX) != os.path.abspath(REF_FASTA + ".fai"):
         f"ref_fasta_index must match ref_fasta + '.fai' because samtools faidx writes next to the FASTA. "
         f"Got ref_fasta={REF_FASTA}, ref_fasta_index={REF_INDEX}"
     )
-REF_GFF_PATH = config["ref_gff"];
+REF_GFF_PATH = config.get("ref_gff") or "";
+if not REF_GFF_PATH:
+    raise ValueError("run_phylofit=true requires ref_gff to be set in config.")
 REF_GFF_FILE = os.path.basename(REF_GFF_PATH);
 REF_CHROMOSOME_GROUPS = config["ref_chromosome_groups"];
 # Reference genome info
@@ -163,7 +180,9 @@ REF_CHROMOSOME_GROUPS = config["ref_chromosome_groups"];
 #############################################################################
 # Basic tree parsing
 
-TREE_FILE = config["tree_file"];
+TREE_FILE = config.get("tree_file") or "";
+if not TREE_FILE:
+    raise ValueError("run_phylofit=true requires tree_file to be set in config.")
 species_tree = open(TREE_FILE, "r").read().strip();
 topology = re.sub(r'[)][\d\w<>/.eE_:-]+', ')', species_tree);
 topology = re.sub(r':[\d.eE-]+', '', topology);
@@ -267,6 +286,8 @@ if not bool(config.get("__ref_fasta_index_rule_defined__", False)):
             ref_fasta_index = REF_INDEX
         log:
             job_log = os.path.join(LOG_DIR, "ref_fasta_index", "run.log")
+        benchmark:
+            os.path.join(LOG_DIR, "benchmarks", "ref_fasta_index", "run.txt")
         resources:
             **getRuleResources("ref_fasta_index")
         run:
@@ -286,6 +307,8 @@ rule maf_index:
         maf_index_scaff = MAF_INDEX_SCAFF
     log:
         job_log = os.path.join(LOG_DIR, "maf_index", "run.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "maf_index", "run.txt")
     resources:
         **getRuleResources("maf_index")
     run:
@@ -313,6 +336,8 @@ rule make_group_beds:
         script_path = os.path.join(UTILS_DIR, "make_group_beds.py")
     log:
         job_log = os.path.join(LOG_DIR, "make_group_beds", "{chromosome_group}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "make_group_beds", "{chromosome_group}.txt")
     resources:
         **getRuleResources("make_group_beds")
     run:
@@ -359,6 +384,8 @@ checkpoint maf_split_chr_by_group:
         rule_name = "maf_split_by_chr"
     log:
         job_log = os.path.join(LOG_DIR, "maf_split_chr_by_group", "{chromosome_group}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "maf_split_chr_by_group", "{chromosome_group}.txt")
     resources:
         **getRuleResources("maf_split_chr_by_group")
     run:
@@ -391,6 +418,8 @@ rule ref_gff_split_by_chr:
         script_path = os.path.join(UTILS_DIR, "ref_gff_split_by_chr.awk")
     log:
         job_log = os.path.join(LOG_DIR, "ref_gff_split_by_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "ref_gff_split_by_chr", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("ref_gff_split_by_chr")
     run:
@@ -463,6 +492,8 @@ rule extract_4d_codons_by_chr:
         codons_out = os.path.join(CODONS_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-4d-codons.ss"),
     log:
         job_log = os.path.join(LOG_DIR, "extract_4d_codons_by_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "extract_4d_codons_by_chr", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("extract_4d_codons_by_chr")
     run:
@@ -489,6 +520,8 @@ rule extract_4d_sites:
         sites_out = os.path.join(SITES_RAW_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-4d-sites.ss")
     log:
         job_log = os.path.join(LOG_DIR, "extract_4d_sites", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "extract_4d_sites", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("extract_4d_sites")
     run:
@@ -521,6 +554,8 @@ rule filter_4d_sites:
         script_path = os.path.join(PIPELINE_DIR, "utils", "filter_4d_sites.py")
     log:
         job_log = os.path.join(LOG_DIR, "filter_4d_sites", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "filter_4d_sites", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("filter_4d_sites")
     run:
@@ -554,6 +589,8 @@ rule run_phylofit:
         prefix = os.path.join(PHYLOFIT_DIR, "{chromosome_group}", "uncorrected-mods", MAF_CHR_PREFIX + "{ref_chromosome}")
     log:
         job_log = os.path.join(LOG_DIR, "run_phylofit", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "run_phylofit", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("run_phylofit")
     run:
@@ -575,67 +612,76 @@ rule run_phylofit:
 
 # ####################
 
-rule get_gc_content:
-    input:
-        sample_file = SAMPLE_FILE
-    output:
-        gc_sample_file = GC_SAMPLE_FILE,
-        avg_gc_file = AVG_GC_FILE
-    params:
-        script_path = os.path.join(UTILS_DIR, "get_gc_content.py"),
-        accession_header = config.get("accession_header", "")
-    log:
-        job_log = os.path.join(LOG_DIR, "get_gc_content", "run.log")
-    resources:
-        **getRuleResources("get_gc_content")
-    run:
-        with open(log.job_log, "w") as log_stream:
-            try:  
-                cmd = [ "python", params.script_path,
-                        input.sample_file,
-                        output.gc_sample_file,
-                        output.avg_gc_file ];
-                if params.accession_header:
-                    cmd.append(params.accession_header);
+if USE_GC_CORRECTED_MODELS:
+    # Both rules are only meaningful (and only produce valid, non-empty output paths)
+    # when GC correction is on; SAMPLE_FILE/GC_SAMPLE_FILE/AVG_GC_FILE are blank
+    # otherwise, which would make these rules' outputs empty/duplicate paths.
 
-                COMMON.runCommand(cmd, log_stream, log_stream, "get_gc_content");
-            except Exception as e:
-                traceback.print_exc(file=log_stream)
-                raise
+    rule get_gc_content:
+        input:
+            sample_file = SAMPLE_FILE
+        output:
+            gc_sample_file = GC_SAMPLE_FILE,
+            avg_gc_file = AVG_GC_FILE
+        params:
+            script_path = os.path.join(UTILS_DIR, "get_gc_content.py"),
+            accession_header = config.get("accession_header", "")
+        log:
+            job_log = os.path.join(LOG_DIR, "get_gc_content", "run.log")
+        benchmark:
+            os.path.join(LOG_DIR, "benchmarks", "get_gc_content", "run.txt")
+        resources:
+            **getRuleResources("get_gc_content")
+        run:
+            with open(log.job_log, "w") as log_stream:
+                try:
+                    cmd = [ "python", params.script_path,
+                            input.sample_file,
+                            output.gc_sample_file,
+                            output.avg_gc_file ];
+                    if params.accession_header:
+                        cmd.append(params.accession_header);
 
-    # shell:
-    #     """
-    #     python {params.script_path} {input.sample_file} &> {log}
-    #     """
+                    COMMON.runCommand(cmd, log_stream, log_stream, "get_gc_content");
+                except Exception as e:
+                    traceback.print_exc(file=log_stream)
+                    raise
 
-# ####################
+        # shell:
+        #     """
+        #     python {params.script_path} {input.sample_file} &> {log}
+        #     """
 
-rule run_mod_freqs:
-    input:
-        mod_file = os.path.join(PHYLOFIT_DIR, "{chromosome_group}", "uncorrected-mods", MAF_CHR_PREFIX + "{ref_chromosome}.mod"),
-        avg_gc_file = AVG_GC_FILE
-    output:
-        adj_mod_file = os.path.join(PHYLOFIT_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-corrected.mod")
-    log:
-        job_log = os.path.join(LOG_DIR, "run_mod_freqs", "{chromosome_group}", "{ref_chromosome}.log")
-    resources:
-        **getRuleResources("run_mod_freqs")
-    run:
-        with open(log.job_log, "w") as log_stream, open(output.adj_mod_file, "w") as out_stream:
-            try:
-                with open(input.avg_gc_file, "r") as f:
-                    gc_value = f.read().strip()
+    # ####################
 
-                cmd = [ "modFreqs", input.mod_file, gc_value ];
+    rule run_mod_freqs:
+        input:
+            mod_file = os.path.join(PHYLOFIT_DIR, "{chromosome_group}", "uncorrected-mods", MAF_CHR_PREFIX + "{ref_chromosome}.mod"),
+            avg_gc_file = AVG_GC_FILE
+        output:
+            adj_mod_file = os.path.join(PHYLOFIT_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-corrected.mod")
+        log:
+            job_log = os.path.join(LOG_DIR, "run_mod_freqs", "{chromosome_group}", "{ref_chromosome}.log")
+        benchmark:
+            os.path.join(LOG_DIR, "benchmarks", "run_mod_freqs", "{chromosome_group}", "{ref_chromosome}.txt")
+        resources:
+            **getRuleResources("run_mod_freqs")
+        run:
+            with open(log.job_log, "w") as log_stream, open(output.adj_mod_file, "w") as out_stream:
+                try:
+                    with open(input.avg_gc_file, "r") as f:
+                        gc_value = f.read().strip()
 
-                COMMON.runCommand(cmd, log_stream, out_stream, "run_mod_freqs", wc=f"{wildcards.chromosome_group}-{wildcards.ref_chromosome}");
-            except Exception as e:
-                traceback.print_exc(file=log_stream)
-                raise
-    # shell:
-    #     """
-    #     gc=$(cat {input.avg_gc_file})
-    #     modFreqs {input.mod_file} $gc > {output.adj_mod_file} 2> {log}
-    #     """
+                    cmd = [ "modFreqs", input.mod_file, gc_value ];
+
+                    COMMON.runCommand(cmd, log_stream, out_stream, "run_mod_freqs", wc=f"{wildcards.chromosome_group}-{wildcards.ref_chromosome}");
+                except Exception as e:
+                    traceback.print_exc(file=log_stream)
+                    raise
+        # shell:
+        #     """
+        #     gc=$(cat {input.avg_gc_file})
+        #     modFreqs {input.mod_file} $gc > {output.adj_mod_file} 2> {log}
+        #     """
 
 #############################################################################

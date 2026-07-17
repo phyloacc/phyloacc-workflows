@@ -150,6 +150,8 @@ rule run_phylop:
         phylop_wig_file = os.path.join(PHYLOP_SITES_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}-phylop.wig")
     log:
         job_log = os.path.join(LOG_DIR, "run_phylop", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "run_phylop", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("run_phylop")
     run:
@@ -180,6 +182,8 @@ rule convert_wig_to_bed:
         script_path = os.path.join(PIPELINE_DIR, "utils", "convert_wig_to_bed.awk")
     log:
         job_log = os.path.join(LOG_DIR, "convert_wig_to_bed", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "convert_wig_to_bed", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("convert_wig_to_bed")
     run:
@@ -205,6 +209,8 @@ rule adjust_pvals:
         script_path = os.path.join(PIPELINE_DIR, "utils", "adjust_pvals.sh")
     log:
         job_log = os.path.join(LOG_DIR, "adjust_pvals", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "adjust_pvals", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("adjust_pvals")
     run:
@@ -234,6 +240,8 @@ rule get_conserved_sites:
         script_path = os.path.join(PIPELINE_DIR, "utils", "get_conserved_sites.awk")
     log:
         job_log = os.path.join(LOG_DIR, "get_conserved_sites", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "get_conserved_sites", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("get_conserved_sites")
     run:
@@ -256,6 +264,8 @@ rule get_accelerated_sites:
         script_path = os.path.join(PIPELINE_DIR, "utils", "get_accelerated_sites.awk")
     log:
         job_log = os.path.join(LOG_DIR, "get_accelerated_sites", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "get_accelerated_sites", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("get_accelerated_sites")
     run:
@@ -278,6 +288,8 @@ rule site_counts:
         accelerated_site_counts = os.path.join(PHYLOP_SUMMARY_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.accelerated-site-counts." + PHYLOP_ALPHA + ".tsv")
     log:
         job_log = os.path.join(LOG_DIR, "site_counts", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "site_counts", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("site_counts")
     run:
@@ -307,6 +319,8 @@ rule naive_cluster_conserved_sites:
         conserved_regions_bed = os.path.join(PHYLOP_REGIONS_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.bed")
     log:
         job_log = os.path.join(LOG_DIR, "naive_cluster_conserved_sites", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "naive_cluster_conserved_sites", "{chromosome_group}", "{ref_chromosome}.txt")
     resources:
         **getRuleResources("naive_cluster_conserved_sites")
     run:

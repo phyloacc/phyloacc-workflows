@@ -5,12 +5,13 @@ Snakemake workflows for preparing comparative genomic alignment inputs for
 alignment (MAF) through neutral model estimation (phyloFit), site- and
 region-level conservation scoring (phyloP, phastCons), and CNEE extraction.
 
-A full tutorial is forthcoming and will be linked here.
+A tutorial exists [on the PhyloAcc website](https://phyloacc.github.io/workflow.html).
 
 ## Requirements
 
 - `conda` or `mamba`
-- (optional) a Slurm cluster, via `snakemake-executor-plugin-slurm`
+- For most datasets, a computing cluster with the SLURM job scheduler. Other clusters
+may be supported with minimal effort via Snakemake executor plugins, but remain untested.
 
 ## Setup
 

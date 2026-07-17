@@ -9,52 +9,25 @@
 # Fill in the paths and chromosome groups near the top first.
 # Lower sections contain optional behavior controls and resource defaults.
 #
-# Notes:
-# - Use absolute paths.
-# - ref_fasta_index must be exactly ref_fasta + ".fai".
-# - Chromosome IDs in ref_chromosome_groups should match the IDs in the
-#   reference FASTA index and reference GFF before maf_ref_id / prefix joining.
-
 ##############################################################################
 # Required project inputs - YOU MUST FILL THESE IN
 
 ###########################
-# Primary workflow switches
-
-run_phylofit: true
-run_phylop: true
-run_phastcons: true
-build_cnees: true
-
-###########################
 # Main pipeline inputs and outputs
-
-output_dir:
-# Absolute path to the desired output directory for this workflow.
-
-tmp_dir: 
-# Absolute path to a directory for temporary files.
-
-sample_file:
-# Absolute path to a CSV formatted sample sheet file.
-# This file minimally must have one column named 'accession' with assembly accessions for GC content lookup.
-# See 'accession_header' below to change the name of the column containing accessions.
-# Alternatively, if a column called 'gc' is present, those values will be used instead of 
-# looking them up by accession.
 
 maf:
 # Absolute path to the input MAF alignment.
-
-tree_file:
-# Absolute path to the Newick formatted tree file for the species in the MAF.
 
 maf_ref_id:
 # The species label of the reference genome in the MAF (the one whose coordinates the MAF is projected onto).
 
 ref_fasta:
-ref_fasta_index:
+ref_fasta_index:  # Will be generated if not provided.
 ref_gff:
 # Absolute paths to the FASTA, FASTA index (.fai), and GFF file of the reference genome in the MAF (set in 'maf_ref_id').
+
+tree_file:
+# Absolute path to the Newick formatted tree file for the species in the MAF.
 
 ref_chromosome_groups:
   group1:
@@ -63,6 +36,14 @@ ref_chromosome_groups:
     - 
 # The names of the reference chromosomes to analyze.
 # Grouping is organizational only - group names can be changed and added to and become subdirectories in the output.
+# - Chromosome IDs in ref_chromosome_groups should match the IDs in the
+#   reference FASTA and reference GFF before maf_ref_id / prefix joining.
+
+output_dir:
+# Absolute path to the desired output directory for this workflow.
+
+tmp_dir: 
+# Absolute path to a directory for temporary files.
 
 ##############################################################################
 # Options below have been set with default values and MAY NOT NEED TO BE CHANGED
@@ -93,32 +74,26 @@ maf_ref_chr_joiner: "."
 # - maf_chr_prefix: "chr"
 # - maf_ref_chr_joiner: "."
 
-
 ##############################################################################
-# Common analysis settings
+# Neutral model settings
 
 filter_threshold_4d: 0.5
 # Fraction of sequences allowed to be missing in a 4d site pattern.
 
-use_gc_corrected_models: true
+use_gc_corrected_models: false
 # Switch to enable/disable GC correction of phyloFit models.
-# Setting 'false' removes the need for 'accession_header' column in the sample sheet.
+# Setting 'false' removes the need for sample_file (a warning is printed, since
+# results may be affected if the GC content of the 4d sites used to fit the neutral
+# model differs from the genome-wide GC content).
 
-phylop_alpha: 0.05
-# FDR threshold for conserved site calling.
-
-target_ref_chromosomes: []
-# Optional subset override.
-# Leave [] to analyze all chromosomes listed in ref_chromosome_groups.
-# Example: ["chr1", "chr2"]
-
-##############################################################################
-# phyloP-only behavior
-
-naive_merge_gap_bp: 20
-naive_min_region_sites: 5
-naive_min_region_len_bp: 20
-# These control the naive phyloP conserved-region clustering step.
+sample_file:
+# Absolute path to a CSV formatted sample sheet file.
+# This file minimally must have one column named 'accession' with assembly accessions for GC content lookup.
+# See 'accession_header' below to change the name of the column containing accessions.
+# Alternatively, if a column called 'gc' is present, those values will be used instead of
+# looking them up by accession.
+# Required if use_gc_corrected_models: true (errors informatively if blank); unused
+# and optional if use_gc_corrected_models: false.
 
 ##############################################################################
 # phastCons / CNEE behavior
@@ -164,12 +139,164 @@ cnee_fasta_header: species-coords-id
 
 cnee_expected_species: ""
 # Optional comma-separated species list for FASTA extraction validation.
+# If blank, species will be read from the tree file.
 
 cnee_expected_species_file: ""
 # Optional newline-delimited species list file.
+# If blank, species will be read from the tree file.
 
 ##############################################################################
-# Optional path overrides
+# phyloP-only behavior
+
+phylop_alpha: 0.05
+# FDR threshold for conserved site calling.
+
+naive_merge_gap_bp: 20
+naive_min_region_sites: 5
+naive_min_region_len_bp: 20
+# These control the naive phyloP conserved-region clustering step.
+
+##############################################################################
+# Resource defaults
+#
+# default resources based on a benchmark of a 15 species mammal alignment (Mus musculus
+# reference). 
+# Adjust these for your cluster.
+#
+# partition: set this to a valid Slurm partition name on your cluster before running.
+#
+
+rule_resources:
+  default:
+    partition:
+    mem_mb: 4000
+    cpus: 1
+    time: 60
+
+  # Rules that use the defaults:
+
+  # workflow/phylofit_models.smk
+  #   scales with genome size: ref_fasta_index, make_group_beds, ref_gff_split_by_chr,
+  #     maf_index, maf_split_chr_by_group, extract_4d_codons_by_chr, extract_4d_sites,
+  #     filter_4d_sites, run_phylofit
+  #   scales with sample size: get_gc_content, maf_index, maf_split_chr_by_group,
+  #     extract_4d_codons_by_chr, extract_4d_sites, filter_4d_sites, run_phylofit
+
+  # workflow/phastcons_cnees.smk
+  #   scales with genome size: ref_fasta_index, ref_fasta_dict, picard_scatter_by_ns,
+  #     ns_to_bed, filter_ns_bed_minlen, ns_minlen_to_bed3, fixed_windows_bed,
+  #     maf_index_chr, maf_split_chunks, filter_maf_by_gap, global_rho,
+  #     run_phastcons_chr, phastcons_concat_chr, extract_cds_bed_chr,
+  #     cnees_from_conserved_chr, cnees_to_bed4_chr, cnee_alignments_chr
+  #   scales with sample size: maf_index_chr, maf_split_chunks, filter_maf_by_gap,
+  #     global_rho (only when rho_mode: estimate), run_phastcons_chr,
+  #     cnee_alignments_chr
+
+  # workflow/phylop_regions.smk
+  #   scales with genome size: convert_wig_to_bed, adjust_pvals, get_conserved_sites,
+  #     get_accelerated_sites, site_counts, naive_cluster_conserved_sites, run_phylop
+  #   scales with sample size: run_phylop
+
+  maf_index:
+    # Scales with genome size and sample size (indexes the whole MAF, all species).
+    partition:
+    mem_mb: 6000
+    cpus: 1
+    time: 120
+
+  maf_split_chr_by_group:
+    # Scales with genome size and sample size (splits a whole group's MAF, all species).
+    partition:
+    mem_mb: 8000
+    cpus: 1
+    time: 180
+
+  extract_4d_codons_by_chr:
+    # Scales with genome size and sample size (msa_view over the whole-chromosome
+    # alignment, all species).
+    partition:
+    mem_mb: 8000
+    cpus: 1
+    time: 180
+
+  run_phylofit:
+    # Scales with genome size and sample size (fits model on species x site matrix).
+    partition:
+    mem_mb: 6000
+    cpus: 1
+    time: 120
+
+  run_phylop:
+    # Scales with genome size and sample size (phyloP over the whole-chromosome
+    # alignment, all species).
+    partition:
+    mem_mb: 8000
+    cpus: 1
+    time: 240
+
+  adjust_pvals:
+    # Scales with genome size only (processes already-computed p-values, not raw
+    # alignment).
+    partition:
+    mem_mb: 6000
+    cpus: 8
+    time: 120
+
+  picard_scatter_by_ns:
+    # Scales with genome size only (scans the whole reference FASTA)
+    partition:
+    mem_mb: 8000
+    cpus: 1
+    time: 180
+
+  maf_index_chr:
+    # Scales with genome size and sample size (indexes a per-chromosome MAF, all species).
+    partition:
+    mem_mb: 6000
+    cpus: 1
+    time: 120
+
+  maf_split_chunks:
+    # Scales with genome size and sample size (extracts chunk MAF content, all species).
+    partition:
+    mem_mb: 6000
+    cpus: 1
+    time: 120
+
+  filter_maf_by_gap:
+    # Scales with genome size and sample size (reads every chunk's per-species rows
+    # to compute gap fraction).
+    partition:
+    mem_mb: 6000
+    cpus: 1
+    time: 120
+
+  global_rho:
+    # Applies to rho_mode: estimate only (rho_mode: fixed explicitly uses `default)
+    # Scales withgenome size and sample size (per-chunk phastCons --estimate-rho, all species).
+    partition:
+    mem_mb: 8000
+    cpus: 8
+    time: 480
+
+  phastcons_per_chunk:
+    # Used by rule run_phastcons_chr. Scales with genome size and sample size
+    # (phastCons over chunk alignments, all species).
+    partition:
+    mem_mb: 6000
+    cpus: 1
+    time: 180
+
+  cnee_alignments_chr:
+    # Scales with genome size and sample size (mafutils fetch per CNEE, all species).
+    partition:
+    mem_mb: 6000
+    cpus: 4
+    time: 120
+
+##############################################################################
+##############################################################################
+# Optional overrides
 
 maf_split_chr_dir: ""
 # Optional override for chromosome-split MAF directory.
@@ -181,12 +308,25 @@ phylofit_chr_dir: ""
 # Default:
 #   <output_dir>/02-neutral-model/phylofit
 
+target_ref_chromosomes: []
+# Optional subset override.
+# Leave [] to analyze all chromosomes listed in ref_chromosome_groups.
+# Example: ["chr1", "chr2"]
+
 ##############################################################################
 # Intermediate retention / debugging
 
 debug_keep_intermediates: false
 cleanup_chunk_intermediates: true
 keep_cnee_sidecars: false
+
+###########################
+# Primary workflow switches
+
+run_phylofit: true
+run_phylop: true
+run_phastcons: true
+build_cnees: true
 
 ##############################################################################
 # Rare meta/debug options
@@ -196,214 +336,4 @@ version: false
 info: false
 debug: false
 
-##############################################################################
-# Resource defaults
-#
-# Adjust these for your cluster.
-#
-# partition: set this to a valid Slurm partition name on your cluster before running.
 
-rule_resources:
-  default:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  maf_index:
-    partition:
-    mem_mb: 64000
-    cpus: 1
-    time: 2880
-
-  make_group_beds:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 30
-
-  maf_split_chr_by_group:
-    partition:
-    mem_mb: 240000
-    cpus: 1
-    time: 720
-
-  ref_gff_split_by_chr:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 20
-
-  ref_fasta_index:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  extract_4d_codons_by_chr:
-    partition:
-    mem_mb: 128000
-    cpus: 1
-    time: 1440
-
-  extract_4d_sites:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  filter_4d_sites:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  run_phylofit:
-    partition:
-    mem_mb: 16000
-    cpus: 1
-    time: 1440
-
-  get_gc_content:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  run_mod_freqs:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  run_phylop:
-    partition:
-    mem_mb: 64000
-    cpus: 1
-    time: 1440
-
-  convert_wig_to_bed:
-    partition:
-    mem_mb: 12000
-    cpus: 1
-    time: 240
-
-  adjust_pvals:
-    partition:
-    mem_mb: 24000
-    cpus: 32
-    time: 720
-
-  get_conserved_sites:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 10
-
-  get_accelerated_sites:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 10
-
-  site_counts:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 10
-
-  naive_cluster_conserved_sites:
-    partition:
-    mem_mb: 8000
-    cpus: 1
-    time: 120
-
-  ref_fasta_dict:
-    partition:
-    mem_mb: 8000
-    cpus: 1
-    time: 120
-
-  picard_scatter_by_ns:
-    partition:
-    mem_mb: 8000
-    cpus: 1
-    time: 120
-
-  ns_to_bed:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 30
-
-  filter_ns_bed_minlen:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  ns_minlen_to_bed3:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 30
-
-  fixed_windows_bed:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  maf_index_chr:
-    partition:
-    mem_mb: 16000
-    cpus: 1
-    time: 240
-
-  maf_split_by_ns_minlen:
-    partition:
-    mem_mb: 32000
-    cpus: 2
-    time: 720
-
-  filter_maf_by_gap:
-    partition:
-    mem_mb: 8000
-    cpus: 1
-    time: 120
-
-  phastcons_chunk:
-    partition:
-    mem_mb: 16000
-    cpus: 8
-    time: 720
-
-  phastcons_concat_chr:
-    partition:
-    mem_mb: 8000
-    cpus: 1
-    time: 120
-
-  extract_cds_bed_chr:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 60
-
-  cnees_from_conserved_chr:
-    partition:
-    mem_mb: 8000
-    cpus: 1
-    time: 120
-
-  cnees_to_bed4_chr:
-    partition:
-    mem_mb: 4000
-    cpus: 1
-    time: 30
-
-  cnee_alignments_chr:
-    partition:
-    mem_mb: 16000
-    cpus: 4
-    time: 720
