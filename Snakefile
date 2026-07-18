@@ -94,11 +94,102 @@ if run_phylop:
         zip, chromosome_group=REF_CHR_GROUPS_LIST, ref_chromosome=REF_CHROMOSOMES
     )
 
+ALL_TARGETS = (
+    (NEUTRAL_MODEL_TARGETS if run_phylofit else [])
+    + (PHYLOP_SITE_TARGETS if run_phylop else [])
+    + (PHYLOP_REGION_TARGETS if run_phylop else [])
+    + (ALL_BED_TARGETS if run_phastcons else [])
+    + (ALL_CNEES_TARGETS if run_phastcons and build_cnees else [])
+    + (ALL_CNEE_MAF_TARGETS if run_phastcons and build_cnees and cnee_output_format != "none" else [])
+)
+
+PIPELINE_DIR = os.path.dirname(os.path.abspath(workflow.snakefile))
+UTILS_DIR = os.path.join(PIPELINE_DIR, "utils")
+
+SUMMARY_REPORT_PATH = os.path.join(OUTPUT_DIR, "summary_report.html")
+
 rule all:
     input:
-        (NEUTRAL_MODEL_TARGETS if run_phylofit else [])
-        + (PHYLOP_SITE_TARGETS if run_phylop else [])
-        + (PHYLOP_REGION_TARGETS if run_phylop else [])
-        + (ALL_BED_TARGETS if run_phastcons else [])
-        + (ALL_CNEES_TARGETS if run_phastcons and build_cnees else [])
-        + (ALL_CNEE_MAF_TARGETS if run_phastcons and build_cnees and cnee_output_format != "none" else [])
+        ALL_TARGETS + [SUMMARY_REPORT_PATH]
+
+rule summary_report:
+    input:
+        targets = ALL_TARGETS
+        # Depending on the same conditional target lists rule all does is enough:
+        # every intermediate file this report reads (filter_maf_by_gap manifests,
+        # filter_4d_sites summaries, site_counts tsvs, etc.) is already a required
+        # upstream dependency of these targets in the DAG, so it's guaranteed to
+        # exist by the time this rule runs without needing to be listed separately.
+    output:
+        report = SUMMARY_REPORT_PATH
+    params:
+        script_path = os.path.join(UTILS_DIR, "summary_report.py"),
+        manifest_path = os.path.join(LOG_DIR, "summary_report", "manifest.json"),
+        manifest = {
+            "output_dir": OUTPUT_DIR,
+            "snakemake_command": config.get("__top_level_command__", ""),
+            "main_inputs": {
+                "output_dir": OUTPUT_DIR,
+                "maf": config.get("maf"),
+                "maf_ref_id": config.get("maf_ref_id"),
+                "ref_fasta": config.get("ref_fasta"),
+                "ref_gff": config.get("ref_gff"),
+                "tree_file": config.get("tree_file"),
+                "sample_file": config.get("sample_file"),
+                "n_chromosome_groups": len(config["ref_chromosome_groups"]),
+                "n_chromosomes": sum(len(v) for v in config["ref_chromosome_groups"].values()),
+                "run_phylofit": run_phylofit,
+                "run_phastcons": run_phastcons,
+                "build_cnees": build_cnees,
+                "cnee_output_format": cnee_output_format,
+                "use_gc_corrected_models": USE_GC_CORRECTED_MODELS if run_phylofit else None,
+                "rho_mode": RHO_MODE if run_phastcons else None,
+            },
+            "config_display": {
+                k: str(v) for k, v in config.items()
+                if not k.startswith("__") and k != "rule_resources"
+            },
+            "flags": {
+                "run_phylofit": run_phylofit,
+                "run_phastcons": run_phastcons,
+                "run_phylop": run_phylop,
+                "build_cnees": build_cnees,
+                "cnee_output_format": cnee_output_format,
+                "use_gc_corrected_models": USE_GC_CORRECTED_MODELS if run_phylofit else None,
+                "rho_mode": RHO_MODE if run_phastcons else None,
+            },
+            "chromosome_groups": config["ref_chromosome_groups"],
+            "maf_chr_prefix": config.get("maf_chr_prefix", ""),
+            "paths": {
+                "phylofit_dir": PHYLOFIT_DIR if run_phylofit else None,
+                "neutral_summary_dir": NEUTRAL_SUMMARY_DIR if run_phylofit else None,
+                "filter_threshold_4d": SEQ_THRESHOLD_4D if run_phylofit else None,
+                "avg_gc_file": AVG_GC_FILE if run_phylofit else None,
+                "maf_chunk_summary_dir": MAF_CHUNK_SUMMARY_DIR if run_phastcons else None,
+                "conserve_dir": CONSERVE_DIR if run_phastcons else None,
+                "cnees_dir": CNEES_DIR if (run_phastcons and build_cnees) else None,
+                "cnees_summary_dir": CNEES_SUMMARY_DIR if (run_phastcons and build_cnees) else None,
+                "cnee_min_len_bp": CNEE_MIN_LEN_BP if (run_phastcons and build_cnees) else None,
+            },
+        }
+    log:
+        job_log = os.path.join(LOG_DIR, "summary_report", "run.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "summary_report", "run.txt")
+    resources:
+        **COMMON.getResources(config, "summary_report")
+    run:
+        import json
+        import traceback
+
+        with open(log.job_log, "w") as log_stream:
+            try:
+                os.makedirs(os.path.dirname(params.manifest_path), exist_ok=True)
+                with open(params.manifest_path, "w") as mf:
+                    json.dump(params.manifest, mf, indent=2, default=str)
+
+                cmd = ["python", params.script_path, params.manifest_path, output.report]
+                COMMON.runCommand(cmd, log_stream, log_stream, "summary_report")
+            except Exception:
+                traceback.print_exc(file=log_stream)
+                raise

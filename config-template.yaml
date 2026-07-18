@@ -197,6 +197,10 @@ rule_resources:
   #     get_accelerated_sites, site_counts, naive_cluster_conserved_sites, run_phylop
   #   scales with sample size: run_phylop
 
+  # Snakefile
+  #   scales with chromosome count only (reads small per-chromosome summary/manifest
+  #     files already produced by other rules, not raw alignment content): summary_report
+
   maf_index:
     # Scales with genome size and sample size (indexes the whole MAF, all species).
     partition:

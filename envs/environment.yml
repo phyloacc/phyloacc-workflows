@@ -11,6 +11,9 @@ dependencies:
   - phast
   - ncbi-datasets-cli
   - pyyaml
+  - pandas
+  - matplotlib
+  - jinja2
   - pip
   - pip:
       - mafutils==0.1.1

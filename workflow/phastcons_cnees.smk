@@ -198,6 +198,10 @@ NS_INTERVALS_RAW_DIR = os.path.join(NS_INTERVALS_DIR, "raw")
 NS_INTERVALS_FILTERED_DIR = os.path.join(NS_INTERVALS_DIR, "filtered")
 CHUNK_BEDS_DIR = os.path.join(MAF_PREP_DIR, "chunk-beds")
 CHUNKED_MAFS_DIR = os.path.join(MAF_PREP_DIR, "chunked-mafs")
+MAF_CHUNK_SUMMARY_DIR = os.path.join(MAF_PREP_DIR, "summary")
+# Kept outside chunked-mafs/ deliberately: phastcons_concat_chr rmtree's the whole
+# per-chromosome chunked-mafs directory once done (cleanup_chunk_intermediates), so
+# a durable pre/post-filter count summary needs to live somewhere that survives that.
 MAF_SPLIT_BY_CHROM_DIR = COMMON.getOptionalConfigPath(
     config,
     "maf_split_chr_dir",
@@ -217,6 +221,7 @@ RHO_STATS_DIR = os.path.join(PHASTCONS_DIR, "rho")
 
 CNEES_ROOT_DIR = os.path.join(OUTPUT_DIR, "05-cnees", "phastcons")
 CNEES_DIR = os.path.join(CNEES_ROOT_DIR, "bed")
+CNEES_SUMMARY_DIR = os.path.join(CNEES_ROOT_DIR, "summary")
 REF_FASTA = config.get("ref_fasta") or ""
 if not REF_FASTA:
     raise ValueError("run_phastcons=true requires ref_fasta to be set in config.")
@@ -774,7 +779,8 @@ checkpoint filter_maf_by_gap:
     input:
         manifest = rules.maf_split_chunks.output.manifest
     output:
-        filtered_manifest = os.path.join(MAF_SPLIT_NS_DIR, "{chromosome_group}", "{ref_chromosome}", "manifest.filtered.txt")
+        filtered_manifest = os.path.join(MAF_SPLIT_NS_DIR, "{chromosome_group}", "{ref_chromosome}", "manifest.filtered.txt"),
+        filter_summary = os.path.join(MAF_CHUNK_SUMMARY_DIR, "{chromosome_group}", "{ref_chromosome}.maf-chunk-filter-summary.tsv")
     params:
         max_gap_pct = MAX_GAP_PCT,
         outdir = lambda wc: os.path.join(MAF_SPLIT_NS_DIR, wc.chromosome_group, wc.ref_chromosome),
@@ -805,6 +811,16 @@ checkpoint filter_maf_by_gap:
                 with open(output.filtered_manifest, "w") as out:
                     for k in kept:
                         out.write(k + "\n")
+
+                # Written here (rather than just relying on manifest.txt/manifest.filtered.txt)
+                # because phastcons_concat_chr rmtree's the whole chunked-mafs directory for
+                # this chromosome once it's done with it - this summary lives elsewhere
+                # (MAF_CHUNK_SUMMARY_DIR) specifically so it survives that cleanup.
+                os.makedirs(os.path.dirname(output.filter_summary), exist_ok=True)
+                with open(output.filter_summary, "w") as sf:
+                    sf.write("var\tfilter.cat\tvalue\n")
+                    sf.write(f"num.chunks\tpre.filter\t{len(all_lines)}\n")
+                    sf.write(f"num.chunks\tpost.filter\t{len(kept)}\n")
 
                 log_stream.write(f"Kept {len(kept)} of {len(all_lines)} (gap_pct_other <= {params.max_gap_pct})\n")
             except Exception:
@@ -1261,7 +1277,8 @@ rule cnees_from_conserved_chr:
         conserved_bed = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}.bed"),
         cds_bed = rules.extract_cds_bed_chr.output.cds_bed
     output:
-        cnees_bed = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cnees.bed")
+        cnees_bed = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cnees.bed"),
+        filter_summary = os.path.join(CNEES_SUMMARY_DIR, "{chromosome_group}", "{ref_chromosome}.cnees-filter-summary.tsv")
     log:
         job_log = os.path.join(LOG_DIR, "cnees_from_conserved_chr", "{chromosome_group}", "{ref_chromosome}.log")
     benchmark:
@@ -1353,6 +1370,13 @@ rule cnees_from_conserved_chr:
                     for chrom, s, e in out_rows:
                         if e > s:
                             out.write(f"{chrom}\t{s}\t{e}\n")
+
+                os.makedirs(os.path.dirname(output.filter_summary), exist_ok=True)
+                with open(output.filter_summary, "w") as sf:
+                    sf.write("metric\tvalue\n")
+                    sf.write(f"ces_raw\t{len(conserved_raw)}\n")
+                    sf.write(f"ces_merged\t{len(conserved)}\n")
+                    sf.write(f"cnees_after_cds_subtract\t{len(out_rows)}\n")
             except Exception:
                 traceback.print_exc(file=log_stream)
                 raise

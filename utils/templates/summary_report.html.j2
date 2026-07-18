@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PhyloAcc-workflows summary report</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; color: #222; }
+  .page { display: flex; align-items: flex-start; max-width: 1300px; margin: 2rem auto; gap: 2.5rem; padding: 0 1.5rem; }
+  nav.toc { flex: 0 0 200px; position: sticky; top: 1.5rem; font-size: 0.85rem; }
+  nav.toc strong { display: block; margin-bottom: 0.5rem; font-size: 0.95rem; }
+  nav.toc a { display: block; color: #2a5a5f; text-decoration: none; padding: 0.15rem 0; }
+  nav.toc a.sub { padding-left: 0.9rem; color: #567; }
+  nav.toc a:hover { text-decoration: underline; }
+  main { flex: 1 1 auto; min-width: 0; }
+  h1 { font-size: 1.6rem; margin-bottom: 0; }
+  h2 { font-size: 1.25rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2.5rem; }
+  h3 { font-size: 1.05rem; margin-top: 1.75rem; }
+  .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .command { font-family: ui-monospace, monospace; font-size: 0.78rem; background: #f4f6f6; border-radius: 6px; padding: 0.6rem 0.9rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+  .stat-row { display: flex; gap: 2rem; margin: 0.75rem 0 1.25rem 0; flex-wrap: wrap; }
+  .stat { background: #f4f6f6; border-radius: 6px; padding: 0.6rem 1rem; }
+  .stat .n { font-size: 1.4rem; font-weight: 600; color: #2a5a5f; }
+  .stat .label { font-size: 0.8rem; color: #666; }
+  table.data-table { border-collapse: collapse; font-size: 0.85rem; margin: 0.5rem 0 1.5rem 0; }
+  table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 4px 10px; text-align: right; }
+  table.data-table th { background: #f4f6f6; }
+  table.data-table td:first-child, table.data-table th:first-child { text-align: left; }
+  table.main-inputs { border-collapse: collapse; font-size: 0.9rem; margin: 0.75rem 0 1.5rem 0; }
+  table.main-inputs td { padding: 3px 12px 3px 0; }
+  table.main-inputs td:first-child { color: #567; white-space: nowrap; }
+  img.plot { max-width: 100%; margin: 0.5rem 0 1rem 0; }
+  .empty { color: #999; font-style: italic; }
+  details summary { cursor: pointer; color: #2a5a5f; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav class="toc">
+<strong>Contents</strong>
+<a href="#inputs">Inputs</a>
+<a href="#filtering">Filtering</a>
+<a class="sub" href="#maf-chunks">MAF chunks</a>
+<a class="sub" href="#4d-sites">4d sites</a>
+<a class="sub" href="#ce-cnee-funnel">CE &rarr; CNEE funnel</a>
+<a href="#outputs">Outputs</a>
+<a class="sub" href="#neutral-models">Neutral models</a>
+<a class="sub" href="#ces">Conserved elements</a>
+<a class="sub" href="#cnees">CNEEs</a>
+</nav>
+
+<main>
+
+<h1>PhyloAcc-workflows summary report</h1>
+<div class="meta">Generated {{ generated }} &middot; {{ output_dir }}</div>
+
+<h2 id="inputs">Inputs</h2>
+
+<table class="main-inputs">
+{% for k, v in main_inputs %}
+<tr><td>{{ k }}</td><td>{{ v }}</td></tr>
+{% endfor %}
+</table>
+
+{% if snakemake_command %}
+<div class="command">{{ snakemake_command }}</div>
+{% endif %}
+
+<details>
+<summary>Full config ({{ config_rows|length }} settings)</summary>
+<table class="data-table">
+<tr><th>Key</th><th>Value</th></tr>
+{% for k, v in config_rows %}
+<tr><td>{{ k }}</td><td>{{ v }}</td></tr>
+{% endfor %}
+</table>
+</details>
+
+<h2 id="filtering">Filtering</h2>
+
+<h3 id="maf-chunks">MAF chunks (gap filtering)</h3>
+{% if maf_filter_table is defined %}
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ maf_filter_total }}</div><div class="label">total chunks</div></div>
+  <div class="stat"><div class="n">{{ maf_filter_kept }}</div><div class="label">kept after gap filter</div></div>
+  <div class="stat"><div class="n">{{ "%.1f"|format(100 * maf_filter_kept / maf_filter_total) }}%</div><div class="label">retained</div></div>
+</div>
+<img class="plot" src="data:image/png;base64,{{ maf_filter_plot }}">
+<details><summary>Per-chromosome table</summary>{{ table(maf_filter_table) }}</details>
+{% else %}
+<p class="empty">No MAF chunk filtering data (run_phastcons was not enabled for this run).</p>
+{% endif %}
+
+<h3 id="4d-sites">4d sites (missing-data filtering)</h3>
+{% if sites_4d_table is defined %}
+{% if sites_4d_plot is defined %}
+<img class="plot" src="data:image/png;base64,{{ sites_4d_plot }}">
+{% endif %}
+<details><summary>Per-chromosome table</summary>{{ table(sites_4d_table) }}</details>
+{% else %}
+<p class="empty">No 4d-site filtering data (run_phylofit was not enabled for this run).</p>
+{% endif %}
+
+<h3 id="ce-cnee-funnel">CE &rarr; CNEE funnel</h3>
+{% if cnee_filter_table is defined %}
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ cnee_filter_totals.ces_raw }}</div><div class="label">raw CEs (phastCons)</div></div>
+  <div class="stat"><div class="n">{{ cnee_filter_totals.ces_merged }}</div><div class="label">merged (gap &le; cnee_ces_merge_gap_bp)</div></div>
+  <div class="stat"><div class="n">{{ cnee_filter_totals.cnees_after_cds_subtract }}</div><div class="label">after CDS subtraction</div></div>
+</div>
+<p style="font-size:0.85rem;color:#666;">Subtracting CDS overlap can split one conserved element into multiple
+flanking fragments, which is why the CNEE count can exceed the raw CE count even though total bp goes down.
+The final CNEE count (below, under Outputs) also applies the <code>cnee_min_len_bp</code> length filter.</p>
+<img class="plot" src="data:image/png;base64,{{ cnee_filter_plot }}">
+<details><summary>Per-chromosome table</summary>{{ table(cnee_filter_table) }}</details>
+{% else %}
+<p class="empty">No CE/CNEE filtering data (run_phastcons and build_cnees were not both enabled for this run).</p>
+{% endif %}
+
+<h2 id="outputs">Outputs</h2>
+
+<h3 id="neutral-models">Neutral models</h3>
+{% if neutral_models_table is defined %}
+{% if avg_gc is not none %}
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ "%.3f"|format(avg_gc) }}</div><div class="label">genome-wide average GC</div></div>
+</div>
+{% endif %}
+<details><summary>Per-chromosome table</summary>{{ table(neutral_models_table) }}</details>
+{% else %}
+<p class="empty">No neutral model data (run_phylofit was not enabled for this run).</p>
+{% endif %}
+
+<h3 id="ces">Conserved elements (phastCons)</h3>
+{% if ces is not none %}
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ ces.n_total }}</div><div class="label">total CEs</div></div>
+  <div class="stat"><div class="n">{{ ces.total_bp }}</div><div class="label">total bp</div></div>
+  <div class="stat"><div class="n">{{ ces.mean_len if ces.mean_len is not none else "-" }}</div><div class="label">mean length (bp)</div></div>
+  {% if ces.threshold_stats %}
+  <div class="stat"><div class="n">{{ ces.threshold_stats.n_above }}</div><div class="label">longer than {{ ces.threshold_stats.threshold }}bp ({{ ces.threshold_stats.pct_above }}%)</div></div>
+  {% endif %}
+</div>
+{% if ces.box %}<img class="plot" src="data:image/png;base64,{{ ces.box }}">{% endif %}
+<details><summary>Per-chromosome table</summary>{{ table(ces.table) }}</details>
+{% else %}
+<p class="empty">No conserved element data (run_phastcons was not enabled for this run).</p>
+{% endif %}
+
+<h3 id="cnees">CNEEs</h3>
+{% if cnees is not none %}
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ cnees.n_total }}</div><div class="label">total CNEEs</div></div>
+  <div class="stat"><div class="n">{{ cnees.total_bp }}</div><div class="label">total bp</div></div>
+  <div class="stat"><div class="n">{{ cnees.mean_len if cnees.mean_len is not none else "-" }}</div><div class="label">mean length (bp)</div></div>
+  {% if cnees.threshold_stats %}
+  <div class="stat"><div class="n">{{ cnees.threshold_stats.n_above }}</div><div class="label">longer than {{ cnees.threshold_stats.threshold }}bp ({{ cnees.threshold_stats.pct_above }}%)</div></div>
+  {% endif %}
+</div>
+{% if cnees.box %}<img class="plot" src="data:image/png;base64,{{ cnees.box }}">{% endif %}
+<details><summary>Per-chromosome table</summary>{{ table(cnees.table) }}</details>
+{% else %}
+<p class="empty">No CNEE data (build_cnees was not enabled for this run).</p>
+{% endif %}
+
+</main>
+</div>
+</body>
+</html>

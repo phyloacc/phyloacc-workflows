@@ -21,6 +21,7 @@ meta_logger = logging.getLogger('META')
 # Get the logger for the cactuslib module
 
 TOP_LEVEL_EXECUTOR_FILE = "top-level-executor.txt"
+TOP_LEVEL_COMMAND_FILE = "top-level-command.txt"
 TOP_LEVEL_AUTO_PARTITION_FILE = "top-level-auto-partition.txt"
 
 #############################################################################
@@ -214,10 +215,12 @@ def pipelineSetup(config, args, version_flag, info_flag, config_flag, debug, wor
     state_dir = getPipelineStateDir(workflow);
     executor_state_file = getPipelineStateFile(workflow, TOP_LEVEL_EXECUTOR_FILE);
     auto_partition_state_file = getPipelineStateFile(workflow, TOP_LEVEL_AUTO_PARTITION_FILE);
+    command_state_file = getPipelineStateFile(workflow, TOP_LEVEL_COMMAND_FILE);
 
     if main_flag:
         top_level_executor = getExecutor(args, config);
         auto_partition_enabled = hasSnakemakeOption("--slurm-partition-config", args);
+        top_level_command = " ".join(args);
 
         if not os.path.isdir(state_dir):
             os.makedirs(state_dir);
@@ -226,6 +229,8 @@ def pipelineSetup(config, args, version_flag, info_flag, config_flag, debug, wor
             handle.write(top_level_executor);
         with open(auto_partition_state_file, "w") as handle:
             handle.write("true" if auto_partition_enabled else "false");
+        with open(command_state_file, "w") as handle:
+            handle.write(top_level_command);
     else:
         if not os.path.exists(executor_state_file):
             raise FileNotFoundError(
@@ -239,9 +244,14 @@ def pipelineSetup(config, args, version_flag, info_flag, config_flag, debug, wor
         with open(executor_state_file, "r") as handle:
             top_level_executor = handle.read().strip();
         auto_partition_enabled = readPipelineStateFlag(auto_partition_state_file);
+        top_level_command = "";
+        if os.path.exists(command_state_file):
+            with open(command_state_file, "r") as handle:
+                top_level_command = handle.read().strip();
 
     config["__top_level_executor__"] = top_level_executor;
     config["__auto_partition_enabled__"] = auto_partition_enabled;
+    config["__top_level_command__"] = top_level_command;
 
     log_level = "info";
     if any([arg in args for arg in ["--rulegraph", "--dag"]]):
