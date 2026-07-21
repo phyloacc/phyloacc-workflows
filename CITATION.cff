@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "phyloacc-workflows"
+abstract: >-
+  Snakemake workflows for preparing comparative genomic alignment inputs for
+  PhyloAcc, from a whole-genome alignment (MAF) through neutral model
+  estimation (phyloFit), site- and region-level conservation scoring (phyloP,
+  phastCons), and CNEE extraction.
+authors:
+  - family-names: Thomas
+    given-names: Gregg
+version: 2.0.0
+date-released: "2026-07-21"
+repository-code: "https://github.com/phyloacc/phyloacc-workflows"
+url: "https://phyloacc.github.io/workflow.html"
