@@ -749,8 +749,8 @@ rule maf_split_chunks:
                 cmd = [
                     "mafutils", "fetch",
                     input.maf,
-                    input.maf_index_block,
                     input.bed3,
+                    "-i", input.maf_index_block,
                     "-o", split_outdir,
                     "-p", str(p),
                     "-m", "block"
@@ -1473,8 +1473,8 @@ rule cnee_alignments_chr:
                 cmd = [
                     "mafutils", "fetch",
                     input.maf,
-                    input.maf_index_block,
                     input.cnees_bed4,
+                    "-i", input.maf_index_block,
                     "-o", params.outdir,
                     "-p", str(p),
                     "-m", "block",

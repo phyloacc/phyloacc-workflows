@@ -81,17 +81,19 @@ USE_GC_CORRECTED_MODELS = _as_bool(
     True,
 )
 SAMPLE_FILE = str(config.get("sample_file") or "").strip()
-if USE_GC_CORRECTED_MODELS:
-    if not SAMPLE_FILE:
-        raise ValueError("use_gc_corrected_models=true requires sample_file to be set in config.")
-else:
+GC_SOURCE = "sample_file" if SAMPLE_FILE else "maf"
+# Auto-detected, not user-configurable: if sample_file is set, use it (matches
+# pre-existing configs unchanged); otherwise compute GC directly from the MAF.
+# sample_file has no other purpose in this pipeline, so this is unambiguous, and
+# it means blanking sample_file is a complete way to opt into MAF-based GC.
+if not USE_GC_CORRECTED_MODELS:
     MLOG.warning(
         "use_gc_corrected_models=false; skipping GC correction. If the GC content "
         "of the 4d sites used to fit the neutral model differs from the genome-wide "
         "GC content, results may be affected."
     )
 
-if SAMPLE_FILE:
+if GC_SOURCE == "sample_file":
     sample_file_extension = os.path.splitext(SAMPLE_FILE)[1];
     gc_sample_basename = os.path.basename(SAMPLE_FILE.replace(sample_file_extension, "-gc" + sample_file_extension))
     avg_gc_basename = os.path.basename(SAMPLE_FILE.replace(sample_file_extension, "-avg-gc" + sample_file_extension))
@@ -148,8 +150,15 @@ PHYLOFIT_ACTIVE_MODEL_PATH = (
 config["use_gc_corrected_models"] = USE_GC_CORRECTED_MODELS
 
 GC_SUMMARY_DIR = os.path.join(NEUTRAL_SUMMARY_DIR, "gc")
-GC_SAMPLE_FILE = os.path.join(GC_SUMMARY_DIR, gc_sample_basename);
-AVG_GC_FILE = os.path.join(GC_SUMMARY_DIR, avg_gc_basename);
+GC_MAF_OUTPUT_PREFIX = os.path.join(GC_SUMMARY_DIR, MAF_FILE)
+GC_SAMPLE_FILE = (
+    GC_MAF_OUTPUT_PREFIX + ".gc.csv" if GC_SOURCE == "maf"
+    else os.path.join(GC_SUMMARY_DIR, gc_sample_basename)
+);
+AVG_GC_FILE = (
+    GC_MAF_OUTPUT_PREFIX + ".gc.mean.txt" if GC_SOURCE == "maf"
+    else os.path.join(GC_SUMMARY_DIR, avg_gc_basename)
+);
 # Chromosome-split MAF directory used across workflows
 
 # REF_CHR_BED_DIR = os.path.join(OUTPUT_DIR, "beds");
@@ -393,8 +402,8 @@ checkpoint maf_split_chr_by_group:
             try:
                 cmd = [ "mafutils", "fetch",
                         input.maf,
-                        input.maf_index_scaff,
                         input.chr_group_bed,
+                        "-i", input.maf_index_scaff,
                         "-o", params.outdir,
                         "-p", str(resources.cpus_per_task),
                         "-m", "scaffold" ];
@@ -612,10 +621,10 @@ rule run_phylofit:
 
 # ####################
 
-if USE_GC_CORRECTED_MODELS:
-    # Both rules are only meaningful (and only produce valid, non-empty output paths)
-    # when GC correction is on; SAMPLE_FILE/GC_SAMPLE_FILE/AVG_GC_FILE are blank
-    # otherwise, which would make these rules' outputs empty/duplicate paths.
+if USE_GC_CORRECTED_MODELS and GC_SOURCE == "sample_file":
+    # Only meaningful (and only produces valid, non-empty output paths) when GC
+    # correction is on and sample_file is the selected source; SAMPLE_FILE/
+    # GC_SAMPLE_FILE/AVG_GC_FILE are blank otherwise.
 
     rule get_gc_content:
         input:
@@ -652,7 +661,49 @@ if USE_GC_CORRECTED_MODELS:
         #     python {params.script_path} {input.sample_file} &> {log}
         #     """
 
-    # ####################
+# ####################
+
+if USE_GC_CORRECTED_MODELS and GC_SOURCE == "maf":
+    # Computes GC directly from the whole input MAF via `mafutils gc`, rather than
+    # looking assemblies up externally via sample_file. Runs once on the whole MAF
+    # (not per-chromosome) to match the single genome-wide average the sample_file
+    # path already produces - could be split to per-chromosome-group later if
+    # there's a reason to want that granularity.
+
+    rule get_gc_content_from_maf:
+        input:
+            maf = MAF_PATH,
+            maf_index_block = MAF_INDEX_BLOCK
+        output:
+            gc_sample_file = GC_SAMPLE_FILE,
+            avg_gc_file = AVG_GC_FILE
+        params:
+            output_prefix = GC_MAF_OUTPUT_PREFIX
+        log:
+            job_log = os.path.join(LOG_DIR, "get_gc_content_from_maf", "run.log")
+        benchmark:
+            os.path.join(LOG_DIR, "benchmarks", "get_gc_content_from_maf", "run.txt")
+        resources:
+            **getRuleResources("get_gc_content_from_maf")
+        run:
+            with open(log.job_log, "w") as log_stream:
+                try:
+                    os.makedirs(os.path.dirname(params.output_prefix), exist_ok=True)
+                    cmd = [
+                        "mafutils", "gc",
+                        input.maf, input.maf_index_block,
+                        "-o", params.output_prefix,
+                        "-p", str(int(resources.cpus_per_task)),
+                    ]
+                    COMMON.runCommand(cmd, log_stream, log_stream, "get_gc_content_from_maf");
+                except Exception:
+                    traceback.print_exc(file=log_stream)
+                    raise
+
+# ####################
+
+if USE_GC_CORRECTED_MODELS:
+    # Needed regardless of which gc_source populated AVG_GC_FILE above.
 
     rule run_mod_freqs:
         input:

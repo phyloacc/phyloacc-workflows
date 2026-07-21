@@ -49,10 +49,7 @@ tmp_dir:
 # Options below have been set with default values and MAY NOT NEED TO BE CHANGED
 
 ##############################################################################
-# Secondary file settings
-
-accession_header: accession
-# Header in 'sample_file' containing assembly accessions for GC lookup.
+# MAF / reference header settings
 
 maf_chr_prefix: ""
 # If the chromsome IDs of the reference genome in the MAF are prefixed relative to those
@@ -80,7 +77,7 @@ maf_ref_chr_joiner: "."
 filter_threshold_4d: 0.5
 # Fraction of sequences allowed to be missing in a 4d site pattern.
 
-use_gc_corrected_models: false
+use_gc_corrected_models: true
 # Switch to enable/disable GC correction of phyloFit models.
 # Setting 'false' removes the need for sample_file (a warning is printed, since
 # results may be affected if the GC content of the 4d sites used to fit the neutral
@@ -92,8 +89,12 @@ sample_file:
 # See 'accession_header' below to change the name of the column containing accessions.
 # Alternatively, if a column called 'gc' is present, those values will be used instead of
 # looking them up by accession.
-# Required if use_gc_corrected_models: true (errors informatively if blank); unused
-# and optional if use_gc_corrected_models: false.
+# Only used if use_gc_corrected_models: true. If set, GC is looked up externally via
+# these accessions. If left blank, GC is instead computed directly from the input MAF
+# (via `mafutils gc`) - no sample sheet needed. Blank this to switch to MAF-based GC.
+
+accession_header: accession
+# Header in 'sample_file' containing assembly accessions for GC lookup.
 
 ##############################################################################
 # phastCons / CNEE behavior
@@ -178,7 +179,8 @@ rule_resources:
   # workflow/phylofit_models.smk
   #   scales with genome size: ref_fasta_index, make_group_beds, ref_gff_split_by_chr,
   #     maf_index, maf_split_chr_by_group, extract_4d_codons_by_chr, extract_4d_sites,
-  #     filter_4d_sites, run_phylofit
+  #     filter_4d_sites, run_phylofit, get_gc_content_from_maf (only used when
+  #     sample_file is blank - reads the whole MAF once, like maf_index)
   #   scales with sample size: get_gc_content, maf_index, maf_split_chr_by_group,
   #     extract_4d_codons_by_chr, extract_4d_sites, filter_4d_sites, run_phylofit
 
@@ -222,6 +224,13 @@ rule_resources:
     mem_mb: 8000
     cpus: 1
     time: 180
+
+  get_gc_content_from_maf:
+    # Scales with genome size and sample size (reads the whole MAF, all species).
+    partition:
+    mem_mb: 750
+    cpus: 4
+    time: 90
 
   run_phylofit:
     # Scales with genome size and sample size (fits model on species x site matrix).
@@ -339,5 +348,3 @@ display: false
 version: false
 info: false
 debug: false
-
-
