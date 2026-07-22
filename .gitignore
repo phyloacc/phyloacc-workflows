@@ -2,7 +2,8 @@ __pycache__
 *.pyc
 
 .snakemake/
-analyses/
+analyses/*
+!analyses/resource-usage/
 data/
 
 etc/phyloacc-sicb-ms/chr1/phyloacc-job-files/alns/

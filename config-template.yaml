@@ -21,10 +21,8 @@ maf:
 maf_ref_id:
 # The species label of the reference genome in the MAF (the one whose coordinates the MAF is projected onto).
 
-ref_fasta:
-ref_fasta_index:  # Will be generated if not provided.
 ref_gff:
-# Absolute paths to the FASTA, FASTA index (.fai), and GFF file of the reference genome in the MAF (set in 'maf_ref_id').
+# Absolute path to the GFF file of the reference genome in the MAF (set in 'maf_ref_id').
 
 tree_file:
 # Absolute path to the Newick formatted tree file for the species in the MAF.
@@ -99,18 +97,49 @@ accession_header: accession
 ##############################################################################
 # phastCons / CNEE behavior
 
-split_strategy: ns
+##########
+# Split strategy for phastCons
+
+split_strategy: num_seqs
 # One of:
-# - ns
-# - fixed_windows
+# - num_seqs (default): split based on cross-species alignment coverage - runs of MAF
+#   blocks with few aligned species are treated as gaps. Uses the MAF's own block index
+#   (already produced by this pipeline), so it needs no reference FASTA/masking convention
+#   and reflects what's actually alignable rather than an indirect proxy for it.
+# - ns: split based on N-runs in the reference FASTA. Requires ref_fasta to be set and
+#   Picard-recognized, and in practice a masked reference to be meaningful - on a
+#   hard-masked genome this splits at every repeat, not just true assembly gaps, which can
+#   produce very large numbers of tiny chunks.
+# - fixed_windows: split into fixed-size windows regardless of alignment/reference content.
+
+num_seqs_max_for_gap: 3
+num_seqs_min_gap_bp: 100
+num_seqs_min_keep_region_len: 6
+# Used when split_strategy: num_seqs.
+# num_seqs_max_for_gap: a MAF block with this many species or fewer counts toward a "gap" run.
+# num_seqs_min_gap_bp: minimum contiguous length of a qualifying low-species-count run to
+#   actually count as a split point - short dips don't fragment the chromosome.
+# num_seqs_min_keep_region_len: drop resulting chunks shorter than this.
+# These defaults are a starting point from exploratory analysis on one real alignment, not
+# a tuned recommendation - review chunk count/size on your own data before trusting them.
+
+#####
+
+ref_fasta:
+ref_fasta_index:  # Will be generated if not provided.
+# Used when split_strategy: Ns or fixed_windows
 
 min_Ns_to_split_by: 100
 min_keep_region_len: 6
 # Used when split_strategy: ns
 
+#####
+
 window_size_bp: 1000000
 window_overlap_bp: 0
 # Used when split_strategy: fixed_windows
+
+##########
 
 max_gap_pct: 0.9
 # Maximum non-reference gap fraction allowed in chunk filtering.
@@ -187,9 +216,11 @@ rule_resources:
   # workflow/phastcons_cnees.smk
   #   scales with genome size: ref_fasta_index, ref_fasta_dict, picard_scatter_by_ns,
   #     ns_to_bed, filter_ns_bed_minlen, ns_minlen_to_bed3, fixed_windows_bed,
-  #     maf_index_chr, maf_split_chunks, filter_maf_by_gap, global_rho,
-  #     run_phastcons_chr, phastcons_concat_chr, extract_cds_bed_chr,
-  #     cnees_from_conserved_chr, cnees_to_bed4_chr, cnee_alignments_chr
+  #     num_seqs_chunk_bed_chr (reads the per-chromosome block index once; only used
+  #     when split_strategy: num_seqs - new, no benchmark data yet), maf_index_chr,
+  #     maf_split_chunks, filter_maf_by_gap, global_rho, run_phastcons_chr,
+  #     phastcons_concat_chr, extract_cds_bed_chr, cnees_from_conserved_chr,
+  #     cnees_to_bed4_chr, cnee_alignments_chr
   #   scales with sample size: maf_index_chr, maf_split_chunks, filter_maf_by_gap,
   #     global_rho (only when rho_mode: estimate), run_phastcons_chr,
   #     cnee_alignments_chr
@@ -228,7 +259,7 @@ rule_resources:
   get_gc_content_from_maf:
     # Scales with genome size and sample size (reads the whole MAF, all species).
     partition:
-    mem_mb: 750
+    mem_mb: 4000
     cpus: 4
     time: 90
 

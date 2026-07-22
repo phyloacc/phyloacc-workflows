@@ -1,8 +1,8 @@
-version: 2.0.0
+version: 2.2.0
 releasedate-major: July 21, 2026
-releasedate-minor: July 21, 2026
-releasedate-patch: July 21, 2026
-latest-commit-date: 2026-07-21
+releasedate-minor: July 22, 2026
+releasedate-patch: July 22, 2026
+latest-commit-date: 2026-07-22
 doi:
 link: https://github.com/phyloacc/phyloacc-workflows
 #github: https://github.com/harvardinformatics/cactus-snakemake

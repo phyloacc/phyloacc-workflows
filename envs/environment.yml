@@ -16,4 +16,4 @@ dependencies:
   - jinja2
   - pip
   - pip:
-      - mafutils>=0.2.0
+      - mafutils>=0.3.0
