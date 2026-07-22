@@ -222,9 +222,15 @@ RHO_STATS_DIR = os.path.join(PHASTCONS_DIR, "rho")
 CNEES_ROOT_DIR = os.path.join(OUTPUT_DIR, "05-cnees", "phastcons")
 CNEES_DIR = os.path.join(CNEES_ROOT_DIR, "bed")
 CNEES_SUMMARY_DIR = os.path.join(CNEES_ROOT_DIR, "summary")
+
+SPLIT_STRATEGY = str(config.get("split_strategy", "num_seqs")).strip().lower()
+if SPLIT_STRATEGY not in {"ns", "fixed_windows", "num_seqs"}:
+    raise ValueError(f"Invalid split_strategy '{SPLIT_STRATEGY}'. Use 'ns', 'fixed_windows', or 'num_seqs'.")
+NEEDS_REF_FASTA_FOR_SPLIT = SPLIT_STRATEGY in {"ns", "fixed_windows"}
+
 REF_FASTA = config.get("ref_fasta") or ""
-if not REF_FASTA:
-    raise ValueError("run_phastcons=true requires ref_fasta to be set in config.")
+if NEEDS_REF_FASTA_FOR_SPLIT and not REF_FASTA:
+    raise ValueError(f"split_strategy={SPLIT_STRATEGY} requires ref_fasta to be set in config.")
 REF_INDEX = COMMON.getOptionalConfigPath(
     config,
     "ref_fasta_index",
@@ -265,10 +271,6 @@ MAF_REF_PREFIX = MAF_REF_ID + MAF_REF_CHR_JOINER + MAF_CHR_PREFIX
 #############################################################################
 # Other params
 
-SPLIT_STRATEGY = str(config.get("split_strategy", "ns")).strip().lower()
-if SPLIT_STRATEGY not in {"ns", "fixed_windows"}:
-    raise ValueError(f"Invalid split_strategy '{SPLIT_STRATEGY}'. Use 'ns' or 'fixed_windows'.")
-
 PICARD_FASTA_SUFFIXES = (
     ".fa",
     ".fasta",
@@ -285,6 +287,13 @@ if SPLIT_STRATEGY == "ns" and not REF_FASTA.lower().endswith(PICARD_FASTA_SUFFIX
 
 MIN_NS_TO_SPLIT_BY = int(config.get("min_Ns_to_split_by", 100))
 MIN_KEEP_REGION_LEN = int(config.get("min_keep_region_len", 6))
+
+NUM_SEQS_MAX_FOR_GAP = int(config.get("num_seqs_max_for_gap", 3))
+NUM_SEQS_MIN_GAP_BP = int(config.get("num_seqs_min_gap_bp", 1000))
+NUM_SEQS_MIN_KEEP_REGION_LEN = int(config.get("num_seqs_min_keep_region_len", 200))
+if NUM_SEQS_MAX_FOR_GAP < 0 or NUM_SEQS_MIN_GAP_BP < 0 or NUM_SEQS_MIN_KEEP_REGION_LEN < 0:
+    raise ValueError("num_seqs_max_for_gap, num_seqs_min_gap_bp, and num_seqs_min_keep_region_len must be >= 0.")
+
 WINDOW_SIZE_BP = config.get("window_size_bp", None)
 WINDOW_OVERLAP_BP = int(config.get("window_overlap_bp", 0))
 if WINDOW_OVERLAP_BP < 0:
@@ -301,11 +310,24 @@ else:
     WINDOW_SIZE_BP = int(config.get("window_size_bp", 1000000))
 WINDOW_STEP_BP = WINDOW_SIZE_BP - WINDOW_OVERLAP_BP
 
-SPLIT_LABEL = (
-    f"ns_min{MIN_KEEP_REGION_LEN}"
-    if SPLIT_STRATEGY == "ns"
-    else f"fixed_windows_w{WINDOW_SIZE_BP}_o{WINDOW_OVERLAP_BP}"
-)
+NS_SPLIT_LABEL = f"ns_min{MIN_KEEP_REGION_LEN}"
+NUM_SEQS_SPLIT_LABEL = f"num_seqs_ns{NUM_SEQS_MAX_FOR_GAP}_gap{NUM_SEQS_MIN_GAP_BP}_min{NUM_SEQS_MIN_KEEP_REGION_LEN}"
+FIXED_WINDOWS_SPLIT_LABEL = f"fixed_windows_w{WINDOW_SIZE_BP}_o{WINDOW_OVERLAP_BP}"
+
+if SPLIT_STRATEGY == "ns":
+    SPLIT_LABEL = NS_SPLIT_LABEL
+elif SPLIT_STRATEGY == "num_seqs":
+    SPLIT_LABEL = NUM_SEQS_SPLIT_LABEL
+else:
+    SPLIT_LABEL = FIXED_WINDOWS_SPLIT_LABEL
+
+# ns_minlen_to_bed3 and num_seqs_chunk_bed_chr are both always defined regardless of which
+# strategy is active (matching fixed_windows_bed's existing pattern), so each needs its own
+# unconditionally-distinct output directory - sharing CHUNK_BED_DIR between them would make
+# their output paths literally identical whenever one strategy is configured, since
+# CHUNK_BED_DIR only ever holds one value per invocation.
+NS_CHUNK_BED_DIR = os.path.join(CHUNK_BEDS_DIR, NS_SPLIT_LABEL)
+NUM_SEQS_CHUNK_BED_DIR = os.path.join(CHUNK_BEDS_DIR, NUM_SEQS_SPLIT_LABEL)
 
 NS_INTERVAL_FILE = os.path.join(NS_INTERVALS_DIR, f"{SPLIT_LABEL}.txt")
 CHUNK_BED_DIR = os.path.join(CHUNK_BEDS_DIR, SPLIT_LABEL)
@@ -482,9 +504,9 @@ wildcard_constraints:
 #############################################################################
 
 def chunk_bed_for_chr(wc):
-    if SPLIT_STRATEGY == "ns":
-        return os.path.join(CHUNK_BED_DIR, wc.chromosome_group, f"{wc.ref_chromosome}.bed")
-    return os.path.join(CHUNK_BEDS_DIR, "fixed_windows", wc.chromosome_group, f"{wc.ref_chromosome}.bed")
+    if SPLIT_STRATEGY == "fixed_windows":
+        return os.path.join(CHUNK_BEDS_DIR, "fixed_windows", wc.chromosome_group, f"{wc.ref_chromosome}.bed")
+    return os.path.join(CHUNK_BED_DIR, wc.chromosome_group, f"{wc.ref_chromosome}.bed")
 
 
 if not bool(config.get("__ref_fasta_index_rule_defined__", False)):
@@ -633,7 +655,7 @@ rule ns_minlen_to_bed3:
     input:
         chr_bed_min_file = rules.filter_ns_bed_minlen.output.chr_bed_min_file
     output:
-        chr_bed_min_fixed = os.path.join(CHUNK_BED_DIR, "{chromosome_group}", "{ref_chromosome}.bed")
+        chr_bed_min_fixed = os.path.join(NS_CHUNK_BED_DIR, "{chromosome_group}", "{ref_chromosome}.bed")
     log:
         job_log = os.path.join(LOG_DIR, "ns_minlen_to_bed3", "{chromosome_group}", "{ref_chromosome}.log")
     benchmark:
@@ -719,6 +741,89 @@ rule maf_index_chr:
                 raise
 
 
+
+####################
+
+rule num_seqs_chunk_bed_chr:
+    input:
+        maf_index_block = rules.maf_index_chr.output.maf_index_block
+    output:
+        chr_bed = os.path.join(NUM_SEQS_CHUNK_BED_DIR, "{chromosome_group}", "{ref_chromosome}.bed")
+    params:
+        max_num_seqs_for_gap = NUM_SEQS_MAX_FOR_GAP,
+        min_gap_bp = NUM_SEQS_MIN_GAP_BP,
+        min_keep_region_len = NUM_SEQS_MIN_KEEP_REGION_LEN
+    log:
+        job_log = os.path.join(LOG_DIR, "num_seqs_chunk_bed_chr", "{chromosome_group}", "{ref_chromosome}.log")
+    benchmark:
+        os.path.join(LOG_DIR, "benchmarks", "num_seqs_chunk_bed_chr", "{chromosome_group}", "{ref_chromosome}.txt")
+    resources:
+        **getRuleResources("num_seqs_chunk_bed_chr")
+    run:
+        with open(log.job_log, "w") as log_stream:
+            try:
+                os.makedirs(os.path.dirname(output.chr_bed), exist_ok=True)
+
+                # Block index columns: ref_scaff, ref_start, ref_len, seq_len, line_len,
+                # num_seqs, byte_start, byte_end. Only ref_start/ref_len/num_seqs matter here.
+                rows = []
+                with open(input.maf_index_block) as f:
+                    for line in f:
+                        if not line.strip() or line.startswith("#"):
+                            continue
+                        p = line.rstrip("\n").split("\t")
+                        rows.append((int(p[1]), int(p[2]), int(p[5])))
+                rows.sort(key=lambda r: r[0])
+
+                if not rows:
+                    raise ValueError(f"No blocks found in {input.maf_index_block}")
+
+                chrom_start = rows[0][0]
+                chrom_end = rows[-1][0] + rows[-1][1]
+
+                # Merge consecutive blocks with num_seqs <= max_num_seqs_for_gap into gap runs.
+                gaps = []
+                gap_start = None
+                gap_end = None
+                for ref_start, ref_len, num_seqs in rows:
+                    if num_seqs <= params.max_num_seqs_for_gap:
+                        if gap_start is None:
+                            gap_start = ref_start
+                        gap_end = ref_start + ref_len
+                    else:
+                        if gap_start is not None:
+                            gaps.append((gap_start, gap_end))
+                            gap_start = None
+                if gap_start is not None:
+                    gaps.append((gap_start, gap_end))
+
+                # Only gap runs at least min_gap_bp long actually split the chromosome -
+                # short dips below the num_seqs threshold don't fragment it.
+                gaps = [(gs, ge) for gs, ge in gaps if ge - gs >= params.min_gap_bp]
+
+                # The complement of the surviving gaps is the candidate chunk set.
+                chunks = []
+                cur = chrom_start
+                for gs, ge in gaps:
+                    if gs > cur:
+                        chunks.append((cur, gs))
+                    cur = max(cur, ge)
+                if cur < chrom_end:
+                    chunks.append((cur, chrom_end))
+
+                # Drop chunks too short to be worth scoring on their own.
+                chunks = [(s, e) for s, e in chunks if e - s >= params.min_keep_region_len]
+
+                with open(output.chr_bed, "w") as out:
+                    for s, e in chunks:
+                        out.write(f"{wildcards.ref_chromosome}\t{s}\t{e}\n")
+
+                log_stream.write(
+                    f"blocks={len(rows)}; gaps_kept={len(gaps)}; chunks_kept={len(chunks)}\n"
+                )
+            except Exception:
+                traceback.print_exc(file=log_stream)
+                raise
 
 ####################
 
@@ -1235,7 +1340,7 @@ rule extract_cds_bed_chr:
     input:
         ref_gff = REF_GFF
     output:
-        cds_bed = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}", "{ref_chromosome}.cds.bed")
+        cds_bed = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cds.bed")
     log:
         job_log = os.path.join(LOG_DIR, "extract_cds_bed_chr", "{chromosome_group}", "{ref_chromosome}.log")
     benchmark:

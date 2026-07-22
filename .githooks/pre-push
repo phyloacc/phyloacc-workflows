@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Blocks pushing a vX.Y.Z tag whose lib/info.yaml version doesn't match the
+# tag name. Ordinary branch pushes pass through untouched.
+#
+# Activate once per clone: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+while read -r local_ref local_sha _remote_ref _remote_sha; do
+  case "${local_ref}" in
+    refs/tags/v*)
+      tag_name="${local_ref#refs/tags/}"
+      tag_version="${tag_name#v}"
+      info_version="$(git show "${local_sha}:lib/info.yaml" | sed -n 's/^version: *//p')"
+
+      if [[ "${info_version}" != "${tag_version}" ]]; then
+        echo "pre-push: tag ${tag_name} does not match lib/info.yaml's version (${info_version})." >&2
+        echo "Update lib/info.yaml (and CITATION.cff), commit, merge to main, then re-tag." >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+exit 0

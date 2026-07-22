@@ -1,0 +1,658 @@
+---
+title: "Rule Resource Usage and Default Tuning"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+---
+
+<style>
+div.main-container,
+.main-container {
+  max-width: 1800px !important;
+  width: 96% !important;
+}
+
+@media (min-width: 992px) {
+  .main-container > .row {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .main-container > .row > div:first-child {
+    flex: 0 0 300px;
+    max-width: 300px;
+    align-self: flex-start;
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+
+  .main-container > .row > div:last-child {
+    flex: 1 1 auto;
+    max-width: calc(100% - 300px);
+  }
+
+  .toc-content {
+    max-width: none !important;
+    width: 100% !important;
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  div.tocify,
+  #TOC {
+    position: relative !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 280px !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
+pre {
+  white-space: pre !important;
+  overflow-x: auto !important;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+table {
+  width: auto;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 5.5
+)
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+library(yaml)
+
+repo_root <- normalizePath(file.path(getwd(), "..", ".."))
+repo_file <- function(...) file.path(repo_root, ...)
+```
+
+## Question
+
+`config-template.yaml`'s `rule_resources` block had 17 rules with hand-set,
+never-benchmarked `mem_mb`/`cpus`/`time` values (some as high as 240 GB / 24
+hours), alongside a `default` of 4000 MB / 1 cpu / 60 min that ~30 other rules
+silently relied on. We added `benchmark:` to every real (non-orphaned) rule in
+the pipeline and ran the full workflow-tests hamster dataset end to end twice,
+using **every chromosome in the real reference genome** (21 chromosomes across
+the `autosomes`/`xy` groups, ~2.72 Gb total) rather than the 3-chromosome
+subset used for day-to-day testing - once with `run_phylop: false` (the
+original scope of this analysis), then again with `run_phylop: true` to fill
+in the `phylop_regions.smk` rules and pick up real data for `maf_index`, which
+hadn't re-executed the first time. This notebook uses that combined real
+`benchmark:` output to answer: which of the current custom entries are
+actually justified, which are wildly over-provisioned, how does usage scale
+with chromosome/group size, and where does run time actually concentrate
+across the pipeline's stages.
+
+## Data and methodology
+
+```{r load-data}
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+bench <- read_tsv(repo_file("analyses", "resource-usage", "benchmarks-flat.tsv"), show_col_types = FALSE) %>%
+  mutate(
+    wall_min = wall_s / 60,
+    across(c(max_rss_mb, cpu_time_s, mean_load_pct), as.numeric)
+  )
+
+fai_path <- "/n/holylfs05/LABS/informatics/Everyone/support/20251114-raftrey-hamster-wga/data/genomes/masked/GCA_000001635.9/GCA_000001635.9.fna.masked.hard.fna.fai"
+chrom_lengths <- read_tsv(fai_path, col_names = c("chrom", "length_bp", "offset", "linebases", "linewidth"), show_col_types = FALSE) %>%
+  select(chrom, length_bp)
+
+test_cfg <- read_yaml(repo_file("data", "hamsters", "workflow-tests", "workflow-tests.yaml"))
+groups <- test_cfg$ref_chromosome_groups
+group_totals <- tibble(
+  group = names(groups),
+  group_length_bp = sapply(groups, function(chrs) sum(chrom_lengths$length_bp[match(unlist(chrs), chrom_lengths$chrom)]))
+)
+
+rule_cfg <- read_yaml(repo_file("config-template.yaml"))$rule_resources
+default_cfg <- rule_cfg$default
+
+cfg_table <- bind_rows(lapply(names(rule_cfg), function(r) {
+  x <- rule_cfg[[r]]
+  tibble(rule = r, cfg_mem_mb = x$mem_mb %||% default_cfg$mem_mb,
+         cfg_cpus = x$cpus %||% default_cfg$cpus,
+         cfg_time_min = x$time %||% default_cfg$time,
+         is_custom = r != "default")
+}))
+
+bench <- bench %>%
+  left_join(chrom_lengths, by = "chrom") %>%
+  left_join(group_totals, by = "group") %>%
+  mutate(scale_bp = coalesce(length_bp, group_length_bp))
+```
+
+- **Data source**: primarily `data/hamsters/workflow-tests/test-full-gc/`, a
+  real (non-dry-run), error-free, 361/361-step execution against the real
+  mouse reference genome and real 15-species Cactus alignment used throughout
+  `workflow-tests.yaml` - all 21 real chromosomes across the `autosomes`/`xy`
+  groups, `rho_mode: fixed`, and `sample_file` blank (auto-selecting the new
+  MAF-based GC path, `get_gc_content_from_maf`, exercised here for the first
+  time - see its own section below). `run_phylop` was off for this run, so
+  phyloP-stage rules and `get_gc_content` (the older sample_file-based path)
+  are carried over unchanged from the earlier `test-full-phylop-rho/` run
+  where they still have data - see [Caveats](#caveats) for what that means for
+  those specific rows.
+- **`benchmark:`** is Snakemake's built-in per-job resource tracker: it records
+  wall-clock time, peak RSS memory, CPU time, and mean CPU load for the
+  process tree of each job, written to `logs/benchmarks/<rule>/...txt`.
+- 407 individual job records across 25 rules were parsed.
+- **Not covered by this run**: `phastcons_chunk` and
+  `phastcons_estimate_rho_chunk` (orphaned rules, never scheduled - see repo
+  `RULES.md`).
+
+## Run time by pipeline stage
+
+Before the per-rule detail below, a higher-level view: every rule grouped
+into the pipeline stage it belongs to (matching the `NN-name` output
+directories the workflow itself writes to), showing the real distribution of
+wall-clock time across all 21 chromosomes/groups per rule.
+
+```{r stage-map}
+stage_map <- c(
+  ref_fasta_index = "01: MAF prep", ref_fasta_dict = "01: MAF prep", maf_index = "01: MAF prep",
+  make_group_beds = "01: MAF prep", maf_split_chr_by_group = "01: MAF prep",
+  picard_scatter_by_ns = "01: MAF prep", ns_to_bed = "01: MAF prep", filter_ns_bed_minlen = "01: MAF prep",
+  ns_minlen_to_bed3 = "01: MAF prep", fixed_windows_bed = "01: MAF prep", maf_index_chr = "01: MAF prep",
+  maf_split_chunks = "01: MAF prep", filter_maf_by_gap = "01: MAF prep", ref_gff_split_by_chr = "01: MAF prep",
+
+  extract_4d_codons_by_chr = "02: Neutral model", extract_4d_sites = "02: Neutral model",
+  filter_4d_sites = "02: Neutral model", run_phylofit = "02: Neutral model",
+  get_gc_content = "02: Neutral model", get_gc_content_from_maf = "02: Neutral model",
+  run_mod_freqs = "02: Neutral model",
+
+  run_phylop = "03: phyloP", convert_wig_to_bed = "03: phyloP", adjust_pvals = "03: phyloP",
+  get_conserved_sites = "03: phyloP", get_accelerated_sites = "03: phyloP",
+  site_counts = "03: phyloP", naive_cluster_conserved_sites = "03: phyloP",
+
+  run_phastcons_chr = "04: phastCons", global_rho = "04: phastCons", phastcons_concat_chr = "04: phastCons",
+
+  extract_cds_bed_chr = "05: CNEEs", cnees_from_conserved_chr = "05: CNEEs",
+  cnees_to_bed4_chr = "05: CNEEs", cnee_alignments_chr = "05: CNEEs"
+)
+
+stage_data <- bench %>%
+  mutate(stage = stage_map[rule]) %>%
+  filter(!is.na(stage))
+```
+
+```{r stage-runtime-plot, fig.height=5.5}
+ggplot(stage_data, aes(x = stage, y = wall_min)) +
+  geom_boxplot(outlier.shape = NA, fill = NA, color = "grey50") +
+  geom_jitter(width = 0.15, height = 0, alpha = 0.5, size = 2, color = "#3b6e73") +
+  scale_y_log10(labels = scales::label_number()) +
+  labs(x = "Pipeline stage", y = "Run time (minutes, log scale)",
+       title = "Run time by pipeline stage, all rules and chromosomes") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor.y = element_blank())
+```
+
+Unlike a single Cactus-style pipeline with a handful of coarse steps, this
+distribution spans many small bookkeeping rules alongside genuinely heavy
+compute, so a log scale is used (the linear scale that fits a 3-step pipeline
+cleanly would flatten everything below `phastCons` into an unreadable sliver
+here) - each point is one rule-chromosome job, not one rule. Reading it: **01:
+MAF prep** and **05: CNEEs** are dominated by fast bookkeeping steps with a
+handful of slower outliers (`maf_split_chunks`, `cnee_alignments_chr`); **02:
+Neutral model** is bimodal, mixing near-instant BED/summary rules with the
+much slower `extract_4d_codons_by_chr`; **03: phyloP** and **04: phastCons**
+are the two genuinely compute-heavy stages, with `phastCons` carrying both
+the highest median and the widest spread - consistent with it being the only
+stage that re-runs an HMM-like scan per chunk rather than a single pass per
+chromosome.
+
+```{r stage-mem-plot, fig.height=5.5}
+ggplot(stage_data, aes(x = stage, y = max_rss_mb)) +
+  geom_boxplot(outlier.shape = NA, fill = NA, color = "grey50") +
+  geom_jitter(width = 0.15, height = 0, alpha = 0.5, size = 2, color = "#8a5a44") +
+  scale_y_log10(labels = scales::label_number()) +
+  labs(x = "Pipeline stage", y = "Peak RSS (MB, log scale)",
+       title = "Peak memory by pipeline stage, all rules and chromosomes") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor.y = element_blank())
+```
+
+Memory tells a different story than time: every stage's typical (median) job
+sits in the low hundreds of MB, and the spread within each stage is far
+narrower than the time plot's - the same handful of rules
+(`maf_split_chr_by_group`, `extract_4d_codons_by_chr`, `picard_scatter_by_ns`)
+account for essentially all of the upper tail across every stage, rather than
+whole stages running memory-heavy the way `phastCons`/`phyloP` run
+time-heavy.
+
+## Per-rule usage vs. configured resources
+
+```{r summary-table}
+summary_tbl <- bench %>%
+  group_by(rule) %>%
+  summarise(
+    n = n(),
+    peak_mem_mb = max(max_rss_mb),
+    mean_mem_mb = mean(max_rss_mb),
+    peak_wall_min = max(wall_min),
+    mean_wall_min = mean(wall_min),
+    peak_load_pct = max(mean_load_pct),
+    .groups = "drop"
+  ) %>%
+  left_join(cfg_table, by = "rule") %>%
+  mutate(
+    cfg_mem_mb = coalesce(cfg_mem_mb, default_cfg$mem_mb),
+    cfg_cpus = coalesce(cfg_cpus, default_cfg$cpus),
+    cfg_time_min = coalesce(cfg_time_min, default_cfg$time),
+    is_custom = coalesce(is_custom, FALSE),
+    mem_pct_of_cfg = 100 * peak_mem_mb / cfg_mem_mb,
+    time_pct_of_cfg = 100 * peak_wall_min / cfg_time_min
+  ) %>%
+  arrange(desc(mem_pct_of_cfg))
+
+summary_tbl %>%
+  select(rule, is_custom, n, peak_mem_mb, cfg_mem_mb, mem_pct_of_cfg,
+         peak_wall_min, cfg_time_min, time_pct_of_cfg, cfg_cpus, peak_load_pct) %>%
+  mutate(across(where(is.numeric), \(x) round(x, 1))) %>%
+  kable(caption = "Peak observed usage vs. currently configured resources, sorted by memory pressure")
+```
+
+**Headline finding**: every rule's peak memory usage in this full-scale run is
+under the `default` bucket's 4000 MB - including `maf_split_chr_by_group`
+(configured 240,000 MB, used 3246 MB: **1.4%**) and `extract_4d_codons_by_chr`
+(configured 128,000 MB, used 3626 MB: **2.8%**). None of the current custom
+`mem_mb`/`time` values appear to be grounded in measured usage; they read as
+defensive guesses.
+
+Three rules do sit close enough to `default`'s ceiling (all in the 78-91%
+range) that I would not rely on bare `default` for them without a margin:
+`picard_scatter_by_ns`, `maf_split_chr_by_group`, and `extract_4d_codons_by_chr`.
+Everything else currently custom (`cnee_alignments_chr`, `phastcons_concat_chr`,
+`cnees_from_conserved_chr`, `filter_maf_by_gap`, `maf_index_chr`, `run_phylofit`)
+peaked at or below 33% of `default` and has no real need for its own entry,
+other than `cnee_alignments_chr`'s `cpus: 4` (see below).
+
+## CPU allocation check
+
+`mem_mb`/`time` aren't the only thing worth checking - `mean_load_pct` (average
+percent of one core used over the job's lifetime) indicates whether the
+`cpus:` a rule requests is actually being used.
+
+```{r cpu-check}
+summary_tbl %>%
+  mutate(load_vs_requested = peak_load_pct / (cfg_cpus * 100)) %>%
+  select(rule, cfg_cpus, peak_load_pct, load_vs_requested) %>%
+  arrange(desc(load_vs_requested)) %>%
+  mutate(across(where(is.numeric), \(x) round(x, 2))) %>%
+  kable(caption = "Peak mean CPU load vs. requested cpus (>1.0 = using more than requested)")
+```
+
+`cnee_alignments_chr` (`cpus: 4`, since it passes `-p <cpus>` to `mafutils
+fetch`) shows load consistent with genuine multi-core use, so its `cpus: 4`
+looks justified regardless of how much its memory entry shrinks.
+`maf_split_chunks` shows load above 100% of its single requested cpu - worth
+a look, though not acted on here since it's currently `default`-reliant and
+not part of the custom-entry cleanup this notebook is scoped to.
+
+## Scaling with chromosome/group size
+
+For the 21 per-chromosome rules, peak memory and wall time against the actual
+chromosome length they operated on, to see whether usage scales with sequence
+size (and if so, how steeply) rather than being roughly constant:
+
+```{r scaling-plot, fig.height=9}
+per_chrom_rules <- bench %>%
+  filter(!is.na(length_bp)) %>%
+  distinct(rule) %>%
+  pull(rule)
+
+plot_data <- bench %>% filter(rule %in% per_chrom_rules, !is.na(length_bp))
+
+ggplot(plot_data, aes(x = length_bp / 1e6, y = max_rss_mb)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = 0.5) +
+  facet_wrap(~rule, scales = "free_y") +
+  labs(x = "Chromosome length (Mb)", y = "Peak RSS (MB)",
+       title = "Peak memory vs. chromosome length, per rule") +
+  theme_bw(base_size = 10)
+```
+
+```{r scaling-plot-time, fig.height=9}
+ggplot(plot_data, aes(x = length_bp / 1e6, y = wall_min)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = 0.5) +
+  facet_wrap(~rule, scales = "free_y") +
+  labs(x = "Chromosome length (Mb)", y = "Wall time (min)",
+       title = "Wall time vs. chromosome length, per rule") +
+  theme_bw(base_size = 10)
+```
+
+```{r scaling-fits}
+fit_stats <- plot_data %>%
+  group_by(rule) %>%
+  filter(n() >= 5) %>%
+  summarise(
+    mem_slope_mb_per_mb = coef(lm(max_rss_mb ~ I(length_bp / 1e6)))[2],
+    mem_r2 = summary(lm(max_rss_mb ~ I(length_bp / 1e6)))$r.squared,
+    .groups = "drop"
+  ) %>%
+  arrange(desc(mem_slope_mb_per_mb))
+
+fit_stats %>%
+  mutate(across(where(is.numeric), \(x) round(x, 3))) %>%
+  kable(caption = "Linear fit of peak memory (MB) per Mb of chromosome length")
+```
+
+Most rules show a shallow or near-flat memory/time slope against chromosome
+length - consistent with tools whose cost is dominated by fixed per-job
+overhead (parsing, I/O setup) rather than genuinely scaling with sequence
+size at this genome's scale. Only three rules combine a real slope with a
+fit that actually explains the variance (R² > 0.75): `cnee_alignments_chr`
+(6.07 MB/Mb, R²=0.76), `maf_split_chunks` (4.68 MB/Mb, R²=0.84), and
+`filter_maf_by_gap` (0.08 MB/Mb, R²=0.86) - all three process whole-chromosome
+alignment content directly, which fits. Notably, `extract_4d_codons_by_chr`
+has a nonzero slope (2.42 MB/Mb) but essentially no explanatory power
+(R²=0.01) - its memory use doesn't meaningfully track chromosome length in
+this data, so whatever drives its usage (species count, 4d-site density,
+something else) isn't captured by length alone. Projecting the well-fit
+rules' slopes to a chromosome twice the length of this genome's largest
+(~390 Mb) stays well under 8 GB - reassuring, but this is a single-species,
+single-genome-size extrapolation and should not be treated as validated for
+meaningfully larger genomes (e.g. many-Gb plant or amphibian
+genomes) without re-running this same analysis on such a dataset.
+
+## Group-level rules
+
+`maf_split_chr_by_group` and `make_group_beds` run once per *group*, not per
+chromosome, so there are only two real data points (`autosomes`, `xy`) -
+too few to fit a trend, but worth showing since `maf_split_chr_by_group`
+carries the largest current default (240 GB):
+
+```{r group-level-table}
+bench %>%
+  filter(rule %in% c("maf_split_chr_by_group", "make_group_beds")) %>%
+  mutate(group_length_mb = round(scale_bp / 1e6, 1), max_rss_mb = round(max_rss_mb, 1), wall_min = round(wall_min, 2)) %>%
+  select(rule, group, group_length_mb, max_rss_mb, wall_min, mean_load_pct) %>%
+  kable(caption = "Group-level rule usage (autosomes = 19 chromosomes / ~2.46 Gb, xy = 2 chromosomes / ~0.26 Gb)")
+```
+
+The `autosomes` group (~2.46 Gb, 19 chromosomes processed in one job) used
+3246 MB - about 1.3 MB of RSS per Mb of input sequence. Even a substantially
+larger genome assembled into one group would need to be roughly 60x this
+genome's size before approaching the currently-configured 240 GB ceiling.
+
+## Recommended tiers {#recommendations}
+
+**Update: applied.** The recommendation below was implemented in
+`config-template.yaml` (18 keys - `default` + 17 ungrounded custom entries -
+down to 13: `default` + 12), organized around *why* a rule's cost varies
+rather than raw magnitude:
+
+- **Unaffected by genome size or species count** (pure BED/coordinate
+  arithmetic or post-hoc summary, never touches raw alignment content) -
+  dropped to plain `default`: `cnees_from_conserved_chr`,
+  `convert_wig_to_bed`, `naive_cluster_conserved_sites`,
+  `phastcons_concat_chr`, `ref_fasta_dict`.
+- **Affected by genome size only** (scans the reference genome, never touches
+  the multi-species alignment) - kept custom with a modest margin:
+  `picard_scatter_by_ns` (real peak already 78% of `default`'s ceiling on
+  this genome).
+- **Affected by both genome size and species count** (reads or holds actual
+  alignment content, whose width scales with species count) - kept
+  individually custom, each flagged in the file as "benchmarked at n=15
+  species - re-validate before scaling species count up": `maf_index`,
+  `maf_split_chr_by_group`, `extract_4d_codons_by_chr`, `run_phylofit`,
+  `run_phylop`, `maf_index_chr`, `maf_split_by_ns_minlen`,
+  `filter_maf_by_gap`, `phastcons_chunk`, `cnee_alignments_chr` (the only
+  rule needing `cpus > 1`, confirmed by the CPU-load check above).
+- **`adjust_pvals`** was left untouched (`mem_mb: 24000`, `cpus: 32`) rather
+  than reclassified - its `cpus: 32` looks like intentional parallelism
+  (`resources.cpus_per_task` is passed straight into
+  `utils/adjust_pvals.sh`), not something to fold into a generic tier without
+  understanding it first.
+
+The second test run (with `run_phylop: true`) has since confirmed several of
+these were sound: `maf_index` peaked at only 156 MB against its configured
+8000 MB (2%) - essentially matching its per-chromosome sibling
+`maf_index_chr` - suggesting it could be trimmed further in a future pass.
+`run_phylop` peaked at 2458 MB (31% of its 8000 MB), and `adjust_pvals` at
+4250 MB (18% of its untouched 24000 MB) - both comfortably within their
+current settings. All five rules newly confirmed on plain `default`
+(`convert_wig_to_bed`, `get_conserved_sites`, `get_accelerated_sites`,
+`site_counts`, `naive_cluster_conserved_sites`) peaked at 131-142 MB (~3.5% of
+`default`), validating that they didn't need their own entry.
+
+## global_rho (rho_mode: estimate): from timeout to real numbers
+
+`global_rho` under `rho_mode: estimate` has a different story from every
+other rule here - not an ungrounded guess being over- or under-provisioned,
+but an actual production incident. Real cluster runs this session showed the
+two chromosomes with the most chunks (`CM000994.3`: 138,496 chunks,
+`CM000995.3`: 129,961) repeatedly timing out - first at 180 min (the tier it
+originally shared with `run_phastcons_chr`), then 480, then 720 - even after
+adding `ThreadPoolExecutor`-based concurrency across `cpus_per_task` threads.
+
+`sacct` accounting on both the failed jobs and several successfully-completed
+`global_rho` jobs (chunk counts 99k-114k) all showed the same signature: only
+~28% CPU efficiency (~2.2-2.3 of the 8 allocated cores actually busy),
+regardless of chunk count or success/failure - a systemic ceiling, not
+something specific to the two large chromosomes. The cause was filesystem
+I/O, not CPU or `phastCons` itself: each chunk's `phastCons --estimate-rho`
+call wrote its own transient working files, plus a per-chunk `.rho.txt` and
+`.stderr.log`, all to the same shared network-filesystem directory from 8
+concurrent threads - a small-file/metadata-heavy pattern that bottlenecks
+network filesystems under concurrency. The sibling rule `run_phastcons_chr`,
+which threads over the same shape of per-chunk work but writes exactly 3
+known files directly to their final path (no globbing, no redundant
+sidecar), never showed this problem.
+
+The fix: route `phastCons`'s transient `--estimate-rho` output through
+Snakemake's per-job scratch resource (`resources.tmpdir`, typically
+node-local) instead of the shared output filesystem, only write
+`.stderr.log` for chunks that fail, and drop the redundant per-chunk
+`.rho.txt` (the value was already being aggregated in memory) unless
+`debug_keep_intermediates` is set. None of this touched the rho estimation
+logic itself.
+
+```{r global-rho-table}
+bench %>%
+  filter(rule == "global_rho") %>%
+  mutate(wall_min = round(wall_min, 2), max_rss_mb = round(max_rss_mb, 1)) %>%
+  select(group, chrom, wall_min, max_rss_mb) %>%
+  arrange(desc(wall_min)) %>%
+  kable(caption = "global_rho (rho_mode: estimate) real usage across all 21 chromosomes, post-fix")
+```
+
+Post-fix, all 21 chromosomes completed - including the two that had never
+finished before - with a real peak of 31.2 minutes (`CM000994.3`) and 831 MB
+(`CM001002.3`, notably not the largest chromosome by chunk count; worth
+another look if it recurs). Re-checking `sacct` on that same `CM000994.3`
+job post-fix showed efficiency jump to ~77% (~6.1 of 8 cores busy),
+confirming the diagnosis. Against the interim placeholder values used while
+chasing this down (`mem_mb: 8000`, `cpus: 8`, `time: 720`), real usage is
+under 11% of the memory budget and under 5% of the time budget - both safe
+to bring down substantially (e.g. `mem_mb: 2000-2500`, `time: 90-120`, a
+2.5-4x margin over the observed peak), while keeping `cpus: 8` since it's
+now delivering genuine parallelism rather than mostly idling.
+
+**Note:** `mean_load_pct` is omitted from the table above deliberately -
+Snakemake's own benchmark tracker does not reliably capture CPU time spent
+in subprocess children spawned from a `ThreadPoolExecutor` inside a `run:`
+block (as `global_rho`, `run_phastcons_chr`, and `cnee_alignments_chr` all
+do), so it reads misleadingly low (single digits) even when `sacct`
+job-level accounting - which does aggregate the whole process tree - shows
+genuine multi-core use. See [Caveats](#caveats).
+
+## get_gc_content_from_maf and summary_report: first real data
+
+Both are new this session and had never executed for real before `test-full-gc` -
+`get_gc_content_from_maf` computes genome-wide GC directly from the whole input MAF via
+`mafutils gc` (the new default GC source, auto-selected whenever `sample_file` is blank,
+replacing the external accession-lookup path); `summary_report` collects the pipeline
+summary HTML report described elsewhere in this repo. Both currently fall back to plain
+`default` (`mem_mb: 4000`, `cpus: 1`, `time: 60`) - no custom entry existed for either
+before this run.
+
+```{r new-rules-table}
+bench %>%
+  filter(rule %in% c("get_gc_content_from_maf", "summary_report")) %>%
+  mutate(wall_min = round(wall_min, 2), max_rss_mb = round(max_rss_mb, 1)) %>%
+  select(rule, wall_min, max_rss_mb, mean_load_pct) %>%
+  kable(caption = "First real benchmark data for the two newest rules")
+```
+
+`get_gc_content_from_maf` took 25.8 minutes and peaked at 134 MB, running essentially
+single-core the whole time (`mean_load_pct` ~98%, `cpu_time_s` almost exactly equal to
+wall time) - consistent with the tool's own documentation that GC counting itself is
+cheap per base but the sequential path is bound by I/O/decompression, not CPU work to
+parallelize. That 25.8 minutes against `default`'s 60-minute budget is only about a 2.3x
+margin - tighter than the 2.5-4x this notebook has used elsewhere - so this is worth a
+dedicated entry rather than continuing to rely on `default`, e.g. `mem_mb: 750`,
+`time: 90`, keeping `cpus: 1` (nothing to parallelize on the sequential path; only
+matters if a bgzip-compressed MAF + index is used with `-p > 1`, untested here).
+
+`summary_report` took well under a minute and 190 MB - comfortably inside `default` with
+no changes needed.
+
+## split_strategy: num_seqs vs ns - first real comparison
+
+`split_strategy: num_seqs` is new this session and is now the pipeline's default,
+replacing `ns` (splitting on N-runs in the reference FASTA) as the default chunk-splitting
+method for phastCons. Instead of the reference genome, it splits on runs of MAF blocks with
+few aligned species (`num_seqs`, already recorded in the block index `mafutils index`
+produces) - no reference-masking dependency, and it reflects actual cross-species
+alignability rather than an indirect proxy for it. See
+`analyses/resource-usage/resource-usage-and-defaults.Rmd` git history and this repo's
+Claude session notes for the exploratory analysis that motivated it (Cactus tiles the
+reference continuously with zero true coverage gaps, so pure "MAF coverage" splitting is a
+dead end; `num_seqs` run-length is the real signal).
+
+This section compares its first full real run
+(`test-full-split-aln/`, `num_seqs_max_for_gap: 3`, `num_seqs_min_gap_bp: 100`,
+`num_seqs_min_keep_region_len: 6`) against the existing `ns`-based `test-full-gc/` run -
+same real 21-chromosome dataset, same `rho_mode: fixed`.
+
+### Timing
+
+```{r num-seqs-vs-ns-timing}
+bench_numseqs <- read_tsv(repo_file("analyses", "resource-usage", "benchmarks-flat-num_seqs.tsv"), show_col_types = FALSE) %>%
+  mutate(across(c(max_rss_mb, cpu_time_s, mean_load_pct), as.numeric))
+
+chunk_driven_rules <- c("maf_split_chunks", "filter_maf_by_gap", "run_phastcons_chr",
+                         "phastcons_concat_chr", "cnee_alignments_chr", "cnees_from_conserved_chr",
+                         "cnees_to_bed4_chr", "maf_index_chr", "extract_cds_bed_chr")
+
+timing_compare <- bind_rows(
+  bench %>% filter(rule %in% chunk_driven_rules) %>% mutate(strategy = "ns"),
+  bench_numseqs %>% filter(rule %in% chunk_driven_rules) %>% mutate(strategy = "num_seqs")
+) %>%
+  group_by(rule, strategy) %>%
+  summarise(n = n(), sum_wall_s = round(sum(wall_s), 1), sum_cpu_s = round(sum(cpu_time_s), 1), .groups = "drop") %>%
+  pivot_wider(names_from = strategy, values_from = c(n, sum_wall_s, sum_cpu_s))
+
+timing_compare %>%
+  kable(caption = "Chunk-count-driven rules, summed across all 21 chromosomes: ns vs num_seqs")
+```
+
+Every chunk-count-driven rule got faster, most of them dramatically:
+`maf_split_chunks` ~4.2x less wall time, `filter_maf_by_gap` ~5.2x,
+`phastcons_concat_chr` ~13x, `run_phastcons_chr` ~1.8x. Summed across every job in the
+pipeline, total wall-clock dropped from 135,190s (37.6h) to 79,851s (22.2h) - a ~1.7x
+reduction - while total CPU-seconds barely changed (32,514s to 30,520s, ~6% less). That
+split (big wall-time win, flat CPU time) is exactly what the earlier per-chunk phastCons
+timing test (see git history) predicted: `num_seqs` isn't doing less real computational
+work, it's paying far less *overhead* per chunk and far less filesystem contention from
+having ~18x fewer files per chromosome - the same mechanism behind the `global_rho`
+timeout saga above. `phastcons_concat_chr`'s 13x drop is the clearest single confirmation,
+since that rule is pure glob-and-concatenate over one file per chunk.
+
+One number not to over-read: `run_phastcons_chr`'s recorded `cpu_time_s` went up slightly
+(1,804s to 2,269s) despite wall time dropping - this is one of the `ThreadPoolExecutor` +
+subprocess-children rules already flagged in [Caveats](#caveats) as having unreliable CPU
+accounting, so that specific figure shouldn't be read as a real regression.
+
+### Biological output: CEs and CNEEs
+
+Total conserved-element (CE) basepairs are essentially unchanged between strategies, but
+`ns`'s far smaller chunks call many more, shorter elements - consistent with chunk
+boundaries artificially fragmenting what `num_seqs`'s larger contiguous chunks let
+phastCons call as one continuous element instead.
+
+```{r ce-cnee-compare}
+tibble(
+  metric = c("CEs: count", "CEs: total bp", "CEs: median length (bp)",
+             "CNEEs: count", "CNEEs: total bp", "CNEEs: median length (bp)"),
+  ns = c(2127094, 140939708, 31, 575157, 86119768, 103),
+  num_seqs = c(1554862, 139193307, 49, 592809, 91245906, 107)
+) %>%
+  kable(format.args = list(big.mark = ","),
+        caption = "CE/CNEE totals across all 21 chromosomes, ns vs num_seqs (04-phastcons/regions, 05-cnees bed4)")
+```
+
+A direct overlap check on `CM000994.3` (`bedtools jaccard` between the two strategies' CE
+beds) confirms this is the same underlying signal, not a different result: **Jaccard =
+0.81**, with ~88-90% of each strategy's CE basepairs overlapping the other's.
+
+Final CNEEs (post-CDS-subtraction, length-filtered) are modestly higher under `num_seqs`
+(+3% count, +6% bp) - plausibly because it processes more of the genome in the first place
+(176.4 Mb vs 112.5 Mb on `CM000994.3` alone; it doesn't exclude real repeat-masked sequence
+the way `ns`/hard-masking does), so there's simply more raw material in which a conserved
+element could be found.
+
+**Net read:** `num_seqs` is faster on every real metric measured, and finds essentially the
+same conservation signal as `ns` with less chunk-boundary fragmentation. `num_seqs_max_for_gap`,
+`num_seqs_min_gap_bp`, and `num_seqs_min_keep_region_len` are still an exploratory starting
+point (see `config-template.yaml`'s comments) rather than a fully calibrated default - this
+was the first real full-pipeline run of the new strategy, not a systematic sweep across
+threshold values.
+
+## Caveats {#caveats}
+
+- **Single species, single genome size.** All of this is one ~2.7 Gb mouse
+  reference genome with a 15-species alignment. The scaling fits above are
+  illustrative, not validated for larger/smaller genomes or different
+  alignment depths (more/fewer species).
+- **`ref_fasta_index`/`ref_fasta_dict`/`maf_index` (whole-genome) and all
+  phyloP-stage rules are missing from this pass again.** They had real data
+  earlier this session (see git history of this file), but those outputs
+  live outside `test-full-gc`'s own directory (reference-adjacent) or simply
+  weren't re-executed (`run_phylop` was off for this run), so they're absent
+  from both of this pass's source directories. Nothing wrong with those
+  rules' current settings - this is a data-availability gap, not a
+  regression - but their `stage-runtime-plot`/`stage-mem-plot` groupings
+  will show fewer or no points until a run that re-executes them is folded
+  back in. `ref_fasta_dict` is worth remembering specifically: it OOM'd once
+  against its `default` `mem_mb: 4000` earlier this session before
+  succeeding on retry at 2601 MB peak - real run-to-run variance exists here
+  (Picard's `CreateSequenceDictionary`), worth a margin above any single
+  measured peak rather than trusting it as a hard ceiling.
+- **CPU load is average, not peak-instantaneous** for rules that don't spawn
+  subprocess children - `mean_load_pct` is a time-averaged figure from
+  Snakemake's benchmark tracker and can understate brief bursts of
+  multi-core use.
+- **CPU load is unreliable, not just averaged, for rules that spawn
+  subprocess children from a `ThreadPoolExecutor`** (`global_rho`,
+  `run_phastcons_chr`, `cnee_alignments_chr`). Snakemake's benchmark tracker
+  appears to miss most CPU time spent in forked/exec'd child processes
+  (e.g. `phastCons` subprocesses), so `mean_load_pct` reads as low single
+  digits for these rules even when `sacct` job-level accounting - which
+  aggregates the whole process tree via the cgroup - shows genuine
+  multi-core use (confirmed directly for `global_rho`: ~7% by
+  `mean_load_pct` vs. ~77% by `sacct` on the same job). Use `sacct`, not
+  this notebook's `mean_load_pct` column, to judge real CPU efficiency for
+  any subprocess-spawning threaded rule.

@@ -166,19 +166,6 @@ AVG_GC_FILE = (
 # MAF_SPLIT_CHR_DIR = os.path.join(OUTPUT_DIR, PREFIX + "-mafSplit"); # Maybe this should be in a dir specified by the user?
 # Various output sub-directories
 
-REF_FASTA = config.get("ref_fasta") or "";
-if not REF_FASTA:
-    raise ValueError("run_phylofit=true requires ref_fasta to be set in config.")
-REF_INDEX = COMMON.getOptionalConfigPath(
-    config,
-    "ref_fasta_index",
-    COMMON.getOptionalConfigPath(config, "ref_genome_index", REF_FASTA + ".fai"),
-);
-if os.path.abspath(REF_INDEX) != os.path.abspath(REF_FASTA + ".fai"):
-    raise ValueError(
-        f"ref_fasta_index must match ref_fasta + '.fai' because samtools faidx writes next to the FASTA. "
-        f"Got ref_fasta={REF_FASTA}, ref_fasta_index={REF_INDEX}"
-    )
 REF_GFF_PATH = config.get("ref_gff") or "";
 if not REF_GFF_PATH:
     raise ValueError("run_phylofit=true requires ref_gff to be set in config.")
@@ -285,29 +272,6 @@ if PHYLOFIT_MODELS_STANDALONE:
 #############################################################################
 # Pipeline rules
 
-if not bool(config.get("__ref_fasta_index_rule_defined__", False)):
-    config["__ref_fasta_index_rule_defined__"] = True
-
-    rule ref_fasta_index:
-        input:
-            ref_fasta = REF_FASTA
-        output:
-            ref_fasta_index = REF_INDEX
-        log:
-            job_log = os.path.join(LOG_DIR, "ref_fasta_index", "run.log")
-        benchmark:
-            os.path.join(LOG_DIR, "benchmarks", "ref_fasta_index", "run.txt")
-        resources:
-            **getRuleResources("ref_fasta_index")
-        run:
-            with open(log.job_log, "w") as log_stream:
-                try:
-                    cmd = ["samtools", "faidx", input.ref_fasta]
-                    COMMON.runCommand(cmd, log_stream, log_stream, "ref_fasta_index")
-                except Exception:
-                    traceback.print_exc(file=log_stream)
-                    raise
-
 rule maf_index:
     input:
         maf = MAF_PATH
@@ -336,7 +300,7 @@ rule maf_index:
 rule make_group_beds:
     input:
         maf = MAF_PATH,
-        ref_fasta_index = REF_INDEX
+        maf_index_block = rules.maf_index.output.maf_index_block
     output:
         chr_group_bed = os.path.join(GROUP_BEDS_DIR, "{chromosome_group}.bed")
     params:
@@ -353,7 +317,7 @@ rule make_group_beds:
         with open(log.job_log, "w") as log_stream:
             try:
                 cmd = [ "python", params.script_path,
-                        REF_INDEX,
+                        input.maf_index_block,
                         params.chr_prefix,
                         output.chr_group_bed,
                         *[str(c) for c in params.ref_chroms] ];

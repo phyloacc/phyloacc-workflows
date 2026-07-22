@@ -27,7 +27,9 @@ conda environment (defined in `envs/environment.yml`) and runs Snakemake.
 ## Configuration
 
 Copy `config-template.yaml` and fill in the required inputs at the top
-(`output_dir`, `maf`, `tree_file`, `ref_fasta`, `ref_chromosome_groups`, etc.).
+(`output_dir`, `maf`, `tree_file`, `ref_chromosome_groups`, etc.). `ref_fasta` is
+only required if `split_strategy` is `ns` or `fixed_windows` (see below) - the
+default `num_seqs` strategy needs no reference FASTA at all.
 Everything below that section has working defaults but can be adjusted -
 see the comments in the template for what each option controls. Example
 configs for past runs are in `cfgs/` for reference.
@@ -74,3 +76,32 @@ Which stages run is controlled by `run_phylofit` / `run_phylop` /
 - `utils/` - standalone scripts/tools invoked by rules
 - `envs/environment.yml` - pinned dependencies for the `phyloacc_workflows` environment
 - `cfgs/` - example filled-in configs from past analyses
+
+## Releasing (maintainers)
+
+Version bumps are manual, not automated. To cut a release:
+
+1. On a branch, bump `version` (and the `releasedate-*`/`latest-commit-date`
+   fields) in `lib/info.yaml`, and `version`/`date-released` in
+   `CITATION.cff`. Open a PR and merge it to `main`.
+2. From `main`, tag and push:
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+3. `.github/workflows/release.yml` creates the GitHub Release from that tag
+   automatically - it does not check that the tag matches `lib/info.yaml`,
+   so a mismatched tag publishes a Release with the wrong version recorded
+   in-repo without any warning.
+
+Activate the repo's pre-push hook once per clone to guard against that:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+With it active, pushing a `vX.Y.Z` tag whose `lib/info.yaml` version doesn't
+match is blocked locally with a clear error, before the push happens - this
+is the only check in place, so activating it is strongly recommended. It's
+optional, dev-only tooling (unrelated to `phyloacc_workflows setup`, which
+sets up the environment for *running* the pipeline).

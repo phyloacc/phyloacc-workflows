@@ -1,15 +1,15 @@
 name: Release
 
-# Triggered by pushing a tag like v2.0.0 - the version bump itself (lib/info.yaml,
-# CITATION.cff) happens as a normal commit before tagging, not here, so the tagged
-# commit already reflects the version being released.
+# Triggered by pushing a tag like v2.0.0. lib/info.yaml and CITATION.cff are
+# bumped by hand and merged to main before tagging - see the "Releasing"
+# section in README.md. The .githooks/pre-push hook (if activated - see
+# README) is what guards against a tag/info.yaml mismatch, blocking the
+# push locally before it ever reaches GitHub - this workflow just publishes.
 #
-# Release:
-#   1. bump lib/info.yaml (version + releasedate-*) and CITATION.cff (version,
-#      date-released), commit, push to main
-#   2. git tag vX.Y.Z && git push origin vX.Y.Z
-#   3. this workflow turns that tag into a GitHub Release automatically
-#   4. if this repo is connected to Zenodo, the Release triggers an archive + DOI
+# Tag pushes aren't affected by branch protection on main, so this always
+# works regardless of how main is protected.
+#
+# If this repo is connected to Zenodo, the Release triggers an archive + DOI.
 
 on:
   push:
