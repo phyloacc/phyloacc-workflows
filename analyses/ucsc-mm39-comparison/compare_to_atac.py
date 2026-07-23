@@ -25,6 +25,10 @@ REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file
 RUNS = {
     "num_seqs": os.path.join(REPO_ROOT, "data", "hamsters", "workflow-tests", "test-full-split-aln"),
     "ns": os.path.join(REPO_ROOT, "data", "hamsters", "workflow-tests", "test-full-gc"),
+    # Same config as "num_seqs" but with cnees_from_conserved_chr's new
+    # drop-entire-CE-on-any-CDS-overlap behavior instead of the old subtract/split
+    # behavior - isolates the effect of that one change.
+    "num_seqs_no_overlap": os.path.join(REPO_ROOT, "data", "hamsters", "workflow-tests", "test-no-overlap"),
 }
 
 CHROM_GROUPS = {

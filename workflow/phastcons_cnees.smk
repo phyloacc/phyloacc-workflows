@@ -1452,24 +1452,24 @@ rule cnees_from_conserved_chr:
                 )
 
                 for chrom, s, e in conserved:
-                    cur = s
+                    # Advance j past any CDS intervals that end at or before this CE
+                    # starts - they can't overlap this CE or any later one (both
+                    # lists are sorted by start).
                     while j < len(cds) and cds[j][2] <= s:
                         j += 1
-                    k = j
-                    while k < len(cds) and cds[k][1] < e:
-                        _, cs, ce = cds[k]
-                        if cs > cur:
-                            out_rows.append((chrom, cur, min(cs, e)))
-                        cur = max(cur, ce)
-                        if cur >= e:
-                            break
-                        k += 1
-                    if cur < e:
-                        out_rows.append((chrom, cur, e))
+                    # If the next candidate CDS interval starts before this CE ends,
+                    # it overlaps this CE somewhere (fully containing it, splitting
+                    # it in the middle, or clipping either end) - drop the whole CE,
+                    # no fragments kept either way.
+                    if j < len(cds) and cds[j][1] < e:
+                        continue
+                    out_rows.append((chrom, s, e))
 
-                # Final pass: merge adjacent/overlapping CNEE fragments.
-                out_rows = merge_intervals(out_rows)
-                log_stream.write(f"CNEE intervals after merge: {len(out_rows)}\n")
+                ces_dropped = len(conserved) - len(out_rows)
+                log_stream.write(
+                    f"CEs dropped for CDS overlap: {ces_dropped}; "
+                    f"CNEEs remaining: {len(out_rows)}\n"
+                )
 
                 with open(output.cnees_bed, "w") as out:
                     for chrom, s, e in out_rows:
@@ -1481,7 +1481,8 @@ rule cnees_from_conserved_chr:
                     sf.write("metric\tvalue\n")
                     sf.write(f"ces_raw\t{len(conserved_raw)}\n")
                     sf.write(f"ces_merged\t{len(conserved)}\n")
-                    sf.write(f"cnees_after_cds_subtract\t{len(out_rows)}\n")
+                    sf.write(f"ces_dropped_cds_overlap\t{ces_dropped}\n")
+                    sf.write(f"cnees_after_cds_drop\t{len(out_rows)}\n")
             except Exception:
                 traceback.print_exc(file=log_stream)
                 raise

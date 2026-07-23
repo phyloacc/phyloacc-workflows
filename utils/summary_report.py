@@ -175,10 +175,11 @@ def collect_4d_filtering(m):
 
 def collect_cnee_filtering(m):
     # Reads cnees_from_conserved_chr's durable summary: raw phastCons CEs -> merged
-    # (within cnee_ces_merge_gap_bp) -> after subtracting CDS overlap. The final
-    # post-length-filter CNEE count is computed separately in collect_region_lengths
-    # (applying cnee_min_len_bp directly to cnees.bed), since that's the same filter
-    # cnees_to_bed4_chr applies but works regardless of cnee_output_format.
+    # (within cnee_ces_merge_gap_bp) -> any CE overlapping a CDS at all is dropped
+    # entirely (no flanking fragments kept). The final post-length-filter CNEE count
+    # is computed separately in collect_region_lengths (applying cnee_min_len_bp
+    # directly to cnees.bed), since that's the same filter cnees_to_bed4_chr applies
+    # but works regardless of cnee_output_format.
     summary_dir = m["paths"].get("cnees_summary_dir")
     if not summary_dir:
         return None
@@ -192,7 +193,8 @@ def collect_cnee_filtering(m):
             "group": group, "chrom": chrom,
             "ces_raw": int(vals.get("ces_raw", 0)),
             "ces_merged": int(vals.get("ces_merged", 0)),
-            "cnees_after_cds_subtract": int(vals.get("cnees_after_cds_subtract", 0)),
+            "ces_dropped_cds_overlap": int(vals.get("ces_dropped_cds_overlap", 0)),
+            "cnees_after_cds_drop": int(vals.get("cnees_after_cds_drop", 0)),
         })
     return pd.DataFrame(rows) if rows else None
 
@@ -407,21 +409,22 @@ def main():
     if cnee_filter is not None:
         ctx["cnee_filter_plot"] = bar_plot(
             cnee_filter, "chrom",
-            [("ces_raw", "raw CEs"), ("ces_merged", "merged CEs"), ("cnees_after_cds_subtract", "after CDS subtract")],
+            [("ces_raw", "raw CEs"), ("ces_merged", "merged CEs"), ("cnees_after_cds_drop", "no CDS overlap")],
             "CE -> CNEE candidate funnel (before length filter)", "Count"
         )
         ctx["cnee_filter_totals"] = {
             "ces_raw": int(cnee_filter["ces_raw"].sum()),
             "ces_merged": int(cnee_filter["ces_merged"].sum()),
-            "cnees_after_cds_subtract": int(cnee_filter["cnees_after_cds_subtract"].sum()),
+            "ces_dropped_cds_overlap": int(cnee_filter["ces_dropped_cds_overlap"].sum()),
+            "cnees_after_cds_drop": int(cnee_filter["cnees_after_cds_drop"].sum()),
         }
         cnee_filter["pct_after_merge"] = (100 * cnee_filter["ces_merged"] / cnee_filter["ces_raw"]).round(1)
-        cnee_filter["pct_after_cds_subtract"] = (100 * cnee_filter["cnees_after_cds_subtract"] / cnee_filter["ces_merged"]).round(1)
+        cnee_filter["pct_kept_no_cds_overlap"] = (100 * cnee_filter["cnees_after_cds_drop"] / cnee_filter["ces_merged"]).round(1)
         ctx["cnee_filter_table"] = add_total_row(
-            cnee_filter, sum_cols=["ces_raw", "ces_merged", "cnees_after_cds_subtract"],
+            cnee_filter, sum_cols=["ces_raw", "ces_merged", "ces_dropped_cds_overlap", "cnees_after_cds_drop"],
             pct_specs=[
                 ("pct_after_merge", "ces_merged", "ces_raw"),
-                ("pct_after_cds_subtract", "cnees_after_cds_subtract", "ces_merged"),
+                ("pct_kept_no_cds_overlap", "cnees_after_cds_drop", "ces_merged"),
             ]
         )
 

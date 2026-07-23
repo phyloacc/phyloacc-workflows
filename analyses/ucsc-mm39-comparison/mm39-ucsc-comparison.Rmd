@@ -94,7 +94,11 @@ using a completely different pipeline (phastCons on multiz, not Cactus)? Agreeme
 isn't proof of correctness, but strong disagreement would be a red flag; strong agreement
 is a meaningful, independent corroboration of what our pipeline is finding. This also
 compares our two `split_strategy` runs (`num_seqs`, now the default, and `ns`, from
-[[resource-usage-and-defaults.Rmd]]'s comparison) against this same external reference.
+[[resource-usage-and-defaults.Rmd]]'s comparison) against this same external reference, and,
+separately, compares `cnees_from_conserved_chr`'s old CDS-subtract/fragment-split behavior
+against its new drop-entire-CE-on-any-CDS-overlap behavior (see "CNEE definition change"
+below) using two runs (`num_seqs`, `num_seqs_no_overlap`) that are identical in every other
+config setting.
 
 ## Methodology
 
@@ -107,7 +111,7 @@ assembly means same coordinates - no liftover needed, only a chromosome-name tra
 used for exactly this in the support data repo's `04_replace_bed_seqids_with_genbank.sh`),
 restricted to the 21 real chromosomes this pipeline actually has predictions for.
 
-Per chromosome, per run (`num_seqs`, `ns`), per our-track (CE, CNEE), `compare_to_ucsc.py`
+Per chromosome, per run (`num_seqs`, `ns`, `num_seqs_no_overlap`), per our-track (CE, CNEE), `compare_to_ucsc.py`
 runs `bedtools jaccard` and `bedtools intersect` (via `bedtools-env`'s `bedtools`, called by
 absolute path rather than `conda activate` - this session hit a real bug twice where
 `conda activate` doesn't reliably win on `$PATH`) between our bed and the translated UCSC
@@ -129,8 +133,8 @@ variant (`cnee_vs_nocds_ucsc`): `bedtools subtract`-ing our own per-chromosome C
 (`05-cnees/phastcons/bed/*.cds.bed`, already produced by `extract_cds_bed_chr` from the same
 reference GFF - no new CDS extraction needed) from the UCSC bed before comparing.
 
-Separately, `compare_to_atac.py` checks how often each track (our CE/CNEE, both runs, and
-UCSC's raw CE) overlaps an independent ATAC-seq peak set - skin, late anagen
+Separately, `compare_to_atac.py` checks how often each track (our CE/CNEE, all three runs,
+and UCSC's raw CE) overlaps an independent ATAC-seq peak set - skin, late anagen
 (`GSM4156597_skin.late.anagen.peaks.mm39.bed`, translated the same way), producing
 `atac-comparison-flat.tsv`.
 
@@ -145,20 +149,32 @@ cmp <- read_tsv(repo_file("analyses", "ucsc-mm39-comparison", "ucsc-comparison-f
 
 - **Data source**: `data/hamsters/workflow-tests/test-full-split-aln/` (`num_seqs`) and
   `data/hamsters/workflow-tests/test-full-gc/` (`ns`), the same two real, full 21-chromosome
-  runs already compared to each other in `resource-usage-and-defaults.Rmd`.
+  runs already compared to each other in `resource-usage-and-defaults.Rmd`; plus
+  `data/hamsters/workflow-tests/test-no-overlap/` (`num_seqs_no_overlap`) - a third real,
+  full 21-chromosome run with the exact same config as `num_seqs` (`split_strategy:
+  num_seqs`, `rho_mode: fixed`, `fixed_rho: 0.3`, `cnee_ces_merge_gap_bp: 5`,
+  `cnee_min_len_bp: 50` - confirmed identical from each run's own `summary_report.html`)
+  except that it was run after `cnees_from_conserved_chr`'s CDS-overlap handling changed
+  from subtract-and-keep-fragments to drop-the-whole-CE, isolating the effect of that one
+  algorithm change.
 - **UCSC track**: `mm39-35way.bed`
   (`/n/holylfs05/LABS/informatics/Everyone/support/20251114-raftrey-hamster-wga/data/bed/`),
   4,829,248 elements genome-wide; 4,826,807 fall within our 21 target chromosomes after
   translation.
-- 126 rows (21 chromosomes x 2 runs x 3 tracks - `ce`, `cnee`, `cnee_vs_nocds_ucsc`) in
-  `ucsc-comparison-flat.tsv`; 105 rows (21 chromosomes x 5 sources) in
-  `atac-comparison-flat.tsv`.
+- 189 rows (21 chromosomes x 3 runs x 3 tracks - `ce`, `cnee`, `cnee_vs_nocds_ucsc`) in
+  `ucsc-comparison-flat.tsv`; 147 rows (21 chromosomes x 7 sources - 3 runs x 2 tracks plus
+  `ucsc_ce`) in `atac-comparison-flat.tsv`.
 
 ## Overlap: CE and CNEE vs. UCSC, num_seqs vs. ns
 
+This section is scoped to the two `split_strategy` runs (`num_seqs`, `ns`) only -
+`num_seqs_no_overlap` (same `split_strategy`, different CDS-overlap handling) is compared
+separately in "CNEE definition change" below, to keep the two independent axes of
+comparison from being conflated in the same plot.
+
 ```{r overlap-summary-table}
 cmp %>%
-  filter(our_track %in% c("ce", "cnee")) %>%
+  filter(our_track %in% c("ce", "cnee"), our_run %in% c("num_seqs", "ns")) %>%
   group_by(our_run, our_track) %>%
   summarise(
     n_chroms = n(),
@@ -175,7 +191,7 @@ cmp %>%
 ```
 
 ```{r jaccard-plot, fig.height=6}
-ggplot(cmp %>% filter(our_track %in% c("ce", "cnee")), aes(x = reorder(chrom, jaccard), y = jaccard, fill = our_run)) +
+ggplot(cmp %>% filter(our_track %in% c("ce", "cnee"), our_run %in% c("num_seqs", "ns")), aes(x = reorder(chrom, jaccard), y = jaccard, fill = our_run)) +
   geom_col(position = "dodge") +
   facet_wrap(~our_track, ncol = 1, labeller = labeller(our_track = c(ce = "CEs", cnee = "CNEEs"))) +
   coord_flip() +
@@ -197,6 +213,9 @@ CDS subtracted out. The next section quantifies exactly how much of that gap is 
 CDS-inclusion difference versus a real disagreement.
 
 ## A fairer CNEE comparison: subtracting CDS from UCSC's track too
+
+This section includes all three runs (`num_seqs`, `ns`, `num_seqs_no_overlap`) - unlike
+"Overlap" and "Scale" above, it isn't scoped to the split-strategy comparison.
 
 ```{r cnee-fair-table}
 cmp %>%
@@ -226,16 +245,20 @@ ggplot(
   theme_minimal()
 ```
 
-Subtracting CDS from UCSC's track before comparing raises agreement for both runs (mean
-Jaccard: `num_seqs` 0.270 -> 0.310, `ns` 0.259 -> 0.297) - confirming the CE/CNEE gap above
-is partly, not entirely, a CDS-inclusion artifact rather than a real difference in what the
-two pipelines find non-coding-conserved.
+Subtracting CDS from UCSC's track before comparing raises agreement for all three runs
+(mean Jaccard: `num_seqs` 0.259 -> 0.302, `ns` 0.250 -> 0.291, `num_seqs_no_overlap` 0.247
+-> 0.287) - confirming the CE/CNEE gap above is partly, not entirely, a CDS-inclusion
+artifact rather than a real difference in what the two pipelines find non-coding-conserved.
+`num_seqs_no_overlap`'s gap (0.040) is only marginally smaller than `num_seqs`'s (0.042),
+even though its CNEEs never have CDS in them at all under the new definition - most of the
+remaining gap is better explained by scale (UCSC calling more, shorter elements; see
+"Scale" below) than by CDS-inclusion, under either CNEE definition.
 
 ## num_seqs vs. ns: which agrees more with the independent track?
 
 ```{r strategy-compare-table}
 cmp %>%
-  filter(our_track %in% c("ce", "cnee")) %>%
+  filter(our_track %in% c("ce", "cnee"), our_run %in% c("num_seqs", "ns")) %>%
   select(our_run, our_track, chrom, jaccard, pct_ours_in_ucsc, pct_ucsc_in_ours) %>%
   pivot_wider(names_from = our_run, values_from = c(jaccard, pct_ours_in_ucsc, pct_ucsc_in_ours)) %>%
   mutate(jaccard_diff = round(jaccard_num_seqs - jaccard_ns, 4)) %>%
@@ -247,7 +270,7 @@ cmp %>%
 
 ```{r scale-table}
 cmp %>%
-  filter(our_track %in% c("ce", "cnee")) %>%
+  filter(our_track %in% c("ce", "cnee"), our_run %in% c("num_seqs", "ns")) %>%
   group_by(our_run, our_track) %>%
   summarise(
     total_n_ours = sum(n_ours),
@@ -269,6 +292,104 @@ conservation signals. This scale difference is the main reason absolute overlap
 percentages sit around 25-40% rather than higher: a majority of UCSC's smaller/weaker
 elements simply aren't things a shallower alignment could ever call in the first place,
 independent of any real disagreement.
+
+## CNEE definition change: drop-on-overlap vs. subtract-and-split
+
+`cnees_from_conserved_chr` used to turn a conserved element (CE) into one or more CNEE
+candidates by *subtracting* CDS from it - a CDS in the middle of a CE split it into two
+flanking fragments, and a CDS clipping just one end left the non-overlapping remainder. It
+now instead drops the **entire** CE if it overlaps a CDS at all, no matter how - fully
+contained, split in the middle, or clipped at one end - so only CEs with zero CDS overlap
+become CNEE candidates. `num_seqs` (old behavior) and `num_seqs_no_overlap` (new behavior)
+are otherwise identical runs (see Data source above), isolating this one change.
+
+```{r cnee-definition-load}
+run_dirs <- c(
+  num_seqs = repo_file("data", "hamsters", "workflow-tests", "test-full-split-aln"),
+  num_seqs_no_overlap = repo_file("data", "hamsters", "workflow-tests", "test-no-overlap")
+)
+
+chrom_pairs <- cmp %>% distinct(group, chrom)
+
+cnee_def_rows <- list()
+for (run_name in names(run_dirs)) {
+  for (i in seq_len(nrow(chrom_pairs))) {
+    group <- chrom_pairs$group[i]
+    chrom <- chrom_pairs$chrom[i]
+    path <- file.path(run_dirs[[run_name]], "05-cnees", "phastcons", "summary", group,
+                       paste0(chrom, ".cnees-filter-summary.tsv"))
+    vals <- read_tsv(path, show_col_types = FALSE)
+    row <- as_tibble(as.list(setNames(as.numeric(vals$value), vals$metric)))
+    row$run <- run_name
+    row$group <- group
+    row$chrom <- chrom
+    cnee_def_rows[[length(cnee_def_rows) + 1]] <- row
+  }
+}
+
+# The old run's summary has `cnees_after_cds_subtract` (fragments kept after subtracting
+# CDS); the new run's has `ces_dropped_cds_overlap` + `cnees_after_cds_drop` (whole CEs
+# kept only if they have zero CDS overlap). These are candidate counts under two different
+# definitions, not the same quantity measured twice - `candidates_after_cds_handling` below
+# is the natural side-by-side, not an equivalence.
+cnee_def <- bind_rows(cnee_def_rows) %>%
+  mutate(candidates_after_cds_handling = coalesce(cnees_after_cds_drop, cnees_after_cds_subtract))
+```
+
+```{r cnee-definition-funnel-table}
+cnee_def %>%
+  group_by(run) %>%
+  summarise(
+    total_ces_raw = sum(ces_raw),
+    total_ces_merged = sum(ces_merged),
+    total_candidates = sum(candidates_after_cds_handling),
+    .groups = "drop"
+  ) %>%
+  mutate(pct_of_merged = round(100 * total_candidates / total_ces_merged, 1)) %>%
+  kable(caption = "CE -> CNEE-candidate funnel totals (before cnee_min_len_bp), old vs. new CDS-overlap handling")
+```
+
+```{r cnee-definition-final-table}
+cmp %>%
+  filter(our_track == "cnee", our_run %in% c("num_seqs", "num_seqs_no_overlap")) %>%
+  group_by(our_run) %>%
+  summarise(
+    total_n = sum(n_ours),
+    total_bp = sum(bp_ours),
+    mean_len_bp = round(sum(bp_ours) / sum(n_ours), 1),
+    .groups = "drop"
+  ) %>%
+  kable(caption = "Final CNEE set (after the cnee_min_len_bp length filter), old vs. new CDS-overlap handling")
+```
+
+```{r cnee-definition-plot, fig.height=6}
+ggplot(cnee_def, aes(x = reorder(chrom, ces_merged), y = candidates_after_cds_handling, fill = run)) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  scale_fill_discrete(labels = c(num_seqs = "old (subtract/split)", num_seqs_no_overlap = "new (drop-on-overlap)")) +
+  labs(x = NULL, y = "CNEE candidates (after CDS handling, before length filter)", fill = "CDS handling",
+       title = "CE -> CNEE candidates per chromosome: old vs. new CDS-overlap handling") +
+  theme_minimal()
+```
+
+Genome-wide, the new definition keeps 18.4% fewer CNEE candidates (1,287,232 vs. 1,576,531)
+before the length filter, but only 6.7% less total bp (106.2 vs. 113.8 Mbp) - most of the
+count drop is fragments that only existed because the old behavior split one CE into two
+at every internal CDS, not new bp actually being excluded. The funnel table above makes
+this concrete: the old definition's candidate count is 103.0% of the merged CE count -
+mathematically impossible under the new definition, which can only ever keep a CE whole or
+drop it, never turn one CE into more than one candidate. The new definition's 84.1% is the
+first `cnee_after_cds_drop`-stage number that's guaranteed to be <= 100% by construction. After the length filter, the gap
+narrows further (4.7% fewer elements, 5.2% less bp) since many of the short flanking
+fragments the old behavior produced wouldn't have passed `cnee_min_len_bp` anyway. The new
+definition is stricter - every surviving CNEE is guaranteed to have zero CDS overlap at
+all, rather than "the non-coding part of a CE that touched a CDS somewhere" - at a modest
+cost in yield.
+
+Does the new, stricter definition need less of a boost from CDS-subtracting UCSC's track,
+since its CNEEs never have CDS in them to begin with? See "A fairer CNEE comparison" above,
+which covers all three runs together - the short answer is only marginally, since most of
+the remaining CE/CNEE-vs-UCSC gap is better explained by scale than by CDS-inclusion.
 
 ## Overlap with an independent ATAC-seq peak set
 
@@ -294,15 +415,26 @@ atac %>%
   kable(caption = "ATAC-seq peak overlap by element count, Jaccard, and bp fraction - summed across all 21 chromosomes")
 ```
 
-Three different ways of asking "how much overlap" agree on the same ranking (CNEEs >
-raw CEs > UCSC), but tell a fuller story together: **by bp fraction**, our CNEEs lead
-(~15% of their bp falls in an ATAC peak); **by element count**, an even larger share of
-individual CNEEs touch a peak at all (~19% of elements, vs. ~14-16% of CEs) - so it's not
-just that CNEEs happen to be bp-heavier where they do overlap, more of them overlap at
-all; **Jaccard** (which penalizes for how much of the *union* is peak-only or
-element-only space) is lowest for all tracks in absolute terms, as expected given ATAC
-peaks and conserved elements are two very different kinds of interval sets in the first
-place, but preserves the same relative ranking.
+Three different ways of asking "how much overlap" tell a fuller story together, and don't
+all agree on the same ranking. **By bp fraction** and **by element count**, our CNEEs (all
+three runs, ~15-16% of bp, ~20-20.5% of elements) lead raw CEs (~14.2%, ~14.5-16.2%), which
+lead UCSC's raw track (~10.1%, ~11.4%) - CNEEs aren't just bp-heavier where they overlap,
+more of them overlap at all. **Jaccard** breaks that ranking: raw CEs (~0.083-0.084) are
+actually higher than CNEEs (~0.069-0.074), both well above UCSC (~0.061). This isn't a
+contradiction - Jaccard penalizes union size, and CEs (larger, includes coding regions) vs.
+CNEEs (smaller, non-coding only) trade off differently against a fixed-size ATAC peak set
+than bp-fraction or count-overlap do; the bp/count metrics answer "of what we predicted,
+how much lands in a peak", while Jaccard also punishes predicting territory ATAC doesn't
+touch. All three metrics agree that UCSC's much larger, shorter-element track (see
+"Scale" above) ranks lowest on every measure.
+
+`num_seqs_no_overlap`'s CNEEs (new, drop-on-overlap definition) overlap ATAC peaks at a
+slightly lower rate than `num_seqs`'s (old, subtract/split definition) on every metric -
+19.97% vs. 20.41% of elements, 15.05% vs. 15.55% of bp, 0.069 vs. 0.074 Jaccard. The
+difference is small and the ranking among all sources is unchanged either way; it isn't
+strong enough evidence on its own to say whether the CEs the new definition drops for CDS
+overlap were disproportionately near regulatory (ATAC-accessible) sequence, or whether this
+is just noise from a modestly smaller element set.
 
 ```{r atac-plot, fig.height=6}
 ggplot(atac %>% filter(chrom != "CM001014.3"), aes(x = reorder(chrom, pct_elements_bp_in_atac), y = pct_elements_bp_in_atac, fill = source)) +
