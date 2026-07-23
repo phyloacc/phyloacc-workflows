@@ -1288,7 +1288,15 @@ rule phastcons_concat_chr:
                                 for line in bf:
                                     line = line.strip()
                                     if line and not line.startswith("#"):
-                                        out.write(line + "\n")
+                                        # phastCons truncates the reference chromosome name in
+                                        # column 1 (splits its MAF src field on "." and drops
+                                        # anything past the first token after the species
+                                        # prefix, e.g. "CM000994.3" -> "CM000994") - overwrite
+                                        # with the wildcard's own trusted value rather than the
+                                        # truncated one.
+                                        parts = line.split("\t")
+                                        parts[0] = wildcards.ref_chromosome
+                                        out.write("\t".join(parts) + "\n")
 
                 sort_cmd = ["sort", "-k1,1", "-k2,2n", "-k3,3n", tmp]
                 log_stream.write(f"Running: {' '.join(sort_cmd)} > {output.chr_bed}\n")

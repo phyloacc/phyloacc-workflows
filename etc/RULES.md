@@ -61,7 +61,7 @@ not inferred from its name.
 
 - **`run_phastcons_chr`** - Loops over every filtered chunk for a chromosome (in a thread pool) and runs `phastCons --rho <global_rho> --most-conserved` on each, producing a per-chunk conserved-regions BED and scores WIG; only emits a `chunks.done` sentinel as its formal Snakemake output. Always applies the one chromosome-wide rho value to every chunk, in both rho modes.
 
-- **`phastcons_concat_chr`** - Waits on `chunks.done`, globs all per-chunk `*.conserved.bed` files phastCons wrote, sorts and concatenates them into one chromosome-level conserved-regions BED. If `cleanup_chunk_intermediates` is set, deletes the per-chunk BED/WIG files and the chunked-MAF directory afterward to reclaim disk space.
+- **`phastcons_concat_chr`** - Waits on `chunks.done`, globs all per-chunk `*.conserved.bed` files phastCons wrote, rewrites column 1 (phastCons truncates the reference chromosome name, e.g. `CM000994.3` -> `CM000994`) back to the full wildcard chromosome name, then sorts and concatenates them into one chromosome-level conserved-regions BED. If `cleanup_chunk_intermediates` is set, deletes the per-chunk BED/WIG files and the chunked-MAF directory afterward to reclaim disk space.
 
 - **`extract_cds_bed_chr`** - Pure Python: filters the reference GFF down to `CDS` rows on one chromosome and converts them to BED coordinates.
 
