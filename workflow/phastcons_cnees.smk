@@ -439,6 +439,9 @@ if CNEE_CES_MERGE_GAP_BP < 0:
 CNEE_MIN_LEN_BP = int(config.get("cnee_min_len_bp", 50))
 if CNEE_MIN_LEN_BP < 0:
     raise ValueError("cnee_min_len_bp must be >= 0.")
+CNEE_DENSITY_BIN_BP = int(config.get("cnee_density_bin_bp", 1_000_000))
+if CNEE_DENSITY_BIN_BP <= 0:
+    raise ValueError("cnee_density_bin_bp must be > 0.")
 CNEE_FASTA_HEADER = str(config.get("cnee_fasta_header", config.get("cne_fasta_header", "species-coords-id"))).strip()
 CNEE_EXPECTED_SPECIES = []
 if CNEE_OUTPUT_FORMAT == "fasta":

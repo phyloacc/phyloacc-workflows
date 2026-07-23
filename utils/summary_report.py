@@ -46,6 +46,46 @@ def read_bed_lengths(path):
     return lengths
 
 
+def read_bed_positions(path):
+    lines = read_lines(path)
+    if lines is None:
+        return None
+    positions = []
+    for line in lines:
+        fields = line.split("\t")
+        if len(fields) < 3:
+            continue
+        try:
+            positions.append((int(fields[1]), int(fields[2])))
+        except ValueError:
+            continue
+    return positions
+
+
+def read_chrom_length(path):
+    # Parses a mafutils-index .maf.block.idx file (columns: ref_scaff, ref_start,
+    # ref_len, seq_len, line_len, num_seqs, byte_start, byte_end - see
+    # num_seqs_chunk_bed_chr in phastcons_cnees.smk for the same layout). Coverage is
+    # gapless from position 0 to the true chromosome end, so max(ref_start + ref_len)
+    # is the chromosome length - no ref_fasta/.fai needed (not always available).
+    if not path or not os.path.isfile(path):
+        return None
+    max_end = 0
+    with open(path) as fh:
+        for line in fh:
+            if not line.strip() or line.startswith("#"):
+                continue
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) < 3:
+                continue
+            try:
+                end = int(fields[1]) + int(fields[2])
+            except ValueError:
+                continue
+            max_end = max(max_end, end)
+    return max_end if max_end > 0 else None
+
+
 def chrom_pairs(chromosome_groups):
     return [(group, chrom) for group, chroms in chromosome_groups.items() for chrom in chroms]
 
@@ -258,6 +298,48 @@ def collect_region_lengths(m, dir_key, filename_fn, min_len_bp=None):
         rows.append({"group": group, "chrom": chrom, "n": len(lengths), "total_bp": sum(lengths), "lengths": lengths})
     return rows if rows else None
 
+
+def collect_cnee_density(m, bin_bp):
+    # Bins CE and final-CNEE positions along each chromosome for the distribution
+    # plot. "Final CNEE" here is derived the same way ctx["cnees"] already is
+    # (region_summary over cnees_dir/*.cnees.bed, length-filtered by cnee_min_len_bp)
+    # rather than re-reading a differently-shaped file, so the two sections always
+    # agree on what counts as a CNEE.
+    maf_index_dir = m["paths"].get("maf_index_dir")
+    conserve_dir = m["paths"].get("conserve_dir")
+    cnees_dir = m["paths"].get("cnees_dir")
+    min_len_bp = m["paths"].get("cnee_min_len_bp")
+    if not maf_index_dir or not cnees_dir:
+        return None
+    rows = []
+    for group, chrom in chrom_pairs(m["chromosome_groups"]):
+        chrom_len = read_chrom_length(os.path.join(maf_index_dir, group, f"{chrom}.maf.block.idx"))
+        if chrom_len is None:
+            continue
+
+        cnee_positions = read_bed_positions(os.path.join(cnees_dir, group, f"{chrom}.cnees.bed")) or []
+        if min_len_bp is not None:
+            cnee_positions = [(s, e) for s, e in cnee_positions if e - s > min_len_bp]
+
+        ce_positions = None
+        if conserve_dir:
+            ce_positions = read_bed_positions(os.path.join(conserve_dir, group, f"{chrom}.bed"))
+
+        n_bins = max(1, -(-chrom_len // bin_bp))  # ceil division, no float rounding
+
+        def bin_counts(positions):
+            counts = [0] * n_bins
+            for s, _ in positions:
+                counts[min(int(s // bin_bp), n_bins - 1)] += 1
+            return counts
+
+        rows.append({
+            "group": group, "chrom": chrom, "chrom_len": chrom_len, "n_bins": n_bins,
+            "cnee_counts": bin_counts(cnee_positions),
+            "ce_counts": bin_counts(ce_positions) if ce_positions is not None else None,
+        })
+    return rows if rows else None
+
 #############################################################################
 # Plotting - each returns a base64-encoded PNG string, embedded directly
 # into the HTML so the report has no external file dependencies.
@@ -296,6 +378,32 @@ def box_plot(lengths, title):
     ax.set_yticks([])
     ax.set_title(title)
     fig.tight_layout()
+    return fig_to_base64(fig)
+
+
+def cnee_density_plot(rows, bin_bp):
+    # One combined figure, one row per chromosome, rather than a separate image per
+    # chromosome - reads as a single genome-wide overview instead of a long scroll of
+    # near-identical small plots.
+    fig, axes = plt.subplots(nrows=len(rows), ncols=1, figsize=(10, 1.3 * len(rows)))
+    if len(rows) == 1:
+        axes = [axes]
+    ce_handle = cnee_handle = None
+    for ax, row in zip(axes, rows):
+        bin_starts_mb = [i * bin_bp / 1e6 for i in range(row["n_bins"])]
+        if row["ce_counts"] is not None:
+            ce_handle = ax.bar(bin_starts_mb, row["ce_counts"], width=bin_bp / 1e6, align="edge",
+                                color="C1", alpha=0.35, zorder=1, label="CEs (raw)")
+        cnee_handle = ax.bar(bin_starts_mb, row["cnee_counts"], width=bin_bp / 1e6, align="edge",
+                              color="C0", zorder=2, label="CNEEs (final)")
+        ax.set_xlim(0, row["chrom_len"] / 1e6)
+        ax.set_ylabel(row["chrom"], rotation=0, ha="right", va="center", fontsize=8)
+        ax.tick_params(axis="y", labelsize=6)
+    axes[-1].set_xlabel("Position (Mb)")
+    handles = [h for h in (cnee_handle, ce_handle) if h is not None]
+    fig.legend(handles, [h.get_label() for h in handles], loc="upper right", ncol=2, fontsize=8)
+    fig.suptitle(f"CNEE density along each chromosome ({bin_bp // 1000}kb bins)", fontsize=11)
+    fig.tight_layout(rect=(0, 0, 1, 0.98))
     return fig_to_base64(fig)
 
 
@@ -440,6 +548,13 @@ def main():
         m, "cnees_dir", lambda g, c: f"{c}.cnees.bed", min_len_bp=m["paths"].get("cnee_min_len_bp")
     )
     ctx["cnees"] = region_summary(cnee_rows, "CNEEs")
+
+    density_bin_bp = m["paths"].get("cnee_density_bin_bp")
+    if density_bin_bp:
+        density_rows = collect_cnee_density(m, density_bin_bp)
+        if density_rows is not None:
+            ctx["cnee_density_bin_bp"] = density_bin_bp
+            ctx["cnee_density_plot"] = cnee_density_plot(density_rows, density_bin_bp)
 
     template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "summary_report.html.j2")
     with open(template_path) as fh:

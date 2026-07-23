@@ -48,6 +48,7 @@
 <a class="sub" href="#neutral-models">Neutral models</a>
 <a class="sub" href="#ces">Conserved elements</a>
 <a class="sub" href="#cnees">CNEEs</a>
+<a class="sub" href="#cnee-density">CNEE distribution</a>
 </nav>
 
 <main>
@@ -165,6 +166,18 @@ less than or equal to the merged CE count. The final CNEE count (below, under Ou
 <details><summary>Per-chromosome table</summary>{{ table(cnees.table) }}</details>
 {% else %}
 <p class="empty">No CNEE data (build_cnees was not enabled for this run).</p>
+{% endif %}
+
+<h3 id="cnee-density">CNEE distribution along chromosomes</h3>
+{% if cnee_density_plot is defined %}
+<p style="font-size:0.85rem;color:#666;">Final CNEEs (opaque, after the <code>cnee_min_len_bp</code>
+length filter) binned into {{ (cnee_density_bin_bp // 1000) }}kb windows along each chromosome,
+against raw CE count in the same bins (translucent, before CDS-overlap dropping and length
+filtering) - the gap between the two shows what was filtered out of each window, not just
+genome-wide.</p>
+<img class="plot" src="data:image/png;base64,{{ cnee_density_plot }}">
+{% else %}
+<p class="empty">No CNEE density data (requires build_cnees and run_phastcons to be enabled for this run).</p>
 {% endif %}
 
 </main>

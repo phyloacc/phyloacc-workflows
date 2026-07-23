@@ -166,10 +166,12 @@ rule summary_report:
                 "filter_threshold_4d": SEQ_THRESHOLD_4D if run_phylofit else None,
                 "avg_gc_file": AVG_GC_FILE if run_phylofit else None,
                 "maf_chunk_summary_dir": MAF_CHUNK_SUMMARY_DIR if run_phastcons else None,
+                "maf_index_dir": MAF_INDEX_DIR if run_phastcons else None,
                 "conserve_dir": CONSERVE_DIR if run_phastcons else None,
                 "cnees_dir": CNEES_DIR if (run_phastcons and build_cnees) else None,
                 "cnees_summary_dir": CNEES_SUMMARY_DIR if (run_phastcons and build_cnees) else None,
                 "cnee_min_len_bp": CNEE_MIN_LEN_BP if (run_phastcons and build_cnees) else None,
+                "cnee_density_bin_bp": CNEE_DENSITY_BIN_BP if (run_phastcons and build_cnees) else None,
             },
         }
     log:
