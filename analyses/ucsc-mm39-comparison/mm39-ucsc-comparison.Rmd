@@ -1,0 +1,348 @@
+---
+title: "CE/CNEE Predictions vs. UCSC mm39 35-way Conserved Elements"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+---
+
+<style>
+div.main-container,
+.main-container {
+  max-width: 1800px !important;
+  width: 96% !important;
+}
+
+@media (min-width: 992px) {
+  .main-container > .row {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .main-container > .row > div:first-child {
+    flex: 0 0 300px;
+    max-width: 300px;
+    align-self: flex-start;
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+
+  .main-container > .row > div:last-child {
+    flex: 1 1 auto;
+    max-width: calc(100% - 300px);
+  }
+
+  .toc-content {
+    max-width: none !important;
+    width: 100% !important;
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  div.tocify,
+  #TOC {
+    position: relative !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 280px !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
+pre {
+  white-space: pre !important;
+  overflow-x: auto !important;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+table {
+  width: auto;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 9,
+  fig.height = 5.5
+)
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(knitr)
+
+repo_root <- normalizePath(file.path(getwd(), "..", ".."))
+repo_file <- function(...) file.path(repo_root, ...)
+```
+
+## Question
+
+Our phastCons-derived CEs (`04-phastcons/regions`) and CNEEs
+(`05-cnees/phastcons/bed/*.cnees.bed4`) come from a 15-species Cactus alignment. As an
+independent sanity check, how well do they agree with UCSC's `mm39-35way.bed` - conserved
+elements called from a completely different, much larger (35-species) multiz alignment,
+using a completely different pipeline (phastCons on multiz, not Cactus)? Agreement here
+isn't proof of correctness, but strong disagreement would be a red flag; strong agreement
+is a meaningful, independent corroboration of what our pipeline is finding. This also
+compares our two `split_strategy` runs (`num_seqs`, now the default, and `ns`, from
+[[resource-usage-and-defaults.Rmd]]'s comparison) against this same external reference.
+
+## Methodology
+
+Our reference (`GCA_000001635.9`) is the exact same assembly as UCSC's mm39/GRCm39 -
+confirmed directly from the FASTA header ("GRCm39 reference primary assembly"), the
+reference GFF's filename, and NCBI's own `sequence_report.tsv` for this assembly. Same
+assembly means same coordinates - no liftover needed, only a chromosome-name translation
+(UCSC's `chr1` etc. to GenBank accessions like `CM000994.3`), via
+`translate_ucsc_chroms.sh` in this directory (reusing the header-lookup `awk` idiom already
+used for exactly this in the support data repo's `04_replace_bed_seqids_with_genbank.sh`),
+restricted to the 21 real chromosomes this pipeline actually has predictions for.
+
+Per chromosome, per run (`num_seqs`, `ns`), per our-track (CE, CNEE), `compare_to_ucsc.py`
+runs `bedtools jaccard` and `bedtools intersect` (via `bedtools-env`'s `bedtools`, called by
+absolute path rather than `conda activate` - this session hit a real bug twice where
+`conda activate` doesn't reliably win on `$PATH`) between our bed and the translated UCSC
+bed for that chromosome, producing `ucsc-comparison-flat.tsv`.
+
+**A real pipeline quirk surfaced and worked around while building this**: the raw CE bed
+(`04-phastcons/regions`) uses phastCons's own truncated chromosome name (e.g. `CM000994`,
+no version suffix) rather than the full accession every other output uses - the same thing
+`cnees_from_conserved_chr` already has to normalize internally when reading this same file
+to build CNEEs. `compare_to_ucsc.py` does the same normalization before comparing. Relatedly,
+the on-disk `04-phastcons/regions/{group}/{chrom}.bed` *file* sits next to a same-named
+`{chrom}/` *directory* (holding `run_phastcons_chr`'s small `chunks.done`/`global_rho.txt`
+bookkeeping files, left behind after `cleanup_chunk_intermediates` removes the real per-chunk
+outputs) - not a bug, but an easy thing to overlook browsing the output tree.
+
+For the CNEE track specifically, UCSC's track has no CDS subtracted while ours does, so the
+raw comparison undersells the real agreement. `compare_to_ucsc.py` also computes a fairer
+variant (`cnee_vs_nocds_ucsc`): `bedtools subtract`-ing our own per-chromosome CDS bed
+(`05-cnees/phastcons/bed/*.cds.bed`, already produced by `extract_cds_bed_chr` from the same
+reference GFF - no new CDS extraction needed) from the UCSC bed before comparing.
+
+Separately, `compare_to_atac.py` checks how often each track (our CE/CNEE, both runs, and
+UCSC's raw CE) overlaps an independent ATAC-seq peak set - skin, late anagen
+(`GSM4156597_skin.late.anagen.peaks.mm39.bed`, translated the same way), producing
+`atac-comparison-flat.tsv`.
+
+```{r load-data}
+cmp <- read_tsv(repo_file("analyses", "ucsc-mm39-comparison", "ucsc-comparison-flat.tsv"), show_col_types = FALSE) %>%
+  mutate(
+    mean_len_ours = bp_ours / n_ours,
+    mean_len_ucsc = bp_ucsc / n_ucsc,
+    jaccard = as.numeric(jaccard)
+  )
+```
+
+- **Data source**: `data/hamsters/workflow-tests/test-full-split-aln/` (`num_seqs`) and
+  `data/hamsters/workflow-tests/test-full-gc/` (`ns`), the same two real, full 21-chromosome
+  runs already compared to each other in `resource-usage-and-defaults.Rmd`.
+- **UCSC track**: `mm39-35way.bed`
+  (`/n/holylfs05/LABS/informatics/Everyone/support/20251114-raftrey-hamster-wga/data/bed/`),
+  4,829,248 elements genome-wide; 4,826,807 fall within our 21 target chromosomes after
+  translation.
+- 126 rows (21 chromosomes x 2 runs x 3 tracks - `ce`, `cnee`, `cnee_vs_nocds_ucsc`) in
+  `ucsc-comparison-flat.tsv`; 105 rows (21 chromosomes x 5 sources) in
+  `atac-comparison-flat.tsv`.
+
+## Overlap: CE and CNEE vs. UCSC, num_seqs vs. ns
+
+```{r overlap-summary-table}
+cmp %>%
+  filter(our_track %in% c("ce", "cnee")) %>%
+  group_by(our_run, our_track) %>%
+  summarise(
+    n_chroms = n(),
+    total_bp_ours = sum(bp_ours),
+    total_bp_ucsc = sum(bp_ucsc),
+    total_bp_intersect = sum(bp_intersect),
+    mean_jaccard = round(mean(jaccard), 3),
+    pct_ours_in_ucsc = round(100 * sum(bp_intersect) / sum(bp_ours), 1),
+    pct_ucsc_in_ours = round(100 * sum(bp_intersect) / sum(bp_ucsc), 1),
+    .groups = "drop"
+  ) %>%
+  arrange(our_track, our_run) %>%
+  kable(caption = "Aggregate overlap vs. UCSC mm39 35-way, summed across all 21 chromosomes")
+```
+
+```{r jaccard-plot, fig.height=6}
+ggplot(cmp %>% filter(our_track %in% c("ce", "cnee")), aes(x = reorder(chrom, jaccard), y = jaccard, fill = our_run)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~our_track, ncol = 1, labeller = labeller(our_track = c(ce = "CEs", cnee = "CNEEs"))) +
+  coord_flip() +
+  labs(x = NULL, y = "Jaccard vs. UCSC mm39 35-way", fill = "Our run",
+       title = "Per-chromosome overlap with the independent UCSC track") +
+  theme_minimal()
+```
+
+Both our CE and CNEE sets overlap the independent UCSC track substantially above zero
+across every chromosome, and the pattern is consistent with what's already known about
+this alignment: `CM001014.3` (the poorly cross-species-aligned xy scaffold flagged earlier
+this session) shows dramatically lower agreement (Jaccard ~0.04-0.06) than every other
+chromosome (~0.2-0.44) - the independent UCSC track corroborates that this specific
+chromosome's alignment quality problem is real, not an artifact of our own pipeline.
+
+CE overlap is consistently a bit higher than CNEE overlap for both runs - expected, since
+UCSC's track (like our raw CEs) includes coding regions, while our CNEEs have already had
+CDS subtracted out. The next section quantifies exactly how much of that gap is just the
+CDS-inclusion difference versus a real disagreement.
+
+## A fairer CNEE comparison: subtracting CDS from UCSC's track too
+
+```{r cnee-fair-table}
+cmp %>%
+  filter(our_track %in% c("cnee", "cnee_vs_nocds_ucsc")) %>%
+  group_by(our_run, our_track) %>%
+  summarise(
+    mean_jaccard = round(mean(jaccard), 3),
+    pct_ours_in_ucsc = round(100 * sum(bp_intersect) / sum(bp_ours), 1),
+    pct_ucsc_in_ours = round(100 * sum(bp_intersect) / sum(bp_ucsc), 1),
+    .groups = "drop"
+  ) %>%
+  arrange(our_run, our_track) %>%
+  kable(caption = "CNEEs vs. UCSC's raw track vs. UCSC with our own CDS bed subtracted first")
+```
+
+```{r cnee-fair-plot, fig.height=6}
+ggplot(
+  cmp %>% filter(our_track %in% c("cnee", "cnee_vs_nocds_ucsc")),
+  aes(x = reorder(chrom, jaccard), y = jaccard, fill = our_track)
+) +
+  geom_col(position = "dodge") +
+  facet_wrap(~our_run, ncol = 1) +
+  coord_flip() +
+  scale_fill_discrete(labels = c(cnee = "vs. raw UCSC", cnee_vs_nocds_ucsc = "vs. CDS-subtracted UCSC")) +
+  labs(x = NULL, y = "Jaccard", fill = NULL,
+       title = "CNEE overlap: raw UCSC track vs. CDS-subtracted UCSC track, per chromosome") +
+  theme_minimal()
+```
+
+Subtracting CDS from UCSC's track before comparing raises agreement for both runs (mean
+Jaccard: `num_seqs` 0.270 -> 0.310, `ns` 0.259 -> 0.297) - confirming the CE/CNEE gap above
+is partly, not entirely, a CDS-inclusion artifact rather than a real difference in what the
+two pipelines find non-coding-conserved.
+
+## num_seqs vs. ns: which agrees more with the independent track?
+
+```{r strategy-compare-table}
+cmp %>%
+  filter(our_track %in% c("ce", "cnee")) %>%
+  select(our_run, our_track, chrom, jaccard, pct_ours_in_ucsc, pct_ucsc_in_ours) %>%
+  pivot_wider(names_from = our_run, values_from = c(jaccard, pct_ours_in_ucsc, pct_ucsc_in_ours)) %>%
+  mutate(jaccard_diff = round(jaccard_num_seqs - jaccard_ns, 4)) %>%
+  arrange(our_track, chrom) %>%
+  kable(caption = "num_seqs vs. ns agreement with UCSC, per chromosome (positive jaccard_diff = num_seqs agrees more)")
+```
+
+## Scale: element counts and lengths
+
+```{r scale-table}
+cmp %>%
+  filter(our_track %in% c("ce", "cnee")) %>%
+  group_by(our_run, our_track) %>%
+  summarise(
+    total_n_ours = sum(n_ours),
+    mean_len_ours_bp = round(sum(bp_ours) / sum(n_ours), 1),
+    .groups = "drop"
+  ) %>%
+  bind_rows(
+    cmp %>% filter(our_run == "num_seqs", our_track == "ce") %>%
+      summarise(our_run = "-", our_track = "ucsc (per-chrom total)",
+                total_n_ours = sum(n_ucsc), mean_len_ours_bp = round(sum(bp_ucsc) / sum(n_ucsc), 1))
+  ) %>%
+  kable(caption = "Element counts and mean length: ours (both strategies, both tracks) vs. UCSC")
+```
+
+UCSC's 35-way track calls roughly 2-3x more elements than either of our runs on the same
+chromosomes, consistent with it being built from a much deeper (35 vs 15 species)
+alignment - more species generally means more statistical power to detect shorter/weaker
+conservation signals. This scale difference is the main reason absolute overlap
+percentages sit around 25-40% rather than higher: a majority of UCSC's smaller/weaker
+elements simply aren't things a shallower alignment could ever call in the first place,
+independent of any real disagreement.
+
+## Overlap with an independent ATAC-seq peak set
+
+How often do CEs/CNEEs from either UCSC or our own pipeline land in independently
+accessible chromatin - skin, late anagen ATAC-seq peaks (`GSM4156597_skin.late.anagen`)?
+
+```{r load-atac-data}
+atac <- read_tsv(repo_file("analyses", "ucsc-mm39-comparison", "atac-comparison-flat.tsv"), show_col_types = FALSE)
+```
+
+```{r atac-summary-table}
+atac %>%
+  group_by(source) %>%
+  summarise(
+    total_n_elements = sum(n_elements),
+    total_n_overlapping = sum(n_elements_overlapping),
+    pct_elements_overlapping = round(100 * sum(n_elements_overlapping) / sum(n_elements), 2),
+    mean_jaccard = round(mean(jaccard), 4),
+    pct_elements_bp_in_atac = round(100 * sum(bp_intersect) / sum(bp_elements), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(pct_elements_bp_in_atac)) %>%
+  kable(caption = "ATAC-seq peak overlap by element count, Jaccard, and bp fraction - summed across all 21 chromosomes")
+```
+
+Three different ways of asking "how much overlap" agree on the same ranking (CNEEs >
+raw CEs > UCSC), but tell a fuller story together: **by bp fraction**, our CNEEs lead
+(~15% of their bp falls in an ATAC peak); **by element count**, an even larger share of
+individual CNEEs touch a peak at all (~19% of elements, vs. ~14-16% of CEs) - so it's not
+just that CNEEs happen to be bp-heavier where they do overlap, more of them overlap at
+all; **Jaccard** (which penalizes for how much of the *union* is peak-only or
+element-only space) is lowest for all tracks in absolute terms, as expected given ATAC
+peaks and conserved elements are two very different kinds of interval sets in the first
+place, but preserves the same relative ranking.
+
+```{r atac-plot, fig.height=6}
+ggplot(atac %>% filter(chrom != "CM001014.3"), aes(x = reorder(chrom, pct_elements_bp_in_atac), y = pct_elements_bp_in_atac, fill = source)) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(x = NULL, y = "% of track bp overlapping an ATAC-seq peak", fill = "Track",
+       title = "Per-chromosome ATAC-seq peak overlap by bp (CM001014.3 excluded - no peaks called)") +
+  theme_minimal()
+```
+
+```{r atac-jaccard-plot, fig.height=6}
+ggplot(atac %>% filter(chrom != "CM001014.3"), aes(x = reorder(chrom, jaccard), y = jaccard, fill = source)) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(x = NULL, y = "Jaccard vs. ATAC-seq peaks", fill = "Track",
+       title = "Per-chromosome ATAC-seq peak overlap by Jaccard (CM001014.3 excluded)") +
+  theme_minimal()
+```
+
+Our CNEEs overlap ATAC peaks at a modestly *higher* rate than our raw CEs, for both
+strategies - consistent with CDS-subtraction concentrating CNEEs toward non-coding,
+potentially regulatory sequence rather than diluting them with coding regions that aren't
+enriched for this specific tissue's accessible chromatin. UCSC's much larger, shorter-element
+track shows the lowest overlap rate of the five, consistent with the "Scale" section above -
+a large fraction of its elements are short, weak calls that a shallower alignment (ours) or
+a specific regulatory assay (ATAC) wouldn't independently flag either.
+
+## Caveats
+
+- **Not a ground truth.** UCSC's 35-way track is itself a phastCons call on a different
+  alignment, not an experimentally validated set of true conserved elements - agreement is
+  corroborating evidence, not a correctness proof, and disagreement doesn't necessarily
+  mean either pipeline is wrong. The same applies to the ATAC-seq comparison in the other
+  direction: it's one tissue, one timepoint - absence of overlap there doesn't mean an
+  element isn't real or isn't regulatory in some other context.
+- **`mm39-35way.bed`'s `score`/`lod` columns were not used for any filtering** - the full
+  track is compared as-is. A confidence-filtered subset might show tighter agreement.
+- **The phastCons chrom-name-truncation quirk** (see Methodology) affects only the raw CE
+  bed; if any future consumer of `04-phastcons/regions/*.bed` reads it directly by chrom
+  name without normalizing, it will silently fail the same way this analysis initially did.
+- **`CM001014.3` has zero ATAC-seq peaks** in the source dataset entirely (not specific to
+  our pipeline or UCSC) - excluded from the ATAC plot above for that reason, not because of
+  any predicted-element issue.

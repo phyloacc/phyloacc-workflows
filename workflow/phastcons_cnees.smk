@@ -973,7 +973,7 @@ rule global_rho:
         global_rho = (
             os.path.join(RHO_STATS_DIR, "{chromosome_group}", "{ref_chromosome}", "global_rho", "selected.txt")
             if RHO_MODE == "estimate"
-            else os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}", "global_rho.txt")
+            else os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}.state", "global_rho.txt")
         )
     log:
         job_log = os.path.join(LOG_DIR, "global_rho", "{chromosome_group}", "{ref_chromosome}.log")
@@ -990,7 +990,7 @@ rule global_rho:
             log_stream.write(f"RHO_MODE={RHO_MODE}\n")
             log_stream.flush()
 
-            chr_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
+            chr_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome + ".state")
             rho_chr_dir = os.path.join(RHO_STATS_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
             rho_global_dir = os.path.join(rho_chr_dir, "global_rho")
             maf_dir = os.path.join(MAF_SPLIT_NS_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
@@ -1133,7 +1133,7 @@ rule run_phastcons_chr:
         mod = PHYLOFIT_ACTIVE_MODEL_PATH,
         global_rho = rules.global_rho.output.global_rho
     output:
-        chunks_done = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}", "chunks.done")
+        chunks_done = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}.state", "chunks.done")
     log:
         job_log = os.path.join(LOG_DIR, "run_phastcons_chr", "{chromosome_group}", "{ref_chromosome}.log")
     benchmark:
@@ -1146,7 +1146,7 @@ rule run_phastcons_chr:
 
         with open(log.job_log, "w") as log_stream:
             try:
-                chr_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
+                chr_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome + ".state")
                 maf_dir = os.path.join(MAF_SPLIT_NS_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
                 chunk_log_dir = os.path.join(
                     LOG_DIR,
@@ -1277,7 +1277,7 @@ rule phastcons_concat_chr:
                 tmp = output.chr_bed + ".tmp"
 
                 # Concatenate only non-empty chunk beds discovered on disk
-                chunk_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
+                chunk_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome + ".state")
                 bed_files = sorted(glob.glob(os.path.join(chunk_dir, "*.conserved.bed")))
                 log_stream.write(f"Found {len(bed_files)} chunk bed files in {chunk_dir}\n")
 

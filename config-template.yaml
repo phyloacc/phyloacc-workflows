@@ -259,7 +259,7 @@ rule_resources:
   get_gc_content_from_maf:
     # Scales with genome size and sample size (reads the whole MAF, all species).
     partition:
-    mem_mb: 4000
+    mem_mb: 8000
     cpus: 4
     time: 90
 

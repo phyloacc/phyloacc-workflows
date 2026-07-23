@@ -4,6 +4,7 @@ __pycache__
 .snakemake/
 analyses/*
 !analyses/resource-usage/
+!analyses/ucsc-mm39-comparison/
 data/
 
 etc/phyloacc-sicb-ms/chr1/phyloacc-job-files/alns/
