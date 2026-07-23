@@ -2,6 +2,10 @@
 # phyloacc-workflows pseudo-CLI. Subcommands:
 #   setup          - create/update (optionally --force recreate) the conda env from envs/environment.yml
 #   setup --export - print 'conda env export' for the current env (redirect to save a lock file)
+#   update         - check every dependency for a newer available version, prompt per-package,
+#                    and write approved bumps into envs/environment.yml. Never touches the real
+#                    environment itself - run plain 'setup' afterward to pick up the change.
+#                    --dry-run: report candidates without prompting or writing anything.
 #   check          - read-only: report whether the env exists and is up to date; never modifies anything
 #                    (global --verbose adds env paths, hash comparison, and installed tool versions)
 #   run            - activate the env and exec snakemake with all remaining args passed through untouched
@@ -45,6 +49,13 @@ Commands:
     --export              Print 'conda env export' for the current environment
                           instead of creating/updating it (redirect to a file
                           to save a reproducibility lock file).
+  update                  Check every dependency in envs/environment.yml for a
+                          newer available version, prompt per-package, and
+                          write approved bumps into the file. Never touches
+                          the real environment - run plain 'setup' afterward
+                          to apply. Requires the environment to already exist.
+    --dry-run, --dryrun   Report available updates without prompting or
+                          writing anything.
   check                   Report whether the conda environment exists and is
                           up to date. Read-only; never creates, updates, or
                           deletes anything.
@@ -59,6 +70,8 @@ Commands:
 Examples:
   $(basename "$0") setup
   $(basename "$0") setup --export > environment-lock.yml
+  $(basename "$0") update --dry-run
+  $(basename "$0") update
   $(basename "$0") --verbose check
   $(basename "$0") run --configfile foo.yaml -j 20 -e slurm --dryrun
   $(basename "$0") --env-name phyloacc-workflows-test setup
@@ -186,6 +199,44 @@ cmd_setup_export() {
     run_cmd conda env export -n "$ENV_NAME"
 }
 
+# Never touches the real environment - only inspects and rewrites envs/environment.yml.
+# Run plain 'setup' afterward to actually apply any changes it made.
+cmd_update() {
+    local dry_run=0
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run|--dryrun)
+                dry_run=1
+                shift
+                ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            *)
+                echo "[phyloacc_workflows] update: unknown argument '$1'" >&2
+                usage >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    local status
+    status="$(describe_env_status)"
+
+    if [[ "$status" == "missing" ]]; then
+        echo "[phyloacc_workflows] Environment '$ENV_NAME' is NOT installed; nothing to check. Run: $(basename "$0") setup" >&2
+        exit 1
+    fi
+
+    if [[ "$dry_run" -eq 1 ]]; then
+        run_cmd "$ENV_PREFIX/bin/python" "$SCRIPT_DIR/utils/check_env_updates.py" "$ENV_FILE" "$ENV_NAME" --dry-run
+    else
+        run_cmd "$ENV_PREFIX/bin/python" "$SCRIPT_DIR/utils/check_env_updates.py" "$ENV_FILE" "$ENV_NAME"
+    fi
+}
+
 cmd_setup() {
     local force=0
     local do_export=0
@@ -212,11 +263,12 @@ cmd_setup() {
         esac
     done
 
+    if [[ "$do_export" -eq 1 ]] && [[ "$force" -eq 1 ]]; then
+        echo "[phyloacc_workflows] setup: --export and --force cannot be combined" >&2
+        exit 1
+    fi
+
     if [[ "$do_export" -eq 1 ]]; then
-        if [[ "$force" -eq 1 ]]; then
-            echo "[phyloacc_workflows] setup: --export and --force cannot be used together" >&2
-            exit 1
-        fi
         cmd_setup_export
         return
     fi
@@ -354,6 +406,10 @@ case "$subcommand" in
     setup)
         init_conda_context
         cmd_setup "$@"
+        ;;
+    update)
+        init_conda_context
+        cmd_update "$@"
         ;;
     check)
         init_conda_context

@@ -164,6 +164,9 @@ cnee_output_format: fasta
 
 cnee_ces_merge_gap_bp: 5
 cnee_min_len_bp: 50
+cnee_density_bin_bp: 1000000
+# Bin width (bp) for the summary report's per-chromosome CNEE distribution plot -
+# purely cosmetic, doesn't affect any CNEE calling/filtering.
 cnee_fasta_header: species-coords-id
 # Header mode is passed through to mafutils FASTA extraction.
 
@@ -259,7 +262,7 @@ rule_resources:
   get_gc_content_from_maf:
     # Scales with genome size and sample size (reads the whole MAF, all species).
     partition:
-    mem_mb: 4000
+    mem_mb: 8000
     cpus: 4
     time: 90
 

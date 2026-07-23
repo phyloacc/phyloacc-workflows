@@ -439,6 +439,9 @@ if CNEE_CES_MERGE_GAP_BP < 0:
 CNEE_MIN_LEN_BP = int(config.get("cnee_min_len_bp", 50))
 if CNEE_MIN_LEN_BP < 0:
     raise ValueError("cnee_min_len_bp must be >= 0.")
+CNEE_DENSITY_BIN_BP = int(config.get("cnee_density_bin_bp", 1_000_000))
+if CNEE_DENSITY_BIN_BP <= 0:
+    raise ValueError("cnee_density_bin_bp must be > 0.")
 CNEE_FASTA_HEADER = str(config.get("cnee_fasta_header", config.get("cne_fasta_header", "species-coords-id"))).strip()
 CNEE_EXPECTED_SPECIES = []
 if CNEE_OUTPUT_FORMAT == "fasta":
@@ -973,7 +976,7 @@ rule global_rho:
         global_rho = (
             os.path.join(RHO_STATS_DIR, "{chromosome_group}", "{ref_chromosome}", "global_rho", "selected.txt")
             if RHO_MODE == "estimate"
-            else os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}", "global_rho.txt")
+            else os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}.state", "global_rho.txt")
         )
     log:
         job_log = os.path.join(LOG_DIR, "global_rho", "{chromosome_group}", "{ref_chromosome}.log")
@@ -990,7 +993,7 @@ rule global_rho:
             log_stream.write(f"RHO_MODE={RHO_MODE}\n")
             log_stream.flush()
 
-            chr_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
+            chr_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome + ".state")
             rho_chr_dir = os.path.join(RHO_STATS_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
             rho_global_dir = os.path.join(rho_chr_dir, "global_rho")
             maf_dir = os.path.join(MAF_SPLIT_NS_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
@@ -1133,7 +1136,7 @@ rule run_phastcons_chr:
         mod = PHYLOFIT_ACTIVE_MODEL_PATH,
         global_rho = rules.global_rho.output.global_rho
     output:
-        chunks_done = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}", "chunks.done")
+        chunks_done = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}.state", "chunks.done")
     log:
         job_log = os.path.join(LOG_DIR, "run_phastcons_chr", "{chromosome_group}", "{ref_chromosome}.log")
     benchmark:
@@ -1146,7 +1149,7 @@ rule run_phastcons_chr:
 
         with open(log.job_log, "w") as log_stream:
             try:
-                chr_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
+                chr_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome + ".state")
                 maf_dir = os.path.join(MAF_SPLIT_NS_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
                 chunk_log_dir = os.path.join(
                     LOG_DIR,
@@ -1277,7 +1280,7 @@ rule phastcons_concat_chr:
                 tmp = output.chr_bed + ".tmp"
 
                 # Concatenate only non-empty chunk beds discovered on disk
-                chunk_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome)
+                chunk_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome + ".state")
                 bed_files = sorted(glob.glob(os.path.join(chunk_dir, "*.conserved.bed")))
                 log_stream.write(f"Found {len(bed_files)} chunk bed files in {chunk_dir}\n")
 
@@ -1288,7 +1291,15 @@ rule phastcons_concat_chr:
                                 for line in bf:
                                     line = line.strip()
                                     if line and not line.startswith("#"):
-                                        out.write(line + "\n")
+                                        # phastCons truncates the reference chromosome name in
+                                        # column 1 (splits its MAF src field on "." and drops
+                                        # anything past the first token after the species
+                                        # prefix, e.g. "CM000994.3" -> "CM000994") - overwrite
+                                        # with the wildcard's own trusted value rather than the
+                                        # truncated one.
+                                        parts = line.split("\t")
+                                        parts[0] = wildcards.ref_chromosome
+                                        out.write("\t".join(parts) + "\n")
 
                 sort_cmd = ["sort", "-k1,1", "-k2,2n", "-k3,3n", tmp]
                 log_stream.write(f"Running: {' '.join(sort_cmd)} > {output.chr_bed}\n")
@@ -1452,24 +1463,24 @@ rule cnees_from_conserved_chr:
                 )
 
                 for chrom, s, e in conserved:
-                    cur = s
+                    # Advance j past any CDS intervals that end at or before this CE
+                    # starts - they can't overlap this CE or any later one (both
+                    # lists are sorted by start).
                     while j < len(cds) and cds[j][2] <= s:
                         j += 1
-                    k = j
-                    while k < len(cds) and cds[k][1] < e:
-                        _, cs, ce = cds[k]
-                        if cs > cur:
-                            out_rows.append((chrom, cur, min(cs, e)))
-                        cur = max(cur, ce)
-                        if cur >= e:
-                            break
-                        k += 1
-                    if cur < e:
-                        out_rows.append((chrom, cur, e))
+                    # If the next candidate CDS interval starts before this CE ends,
+                    # it overlaps this CE somewhere (fully containing it, splitting
+                    # it in the middle, or clipping either end) - drop the whole CE,
+                    # no fragments kept either way.
+                    if j < len(cds) and cds[j][1] < e:
+                        continue
+                    out_rows.append((chrom, s, e))
 
-                # Final pass: merge adjacent/overlapping CNEE fragments.
-                out_rows = merge_intervals(out_rows)
-                log_stream.write(f"CNEE intervals after merge: {len(out_rows)}\n")
+                ces_dropped = len(conserved) - len(out_rows)
+                log_stream.write(
+                    f"CEs dropped for CDS overlap: {ces_dropped}; "
+                    f"CNEEs remaining: {len(out_rows)}\n"
+                )
 
                 with open(output.cnees_bed, "w") as out:
                     for chrom, s, e in out_rows:
@@ -1481,7 +1492,8 @@ rule cnees_from_conserved_chr:
                     sf.write("metric\tvalue\n")
                     sf.write(f"ces_raw\t{len(conserved_raw)}\n")
                     sf.write(f"ces_merged\t{len(conserved)}\n")
-                    sf.write(f"cnees_after_cds_subtract\t{len(out_rows)}\n")
+                    sf.write(f"ces_dropped_cds_overlap\t{ces_dropped}\n")
+                    sf.write(f"cnees_after_cds_drop\t{len(out_rows)}\n")
             except Exception:
                 traceback.print_exc(file=log_stream)
                 raise

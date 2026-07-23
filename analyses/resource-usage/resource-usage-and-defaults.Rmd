@@ -518,13 +518,39 @@ bench %>%
 
 `get_gc_content_from_maf` took 25.8 minutes and peaked at 134 MB, running essentially
 single-core the whole time (`mean_load_pct` ~98%, `cpu_time_s` almost exactly equal to
-wall time) - consistent with the tool's own documentation that GC counting itself is
-cheap per base but the sequential path is bound by I/O/decompression, not CPU work to
-parallelize. That 25.8 minutes against `default`'s 60-minute budget is only about a 2.3x
-margin - tighter than the 2.5-4x this notebook has used elsewhere - so this is worth a
-dedicated entry rather than continuing to rely on `default`, e.g. `mem_mb: 750`,
-`time: 90`, keeping `cpus: 1` (nothing to parallelize on the sequential path; only
-matters if a bgzip-compressed MAF + index is used with `-p > 1`, untested here).
+wall time) - consistent with `mafutils gc`'s own documentation: GC counting itself is
+cheap per base, but the sequential path (`-p 1`, the default) is bound by per-base Python
+overhead, not CPU work to parallelize. Parallel mode (`-p > 1`) works for uncompressed or
+bgzip-compressed MAFs alike (not bgzip-only, correcting an earlier claim in this notebook's
+own history) - this pipeline's real MAF is uncompressed, so parallel mode was a real option
+worth actually measuring rather than assuming.
+
+**Update: real `-p 4` (`cpus: 4`) data now exists**, from `config-template.yaml` being set to
+`cpus: 4` for this rule and exercised for real in `test-full-split-aln`. First attempt, at
+the interim `mem_mb: 750` carried over from the sequential-mode recommendation above, OOM
+killed. Bumped to `mem_mb: 4000` to unblock, which succeeded - but real usage came in
+*above* even that:
+
+```{r gc-parallel-table}
+bench_numseqs_gc <- read_tsv(repo_file("analyses", "resource-usage", "benchmarks-flat-num_seqs.tsv"), show_col_types = FALSE) %>%
+  filter(rule == "get_gc_content_from_maf") %>%
+  mutate(across(c(max_rss_mb, cpu_time_s, mean_load_pct), as.numeric))
+
+bench_numseqs_gc %>%
+  mutate(wall_min = round(wall_s / 60, 2), max_rss_mb = round(max_rss_mb, 1)) %>%
+  select(wall_min, max_rss_mb, cpu_time_s) %>%
+  kable(caption = "get_gc_content_from_maf, cpus: 4 (-p 4), real data from test-full-split-aln")
+```
+
+486.19s wall (8m06s) and **5,922 MB peak** - well above the `mem_mb: 4000` it actually ran
+under (this run's success is closer to lucky than validated; SLURM/cgroup accounting
+sometimes has slack above the nominal request). `cpu_time_s` (349.91) is well under 4x
+wall time despite `cpus: 4`, meaning parallel mode isn't using anywhere near 4 full cores
+of work here for this MAF - the wall-time win over sequential mode (25.8min -> 8.1min,
+~3.2x) is real, but at a real memory cost (134MB -> 5.9GB, ~44x) disproportionate to that
+speedup. Recommend a real margin over the observed peak, e.g. `mem_mb: 7000-7500`, rather
+than treating the current `4000` as validated just because this one run happened to
+succeed.
 
 `summary_report` took well under a minute and 190 MB - comfortably inside `default` with
 no changes needed.

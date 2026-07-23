@@ -5,7 +5,7 @@ channels:
 dependencies:
   - python>=3.11,<3.13  # cap avoids a broken 3.14.0rc1 bioconda build; raise once 3.14 is stable
   - snakemake-minimal
-  - snakemake-executor-plugin-slurm
+  - snakemake-executor-plugin-slurm>=2.7.1
   - samtools
   - picard
   - phast

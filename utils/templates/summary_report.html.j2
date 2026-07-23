@@ -48,6 +48,7 @@
 <a class="sub" href="#neutral-models">Neutral models</a>
 <a class="sub" href="#ces">Conserved elements</a>
 <a class="sub" href="#cnees">CNEEs</a>
+<a class="sub" href="#cnee-density">CNEE distribution</a>
 </nav>
 
 <main>
@@ -107,11 +108,14 @@
 <div class="stat-row">
   <div class="stat"><div class="n">{{ cnee_filter_totals.ces_raw }}</div><div class="label">raw CEs (phastCons)</div></div>
   <div class="stat"><div class="n">{{ cnee_filter_totals.ces_merged }}</div><div class="label">merged (gap &le; cnee_ces_merge_gap_bp)</div></div>
-  <div class="stat"><div class="n">{{ cnee_filter_totals.cnees_after_cds_subtract }}</div><div class="label">after CDS subtraction</div></div>
+  <div class="stat"><div class="n">{{ cnee_filter_totals.ces_dropped_cds_overlap }}</div><div class="label">dropped (overlaps a CDS)</div></div>
+  <div class="stat"><div class="n">{{ cnee_filter_totals.cnees_after_cds_drop }}</div><div class="label">no CDS overlap</div></div>
 </div>
-<p style="font-size:0.85rem;color:#666;">Subtracting CDS overlap can split one conserved element into multiple
-flanking fragments, which is why the CNEE count can exceed the raw CE count even though total bp goes down.
-The final CNEE count (below, under Outputs) also applies the <code>cnee_min_len_bp</code> length filter.</p>
+<p style="font-size:0.85rem;color:#666;">Any conserved element that overlaps a CDS at all - fully containing it,
+splitting it into two flanking pieces, or clipping just one end - is dropped in its entirety; no partial or
+flanking fragments are kept. Only CEs with zero CDS overlap become CNEE candidates, so this count can only be
+less than or equal to the merged CE count. The final CNEE count (below, under Outputs) also applies the
+<code>cnee_min_len_bp</code> length filter.</p>
 <img class="plot" src="data:image/png;base64,{{ cnee_filter_plot }}">
 <details><summary>Per-chromosome table</summary>{{ table(cnee_filter_table) }}</details>
 {% else %}
@@ -162,6 +166,18 @@ The final CNEE count (below, under Outputs) also applies the <code>cnee_min_len_
 <details><summary>Per-chromosome table</summary>{{ table(cnees.table) }}</details>
 {% else %}
 <p class="empty">No CNEE data (build_cnees was not enabled for this run).</p>
+{% endif %}
+
+<h3 id="cnee-density">CNEE distribution along chromosomes</h3>
+{% if cnee_density_plot is defined %}
+<p style="font-size:0.85rem;color:#666;">Final CNEEs (opaque, after the <code>cnee_min_len_bp</code>
+length filter) binned into {{ (cnee_density_bin_bp // 1000) }}kb windows along each chromosome,
+against raw CE count in the same bins (translucent, before CDS-overlap dropping and length
+filtering) - the gap between the two shows what was filtered out of each window, not just
+genome-wide.</p>
+<img class="plot" src="data:image/png;base64,{{ cnee_density_plot }}">
+{% else %}
+<p class="empty">No CNEE density data (requires build_cnees and run_phastcons to be enabled for this run).</p>
 {% endif %}
 
 </main>
