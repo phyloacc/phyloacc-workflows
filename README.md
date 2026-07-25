@@ -77,6 +77,35 @@ Which stages run is controlled by `run_phylofit` / `run_phylop` /
 - `envs/environment.yml` - pinned dependencies for the `phyloacc_workflows` environment
 - `cfgs/` - example filled-in configs from past analyses
 
+## Running tests (developers)
+
+`tests/` holds three tiers of tests. These are a developer/maintainer concern, not
+something needed to run the pipeline itself, so `pytest` is not part of
+`envs/environment.yml`. To run them, install pytest into your existing environment and
+run it from the repo root:
+
+```bash
+mamba install -n phyloacc-workflows pytest    # or: pip install pytest
+pytest tests/
+```
+
+- **Unit tests** (`test_intervals.py`, `test_parsing.py`) - pure-Python logic in `lib/`
+  (interval merging, BED/GFF parsing, Newick tip extraction, etc. - the same code the real
+  Snakemake rules import and run). No external tools needed. ~1-2s.
+- **DAG/config validation** (`test_dag_validation.py`) - each test invokes a real
+  `snakemake -n` subprocess against a minimal config to check that bad config values are
+  rejected with the expected error. Needs `snakemake` on `PATH`. ~3-4 min.
+- **Integration** (`tests/integration/`) - runs the real pipeline (real
+  `mafutils`/`phyloFit`/`phastCons`, not mocked) end-to-end against a small real-data
+  fixture; see `tests/integration/README.md` for the fixture's provenance. Needs
+  `mafutils`/`phyloFit`/`phastCons` actually on `PATH` - skips cleanly (not a failure) if
+  they're missing. ~4-5 min. Includes a soft "silver standard" check that warns (does not
+  fail) if a run's summary numbers drift far from a committed reference - see that
+  directory's README for how to regenerate it if the fixture or tool versions change.
+
+Running everything together takes roughly 7-8 minutes, dominated by the last two tiers'
+real subprocess/tool invocations.
+
 ## Releasing (maintainers)
 
 Version bumps are manual, not automated. To cut a release:

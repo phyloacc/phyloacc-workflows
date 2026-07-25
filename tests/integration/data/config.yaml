@@ -1,0 +1,40 @@
+# Tier-3 integration test fixture config. Points at a real 260kb window
+# (CM000994.3:3,030,000-3,290,000) extracted from the real hamster MAF/GFF/tree
+# already used throughout this repo's own workflow-tests - not synthetic data.
+# Includes a real assembly-gap region so num_seqs-based chunk splitting has genuine
+# structure to find; see tests/integration/README.md for full provenance.
+# output_dir/tmp_dir are overridden at test time by tests/integration/test_pipeline_e2e.py.
+
+maf: /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/tests/integration/data/cricetid-window.maf
+maf_ref_id: "Mus_musculus"
+maf_chr_prefix: ""
+maf_ref_chr_joiner: "."
+
+ref_gff: /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/tests/integration/data/cricetid-window.gff
+tree_file: /n/holylfs05/LABS/informatics/Lab/projects/gwct/phyloacc/phyloacc-workflows/tests/integration/data/cricetid-15spec.tre
+
+ref_chromosome_groups:
+  group1:
+    - CM000994.3
+target_ref_chromosomes:
+  - CM000994.3
+
+split_strategy: num_seqs
+rho_mode: fixed
+fixed_rho: 0.3
+
+run_phylofit: true
+run_phylop: false
+run_phastcons: true
+build_cnees: true
+cnee_output_format: fasta
+
+cnee_ces_merge_gap_bp: 5
+cnee_min_len_bp: 50
+
+rule_resources:
+  default:
+    partition: test_partition
+    mem_mb: 2000
+    cpus: 1
+    time: 20

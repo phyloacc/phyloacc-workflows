@@ -1,0 +1,37 @@
+name: Tests
+
+# Runs the unit-test and DAG-validation tiers (tests/test_intervals.py,
+# tests/test_parsing.py, tests/test_dag_validation.py) on every PR into main.
+# Neither tier needs the real bioinformatics tools (mafutils/phyloFit/phastCons/
+# samtools/picard) - just pytest, pyyaml, and a working `snakemake` CLI for
+# tier 2's `-n` dry-runs - so this installs those directly via pip rather than
+# building the full envs/environment.yml conda environment.
+#
+# tests/integration/ (tier 3, real end-to-end pipeline run) is intentionally
+# NOT run here - it needs the real tool binaries and takes several minutes;
+# see README.md's "Running tests (developers)" section.
+#
+# To make this a required check: after this workflow has run at least once,
+# go to Settings > Branches > branch protection rule for main > "Require
+# status checks to pass" and select "Tests".
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install pytest pyyaml snakemake
+
+      - name: Run unit and DAG-validation tests
+        run: pytest tests/test_intervals.py tests/test_parsing.py tests/test_dag_validation.py -v
