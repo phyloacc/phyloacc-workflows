@@ -12,73 +12,11 @@ import traceback
 
 import lib.common as COMMON
 from lib.common import spacedOut as SO
+import lib.intervals as INTERVALS
+import lib.parsing as PARSING
+from lib.parsing import parse_newick_tip_names
 
 from functools import partial
-
-
-def parse_newick_tip_names(tree_path: str):
-    with open(tree_path, "r", encoding="utf-8") as fp:
-        data = fp.read()
-
-    tips = []
-    seen = set()
-    i = 0
-    expect_label = False
-    n = len(data)
-
-    while i < n:
-        ch = data[i]
-
-        if ch in "(,":
-            expect_label = True
-            i += 1
-            continue
-
-        if ch in " \t\r\n":
-            i += 1
-            continue
-
-        if ch == "[":
-            i += 1
-            while i < n and data[i] != "]":
-                i += 1
-            if i < n:
-                i += 1
-            continue
-
-        if ch == ")":
-            expect_label = False
-            i += 1
-            continue
-
-        if ch == ";":
-            break
-
-        if expect_label:
-            if ch in "\'\"":
-                quote = ch
-                i += 1
-                start = i
-                while i < n and data[i] != quote:
-                    i += 1
-                label = data[start:i].strip()
-                if i < n:
-                    i += 1
-            else:
-                start = i
-                while i < n and data[i] not in ":,()[];":
-                    i += 1
-                label = data[start:i].strip()
-
-            if label and label not in seen:
-                tips.append(label)
-                seen.add(label)
-            expect_label = False
-            continue
-
-        i += 1
-
-    return tips
 
 
 def parse_species_list(species_text: str):
@@ -614,14 +552,11 @@ rule ns_to_bed:
     resources:
         **getRuleResources("ns_to_bed")
     run:
-        with open(input.ref_interval_file, "r") as input_intervals, \
-            open(output.chr_bed_file, "w") as out_file:
-                for line in input_intervals:
-                    if not line.startswith("@"):
-                        line = line.strip().split("\t")
-                        chrom, start, end = line[0], line[1], line[2]
-                        if chrom == wildcards.ref_chromosome:
-                            print(f"{chrom}:{start}-{end}", file=out_file)
+        with open(input.ref_interval_file, "r") as input_intervals:
+            entries = INTERVALS.picard_interval_list_to_bed(input_intervals, wildcards.ref_chromosome)
+        with open(output.chr_bed_file, "w") as out_file:
+            for entry in entries:
+                print(entry, file=out_file)
 
 ####################
 
@@ -702,14 +637,10 @@ rule fixed_windows_bed:
                 if chrom_len is None:
                     raise ValueError(f"Chromosome {wildcards.ref_chromosome} not found in {input.ref_index}")
 
+                windows = INTERVALS.tile_fixed_windows(chrom_len, WINDOW_SIZE_BP, WINDOW_STEP_BP)
                 with open(output.chr_bed, "w") as out:
-                    start = 0
-                    while start < chrom_len:
-                        end = min(start + WINDOW_SIZE_BP, chrom_len)
+                    for start, end in windows:
                         out.write(f"{wildcards.ref_chromosome}\t{start}\t{end}\n")
-                        if end >= chrom_len:
-                            break
-                        start += WINDOW_STEP_BP
 
                 log_stream.write(
                     f"window_size_bp={WINDOW_SIZE_BP}; window_overlap_bp={WINDOW_OVERLAP_BP}; step_bp={WINDOW_STEP_BP}\n"
@@ -781,48 +712,16 @@ rule num_seqs_chunk_bed_chr:
                 if not rows:
                     raise ValueError(f"No blocks found in {input.maf_index_block}")
 
-                chrom_start = rows[0][0]
-                chrom_end = rows[-1][0] + rows[-1][1]
-
-                # Merge consecutive blocks with num_seqs <= max_num_seqs_for_gap into gap runs.
-                gaps = []
-                gap_start = None
-                gap_end = None
-                for ref_start, ref_len, num_seqs in rows:
-                    if num_seqs <= params.max_num_seqs_for_gap:
-                        if gap_start is None:
-                            gap_start = ref_start
-                        gap_end = ref_start + ref_len
-                    else:
-                        if gap_start is not None:
-                            gaps.append((gap_start, gap_end))
-                            gap_start = None
-                if gap_start is not None:
-                    gaps.append((gap_start, gap_end))
-
-                # Only gap runs at least min_gap_bp long actually split the chromosome -
-                # short dips below the num_seqs threshold don't fragment it.
-                gaps = [(gs, ge) for gs, ge in gaps if ge - gs >= params.min_gap_bp]
-
-                # The complement of the surviving gaps is the candidate chunk set.
-                chunks = []
-                cur = chrom_start
-                for gs, ge in gaps:
-                    if gs > cur:
-                        chunks.append((cur, gs))
-                    cur = max(cur, ge)
-                if cur < chrom_end:
-                    chunks.append((cur, chrom_end))
-
-                # Drop chunks too short to be worth scoring on their own.
-                chunks = [(s, e) for s, e in chunks if e - s >= params.min_keep_region_len]
+                chunks = INTERVALS.complement_gaps(
+                    rows, params.max_num_seqs_for_gap, params.min_gap_bp, params.min_keep_region_len
+                )
 
                 with open(output.chr_bed, "w") as out:
                     for s, e in chunks:
                         out.write(f"{wildcards.ref_chromosome}\t{s}\t{e}\n")
 
                 log_stream.write(
-                    f"blocks={len(rows)}; gaps_kept={len(gaps)}; chunks_kept={len(chunks)}\n"
+                    f"blocks={len(rows)}; chunks_kept={len(chunks)}\n"
                 )
             except Exception:
                 traceback.print_exc(file=log_stream)
@@ -985,7 +884,7 @@ rule global_rho:
     resources:
         **(getRuleResources("global_rho") if RHO_MODE == "estimate" else getRuleResources("default"))
     run:
-        import glob, math, os, re, shlex, subprocess
+        import glob, os, shlex, subprocess
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         with open(log.job_log, "w") as log_stream:
@@ -1047,12 +946,7 @@ rule global_rho:
 
                     rho_val = float("nan")
                     if result.returncode == 0:
-                        try:
-                            m_all = re.findall(r"rho\s*=\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)", stderr_text)
-                            if m_all:
-                                rho_val = float(m_all[-1])
-                        except Exception:
-                            pass
+                        rho_val = PARSING.rho_from_phastcons_stderr(stderr_text)
 
                     for fp in glob.glob(tmp_prefix + "*"):
                         try:
@@ -1091,27 +985,13 @@ rule global_rho:
                         chunk_rho[chunk_name] = rho_val
                         log_stream.flush()
 
-                vals = [v for v in chunk_rho.values() if math.isfinite(v) and v > 0.0]
-                if not vals:
-                    rho_global = float("nan")
+                summary = PARSING.summarize_rho(chunk_rho.values(), stat=GLOBAL_RHO_STAT)
+                rho_mean, rho_median, rho_p90 = summary["mean"], summary["median"], summary["p90"]
+                rho_global = summary["selected"]
+                if summary["n"] == 0:
                     log_stream.write("NO_VALID_RHO_VALUES\n")
-                    rho_mean = float("nan")
-                    rho_median = float("nan")
-                    rho_p90 = float("nan")
                 else:
-                    vals.sort()
-                    idx = int(math.ceil(0.9 * len(vals)) - 1)
-                    idx = max(0, min(idx, len(vals) - 1))
-                    rho_p90 = vals[idx]
-                    rho_median = float(vals[len(vals) // 2]) if len(vals) % 2 == 1 else float((vals[len(vals) // 2 - 1] + vals[len(vals) // 2]) / 2.0)
-                    rho_mean = float(sum(vals) / len(vals))
-                    if GLOBAL_RHO_STAT == "p90":
-                        rho_global = rho_p90
-                    elif GLOBAL_RHO_STAT == "median":
-                        rho_global = rho_median
-                    else:
-                        rho_global = rho_mean
-                    log_stream.write(f"GLOBAL_RHO_{GLOBAL_RHO_STAT.upper()}: {rho_global} (n={len(vals)})\n")
+                    log_stream.write(f"GLOBAL_RHO_{GLOBAL_RHO_STAT.upper()}: {rho_global} (n={summary['n']})\n")
 
                 with open(os.path.join(rho_global_dir, "mean.txt"), "w") as f:
                     f.write(f"{rho_mean}\n")
@@ -1365,23 +1245,11 @@ rule extract_cds_bed_chr:
         with open(log.job_log, "w") as log_stream:
             try:
                 os.makedirs(os.path.dirname(output.cds_bed), exist_ok=True)
-                with open(input.ref_gff) as gf, open(output.cds_bed, "w") as out:
-                    for line in gf:
-                        if not line or line.startswith("#"):
-                            continue
-                        parts = line.rstrip("\n").split("\t")
-                        if len(parts) < 5:
-                            continue
-                        chrom, feature, start_s, end_s = parts[0], parts[2], parts[3], parts[4]
-                        if chrom != wildcards.ref_chromosome or feature.upper() != "CDS":
-                            continue
-                        try:
-                            start = int(start_s) - 1
-                            end = int(end_s)
-                        except ValueError:
-                            continue
-                        if end > start >= 0:
-                            out.write(f"{chrom}\t{start}\t{end}\n")
+                with open(input.ref_gff) as gf:
+                    cds_rows = INTERVALS.gff_to_cds_bed(gf, wildcards.ref_chromosome)
+                with open(output.cds_bed, "w") as out:
+                    for chrom, start, end in cds_rows:
+                        out.write(f"{chrom}\t{start}\t{end}\n")
             except Exception:
                 traceback.print_exc(file=log_stream)
                 raise
@@ -1405,76 +1273,21 @@ rule cnees_from_conserved_chr:
         import os
         import traceback
 
-        def parse_bed3(path, normalize_to=None):
-            rows = []
-            with open(path) as fh:
-                for line in fh:
-                    if not line.strip() or line.startswith("#"):
-                        continue
-                    p = line.rstrip("\n").split("\t")
-                    if len(p) < 3:
-                        continue
-                    chrom = p[0]
-                    if normalize_to is not None:
-                        # This rule is per-chromosome; normalize aliases like NC_085107 -> NC_085107.1
-                        base_norm = normalize_to.rsplit(".", 1)[0]
-                        base_chrom = chrom.rsplit(".", 1)[0]
-                        if chrom == normalize_to or base_chrom == base_norm:
-                            chrom = normalize_to
-                        else:
-                            # Skip any unexpected chromosome labels in this per-chromosome file.
-                            continue
-                    try:
-                        s = int(p[1])
-                        e = int(p[2])
-                    except ValueError:
-                        continue
-                    if e > s:
-                        rows.append((chrom, s, e))
-            return rows
-
-        def merge_intervals(intervals, max_gap_bp=0):
-            if not intervals:
-                return []
-            intervals = sorted(intervals, key=lambda x: (x[1], x[2]))
-            merged = [list(intervals[0])]
-            for _, s, e in intervals[1:]:
-                # Merge overlaps and near-adjacent intervals within max_gap_bp.
-                if s <= merged[-1][2] + max_gap_bp:
-                    if e > merged[-1][2]:
-                        merged[-1][2] = e
-                else:
-                    merged.append([wildcards.ref_chromosome, s, e])
-            return [(c, s, e) for c, s, e in merged]
-
         with open(log.job_log, "w") as log_stream:
             try:
                 os.makedirs(os.path.dirname(output.cnees_bed), exist_ok=True)
-                conserved_raw = parse_bed3(input.conserved_bed, normalize_to=wildcards.ref_chromosome)
-                conserved = merge_intervals(conserved_raw, CNEE_CES_MERGE_GAP_BP)
-                cds = merge_intervals(parse_bed3(input.cds_bed, normalize_to=wildcards.ref_chromosome), 0)
-                conserved.sort(key=lambda x: (x[1], x[2]))
-                out_rows = []
-                j = 0
+                conserved_raw = INTERVALS.parse_bed3(input.conserved_bed, normalize_to=wildcards.ref_chromosome)
+                conserved = INTERVALS.merge_intervals(conserved_raw, CNEE_CES_MERGE_GAP_BP)
+                cds = INTERVALS.merge_intervals(
+                    INTERVALS.parse_bed3(input.cds_bed, normalize_to=wildcards.ref_chromosome), 0
+                )
 
                 log_stream.write(
                     f"Conserved raw intervals: {len(conserved_raw)}; "
                     f"merged (gap<={CNEE_CES_MERGE_GAP_BP}bp): {len(conserved)}\\n"
                 )
 
-                for chrom, s, e in conserved:
-                    # Advance j past any CDS intervals that end at or before this CE
-                    # starts - they can't overlap this CE or any later one (both
-                    # lists are sorted by start).
-                    while j < len(cds) and cds[j][2] <= s:
-                        j += 1
-                    # If the next candidate CDS interval starts before this CE ends,
-                    # it overlaps this CE somewhere (fully containing it, splitting
-                    # it in the middle, or clipping either end) - drop the whole CE,
-                    # no fragments kept either way.
-                    if j < len(cds) and cds[j][1] < e:
-                        continue
-                    out_rows.append((chrom, s, e))
+                out_rows = INTERVALS.drop_overlapping(conserved, cds)
 
                 ces_dropped = len(conserved) - len(out_rows)
                 log_stream.write(
@@ -1518,30 +1331,13 @@ rule cnees_to_bed4_chr:
         with open(log.job_log, "w") as log_stream:
             try:
                 os.makedirs(os.path.dirname(output.cnees_bed4), exist_ok=True)
-                n = 0
-                kept = 0
-                dropped = 0
-                with open(input.cnees_bed) as inf, open(output.cnees_bed4, "w") as outf:
-                    for line in inf:
-                        if not line.strip() or line.startswith("#"):
-                            continue
-                        p = line.rstrip("\n").split("\t")
-                        if len(p) < 3:
-                            continue
-                        chrom = p[0]
-                        try:
-                            s = int(p[1])
-                            e = int(p[2])
-                        except ValueError:
-                            continue
-                        if e <= s:
-                            continue
-                        if (e - s) <= CNEE_MIN_LEN_BP:
-                            dropped += 1
-                            continue
-                        n += 1
-                        kept += 1
-                        cid = f"{wildcards.ref_chromosome}.cnee{n:07d}"
+                rows = INTERVALS.parse_bed3(input.cnees_bed)
+                bed4_rows = INTERVALS.filter_and_id_bed4(rows, CNEE_MIN_LEN_BP, wildcards.ref_chromosome)
+                n = len(bed4_rows)
+                kept = n
+                dropped = len(rows) - n
+                with open(output.cnees_bed4, "w") as outf:
+                    for chrom, s, e, cid in bed4_rows:
                         outf.write(f"{chrom}\t{s}\t{e}\t{cid}\n")
                 log_stream.write(
                     f"Filtered CNEEs by length > {CNEE_MIN_LEN_BP} bp: "
@@ -1610,27 +1406,12 @@ rule cnee_alignments_chr:
                 outs = sorted(glob.glob(os.path.join(params.outdir, f"{wildcards.ref_chromosome}.cnee*.{ext}")))
 
                 if CNEE_OUTPUT_FORMAT == "fasta":
-                    import re
-
                     dropped_files = 0
                     kept_outs = []
 
                     for fp in outs:
-                        seen = set()
-                        has_dup = False
                         with open(fp, "r") as inf:
-                            for line in inf:
-                                if not line.startswith(">"):
-                                    continue
-                                token = line[1:].strip().split()[0]
-                                species = token.split(":", 1)[0]
-                                # Duplicate key is genus+species (first two underscore-separated tokens).
-                                m = re.match(r"^([A-Za-z]+)_([A-Za-z]+)", species)
-                                species_key = f"{m.group(1)}_{m.group(2)}" if m else species
-                                if species_key in seen:
-                                    has_dup = True
-                                    break
-                                seen.add(species_key)
+                            has_dup = PARSING.filter_duplicate_species_fasta(inf)
                         if has_dup:
                             try:
                                 os.remove(fp)

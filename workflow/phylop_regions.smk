@@ -9,6 +9,7 @@ import traceback
 
 import lib.common as COMMON
 from lib.common import spacedOut as SO
+import lib.intervals as INTERVALS
 
 from functools import partial
 
@@ -327,43 +328,25 @@ rule naive_cluster_conserved_sites:
         with open(log.job_log, "w") as log_stream:
             try:
                 os.makedirs(os.path.dirname(output.conserved_regions_bed), exist_ok=True)
-                regions = []
-                current = None
-
+                sites = []
                 with open(input.conserved_sites_bed) as inf:
                     for line in inf:
                         if not line.strip() or line.startswith("#"):
                             continue
                         chrom, start_s, end_s = line.rstrip("\n").split("\t")[:3]
-                        start = int(start_s)
-                        end = int(end_s)
+                        sites.append((chrom, int(start_s), int(end_s)))
 
-                        if current is None:
-                            current = {"chrom": chrom, "start": start, "end": end, "count": 1}
-                            continue
+                clusters, total_regions = INTERVALS.cluster_sites(
+                    sites, NAIVE_CLUSTER_MAX_GAP_BP, NAIVE_MIN_REGION_SITES, NAIVE_MIN_REGION_LEN_BP
+                )
 
-                        if chrom == current["chrom"] and start - current["end"] <= NAIVE_CLUSTER_MAX_GAP_BP:
-                            current["end"] = max(current["end"], end)
-                            current["count"] += 1
-                        else:
-                            regions.append(current)
-                            current = {"chrom": chrom, "start": start, "end": end, "count": 1}
-
-                if current is not None:
-                    regions.append(current)
-
-                kept = 0
-                dropped = 0
+                kept = len(clusters)
+                dropped = total_regions - kept
                 with open(output.conserved_regions_bed, "w") as out:
-                    for idx, region in enumerate(regions, start=1):
-                        region_len = region["end"] - region["start"]
-                        if region["count"] < NAIVE_MIN_REGION_SITES or region_len < NAIVE_MIN_REGION_LEN_BP:
-                            dropped += 1
-                            continue
-                        kept += 1
+                    for chrom, start, end, count, idx in clusters:
                         out.write(
-                            f"{region['chrom']}\t{region['start']}\t{region['end']}\t"
-                            f"naive_cluster_{idx:07d}\t{region['count']}\n"
+                            f"{chrom}\t{start}\t{end}\t"
+                            f"naive_cluster_{idx:07d}\t{count}\n"
                         )
 
                 log_stream.write(

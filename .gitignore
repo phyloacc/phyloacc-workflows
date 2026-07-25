@@ -6,6 +6,7 @@ analyses/*
 !analyses/resource-usage/
 !analyses/ucsc-mm39-comparison/
 data/
+!tests/integration/data/
 
 etc/phyloacc-sicb-ms/chr1/phyloacc-job-files/alns/
 

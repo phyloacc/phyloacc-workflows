@@ -20,6 +20,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from jinja2 import Template
 
+# Invoked as a standalone script (python summary_report.py ...), so the repo root
+# isn't on sys.path by default the way it is for the Snakefile/workflow/*.smk files -
+# add it so lib.intervals is importable the same way they already do.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+import lib.intervals as INTERVALS
+
 #############################################################################
 # Small file readers
 
@@ -60,30 +66,6 @@ def read_bed_positions(path):
         except ValueError:
             continue
     return positions
-
-
-def read_chrom_length(path):
-    # Parses a mafutils-index .maf.block.idx file (columns: ref_scaff, ref_start,
-    # ref_len, seq_len, line_len, num_seqs, byte_start, byte_end - see
-    # num_seqs_chunk_bed_chr in phastcons_cnees.smk for the same layout). Coverage is
-    # gapless from position 0 to the true chromosome end, so max(ref_start + ref_len)
-    # is the chromosome length - no ref_fasta/.fai needed (not always available).
-    if not path or not os.path.isfile(path):
-        return None
-    max_end = 0
-    with open(path) as fh:
-        for line in fh:
-            if not line.strip() or line.startswith("#"):
-                continue
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) < 3:
-                continue
-            try:
-                end = int(fields[1]) + int(fields[2])
-            except ValueError:
-                continue
-            max_end = max(max_end, end)
-    return max_end if max_end > 0 else None
 
 
 def chrom_pairs(chromosome_groups):
@@ -313,7 +295,7 @@ def collect_cnee_density(m, bin_bp):
         return None
     rows = []
     for group, chrom in chrom_pairs(m["chromosome_groups"]):
-        chrom_len = read_chrom_length(os.path.join(maf_index_dir, group, f"{chrom}.maf.block.idx"))
+        chrom_len = INTERVALS.read_chrom_length(os.path.join(maf_index_dir, group, f"{chrom}.maf.block.idx"))
         if chrom_len is None:
             continue
 
