@@ -20,6 +20,17 @@ import yaml
 REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SNAKEFILE = os.path.join(REPO_ROOT, "Snakefile")
 
+# Invoke the actual `snakemake` console-script entry point, not `python -m snakemake`.
+# lib/common.py's pipelineSetup() classifies a run as a Snakemake-internal "worker"
+# re-invocation (vs. the real top-level run) by checking for "__main__.py" in
+# sys.argv[0] - which `python -m snakemake` always sets, since that's how Python's -m
+# mechanics work for any package. That misclassifies every dry-run here as a "worker",
+# which then requires a pre-existing state file from an earlier top-level run - fine by
+# accident in a repo that already has one lying around, but breaks on a fresh checkout
+# (confirmed: this is exactly what failed in CI). The installed `snakemake` executable's
+# sys.argv[0] never contains "__main__.py", so it's always classified correctly.
+SNAKEMAKE_EXE = os.path.join(os.path.dirname(sys.executable), "snakemake")
+
 BASELINE = {
     "maf": "/placeholder/does-not-exist.maf",
     "maf_ref_id": "Species_name",
@@ -48,7 +59,7 @@ def run_dryrun(tmp_path, overrides):
         yaml.dump(config, f)
 
     result = subprocess.run(
-        [sys.executable, "-m", "snakemake", "-n", "-s", SNAKEFILE, "--configfile", str(config_path)],
+        [SNAKEMAKE_EXE, "-n", "-s", SNAKEFILE, "--configfile", str(config_path)],
         capture_output=True, text=True, cwd=REPO_ROOT,
     )
     # Which stream Snakemake writes a parse-time error to isn't stable across versions -

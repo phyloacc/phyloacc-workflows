@@ -32,6 +32,13 @@ FIXTURE_DIR = os.path.dirname(os.path.abspath(__file__)) + "/data"
 FIXTURE_CONFIG = os.path.join(FIXTURE_DIR, "config.yaml")
 REFERENCE_SUMMARY = os.path.join(FIXTURE_DIR, "reference_summary.json")
 
+# Invoke the actual `snakemake` console-script entry point, not `python -m snakemake` -
+# see tests/test_dag_validation.py's identical SNAKEMAKE_EXE comment for why: `-m`
+# always sets sys.argv[0] to snakemake's own __main__.py, which lib/common.py's
+# pipelineSetup() misreads as a Snakemake-internal "worker" re-invocation rather than
+# the real top-level run.
+SNAKEMAKE_EXE = os.path.join(os.path.dirname(sys.executable), "snakemake")
+
 REQUIRED_TOOLS = ["mafutils", "phyloFit", "phastCons"]
 
 GROUP = "group1"
@@ -63,7 +70,7 @@ def pipeline_run(tmp_path_factory):
         yaml.dump(config, f)
 
     result = subprocess.run(
-        [sys.executable, "-m", "snakemake", "-j", "1", "-s", SNAKEFILE, "--configfile", str(config_path)],
+        [SNAKEMAKE_EXE, "-j", "1", "-s", SNAKEFILE, "--configfile", str(config_path)],
         capture_output=True, text=True, cwd=REPO_ROOT,
     )
     return result, config["output_dir"]

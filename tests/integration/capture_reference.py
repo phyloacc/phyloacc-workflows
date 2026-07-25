@@ -34,6 +34,11 @@ CHROM = "CM000994.3"
 
 REQUIRED_TOOLS = ["mafutils", "phyloFit", "phastCons"]
 
+# See test_pipeline_e2e.py's SNAKEMAKE_EXE comment: `python -m snakemake` makes
+# lib/common.py's pipelineSetup() misclassify this as a Snakemake "worker"
+# re-invocation rather than the real top-level run.
+SNAKEMAKE_EXE = os.path.join(os.path.dirname(sys.executable), "snakemake")
+
 
 def main():
     missing = [t for t in REQUIRED_TOOLS if shutil.which(t) is None]
@@ -52,7 +57,7 @@ def main():
             yaml.dump(config, f)
 
         result = subprocess.run(
-            [sys.executable, "-m", "snakemake", "-j", "1", "-s", SNAKEFILE, "--configfile", config_path],
+            [SNAKEMAKE_EXE, "-j", "1", "-s", SNAKEFILE, "--configfile", config_path],
             cwd=REPO_ROOT,
         )
         if result.returncode != 0:
