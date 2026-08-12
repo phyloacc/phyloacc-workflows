@@ -1,4 +1,4 @@
-name: phyloacc-workflows2
+name: phyloacc-workflows
 channels:
   - conda-forge
   - bioconda

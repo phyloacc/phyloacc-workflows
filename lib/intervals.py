@@ -246,3 +246,77 @@ def read_chrom_length(path):
                 continue
             max_end = max(max_end, end)
     return max_end if max_end > 0 else None
+
+
+def read_block_index_chroms(path):
+    # Set of distinct reference chromosome names (column 1) in a mafutils .block.idx.
+    chroms = set()
+    with open(path) as fh:
+        for line in fh:
+            if not line.strip() or line.startswith("#"):
+                continue
+            name = line.split("\t", 1)[0].strip()
+            if name:
+                chroms.add(name)
+    return chroms
+
+
+def assert_bed_chroms_in_index(bed_path, block_index_path, rule_name):
+    # Raise if any chromosome named in bed_path is absent from the MAF block index.
+    # Catches a chromosome-name (prefix) mismatch loudly, before mafutils silently
+    # extracts nothing for a name it can't find in the alignment.
+    idx = read_block_index_chroms(block_index_path)
+    bed = set()
+    with open(bed_path) as fh:
+        for line in fh:
+            if not line.strip() or line.startswith("#"):
+                continue
+            bed.add(line.split("\t", 1)[0])
+    missing = bed - idx
+    if missing:
+        raise ValueError(
+            f"{rule_name}: chromosome(s) {sorted(missing)} in {bed_path} are not in the MAF "
+            f"block index {block_index_path} (index has: {sorted(idx)[:8]}). This is a "
+            f"chromosome-name mismatch between the bed and the MAF - check maf_prefix / gff_prefix."
+        )
+
+
+def maf_symlink_target_for_group(scaffold_index_path, group_bed_path):
+    # Decide whether maf_split_chr_by_group can just SYMLINK the input MAF for this group
+    # instead of re-running `mafutils fetch` (which, for a single-scaffold input, merely
+    # copies the whole file). Returns the output basename to link to (the group bed's col4,
+    # e.g. "chr1" -> link at "chr1.maf") IFF the input MAF is exactly one UNCOMPRESSED
+    # scaffold that equals the group's single requested scaffold; otherwise None (must fetch).
+    #
+    # scaffold_index_path: the input MAF's .scaffold.idx (mafutils index; header line carries
+    # "compression=none|gzip", data rows are "<scaffold>\t<offset>\t<size>").
+    # group_bed_path: make_group_beds output (col1 = MAF scaffold name, col4 = output basename).
+    compression = "none"
+    scaffolds = set()
+    with open(scaffold_index_path) as fh:
+        for line in fh:
+            if line.startswith("#"):
+                if "compression=" in line:
+                    compression = line.split("compression=", 1)[1].split()[0].strip()
+                continue
+            if not line.strip():
+                continue
+            scaffolds.add(line.split("\t", 1)[0].strip())
+    # Only safe for a single UNCOMPRESSED scaffold: a symlink named "<x>.maf" must be a
+    # plain MAF, and one input file can only map to one output file.
+    if compression != "none" or len(scaffolds) != 1:
+        return None
+    bed_rows = []
+    with open(group_bed_path) as fh:
+        for line in fh:
+            if not line.strip() or line.startswith("#"):
+                continue
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) >= 4:
+                bed_rows.append((fields[0].strip(), fields[3].strip()))  # (scaffold, out_base)
+    if len(bed_rows) != 1:
+        return None
+    scaffold, out_base = bed_rows[0]
+    if scaffolds == {scaffold}:
+        return out_base
+    return None

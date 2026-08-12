@@ -63,6 +63,13 @@ if run_phylofit:
     include: "workflow/phylofit_models.smk"
 if run_phylop:
     include: "workflow/phylop_regions.smk"
+# Shared CNEE stage. Included before phastcons_cnees.smk because it hosts the
+# per-chromosome MAF index the phastCons chunking rules depend on, and it builds
+# CNEEs source-namespaced (phastcons + phylop). Needed whenever phastCons runs
+# (for the MAF index) or CNEEs are built from any enabled source.
+include_cnees = run_phastcons or (build_cnees and run_phylop)
+if include_cnees:
+    include: "workflow/cnees.smk"
 if run_phastcons:
     include: "workflow/phastcons_cnees.smk"
 
@@ -72,8 +79,10 @@ NEUTRAL_MODEL_TARGETS = []
 PHYLOP_SITE_TARGETS = []
 PHYLOP_REGION_TARGETS = []
 ALL_BED_TARGETS = globals().get("ALL_BED_TARGETS", []) if run_phastcons else []
-ALL_CNEES_TARGETS = globals().get("ALL_CNEES_TARGETS", []) if run_phastcons else []
-ALL_CNEE_MAF_TARGETS = globals().get("ALL_CNEE_MAF_TARGETS", []) if run_phastcons else []
+# CNEE target lists come from workflow/cnees.smk (source-namespaced, fanned out
+# over all active conservation sources).
+ALL_CNEES_TARGETS = globals().get("ALL_CNEES_TARGETS", []) if include_cnees else []
+ALL_CNEE_MAF_TARGETS = globals().get("ALL_CNEE_MAF_TARGETS", []) if include_cnees else []
 
 if run_phylofit:
     NEUTRAL_MODEL_TARGETS = expand(
@@ -99,14 +108,21 @@ ALL_TARGETS = (
     + (PHYLOP_SITE_TARGETS if run_phylop else [])
     + (PHYLOP_REGION_TARGETS if run_phylop else [])
     + (ALL_BED_TARGETS if run_phastcons else [])
-    + (ALL_CNEES_TARGETS if run_phastcons and build_cnees else [])
-    + (ALL_CNEE_MAF_TARGETS if run_phastcons and build_cnees and cnee_output_format != "none" else [])
+    + (ALL_CNEES_TARGETS if build_cnees else [])
+    + (ALL_CNEE_MAF_TARGETS if build_cnees and cnee_output_format != "none" else [])
 )
 
 PIPELINE_DIR = os.path.dirname(os.path.abspath(workflow.snakefile))
 UTILS_DIR = os.path.join(PIPELINE_DIR, "utils")
 
-SUMMARY_REPORT_PATH = os.path.join(OUTPUT_DIR, "summary_report.html")
+# Prefix the report with the config-file stem (e.g. mammals-2mb-chunk.yaml ->
+# mammals-2mb-chunk.summary_report.html) so reports from different runs are
+# self-identifying; fall back to a bare name when run via --config (no file).
+_report_configfiles = list(getattr(workflow, "configfiles", []) or [])
+_report_stem = os.path.splitext(os.path.basename(str(_report_configfiles[0])))[0] if _report_configfiles else ""
+SUMMARY_REPORT_PATH = os.path.join(
+    OUTPUT_DIR, f"{_report_stem}.summary_report.html" if _report_stem else "summary_report.html"
+)
 
 rule all:
     input:
@@ -159,19 +175,32 @@ rule summary_report:
                 "rho_mode": RHO_MODE if run_phastcons else None,
             },
             "chromosome_groups": config["ref_chromosome_groups"],
-            "maf_chr_prefix": config.get("maf_chr_prefix", ""),
+            # Resolve the canonical MAF chromosome prefix from the new maf_prefix key,
+            # falling back to the legacy maf_chr_prefix alias - the summary collectors
+            # build MAF-named filenames ("chr1.bed") from this, so an unset value on a
+            # prefixed config would silently miss every per-chromosome file.
+            "maf_chr_prefix": config.get("maf_prefix", config.get("maf_chr_prefix", "")),
             "paths": {
                 "phylofit_dir": PHYLOFIT_DIR if run_phylofit else None,
                 "neutral_summary_dir": NEUTRAL_SUMMARY_DIR if run_phylofit else None,
                 "filter_threshold_4d": SEQ_THRESHOLD_4D if run_phylofit else None,
                 "avg_gc_file": AVG_GC_FILE if run_phylofit else None,
                 "maf_chunk_summary_dir": MAF_CHUNK_SUMMARY_DIR if run_phastcons else None,
-                "maf_index_dir": MAF_INDEX_DIR if run_phastcons else None,
+                "maf_index_dir": MAF_INDEX_DIR if (run_phastcons or (run_phylop and build_cnees)) else None,
                 "conserve_dir": CONSERVE_DIR if run_phastcons else None,
                 "cnees_dir": CNEES_DIR if (run_phastcons and build_cnees) else None,
                 "cnees_summary_dir": CNEES_SUMMARY_DIR if (run_phastcons and build_cnees) else None,
-                "cnee_min_len_bp": CNEE_MIN_LEN_BP if (run_phastcons and build_cnees) else None,
+                "cnee_min_len_bp": CNEE_MIN_LEN_BP if (build_cnees and (run_phastcons or run_phylop)) else None,
                 "cnee_density_bin_bp": CNEE_DENSITY_BIN_BP if (run_phastcons and build_cnees) else None,
+                # phyloP branch (per-site LRT -> clustered regions -> phyloP-source CNEEs)
+                "phylop_power_dir": os.path.join(PHYLOP_STAGE_DIR, "power-check") if run_phylop else None,
+                "phylop_summary_dir": PHYLOP_SUMMARY_DIR if run_phylop else None,
+                "phylop_regions_dir": PHYLOP_REGIONS_DIR if run_phylop else None,
+                "phylop_alpha": PHYLOP_ALPHA if run_phylop else None,
+                "phylop_cluster_method": PHYLOP_CLUSTER_METHOD if run_phylop else None,
+                "phylop_power_gate_enabled": PHYLOP_POWER_GATE if run_phylop else None,
+                "phylop_cnees_dir": os.path.join(OUTPUT_DIR, "05-cnees", "phylop", "bed") if (run_phylop and build_cnees) else None,
+                "phylop_cnees_summary_dir": os.path.join(OUTPUT_DIR, "05-cnees", "phylop", "summary") if (run_phylop and build_cnees) else None,
             },
         }
     log:

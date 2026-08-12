@@ -14,6 +14,7 @@ import logging
 import traceback
 
 import lib.common as COMMON
+import lib.intervals as INTERVALS
 from lib.common import spacedOut as SO
 
 from functools import partial
@@ -113,7 +114,11 @@ MAF_INDEX_SCAFF = os.path.join(MAF_DIR, MAF_FILE + ".scaffold.idx");
 # This will be created
 
 MAF_REF_ID = config["maf_ref_id"];
-MAF_CHR_PREFIX = config["maf_chr_prefix"];
+# Config lists the CORE chromosome id; MAF/GFF names derive via maf_prefix/gff_prefix
+# (maf_chr_prefix = legacy alias for maf_prefix).
+MAF_PREFIX = str(config.get("maf_prefix", config.get("maf_chr_prefix", "")));
+GFF_PREFIX = str(config.get("gff_prefix", ""));
+MAF_CHR_PREFIX = MAF_PREFIX;  # legacy alias: existing path/filename code uses MAF_CHR_PREFIX
 MAF_REF_CHR_JOINER = config["maf_ref_chr_joiner"];
 MAF_REF_PREFIX = MAF_REF_ID + MAF_REF_CHR_JOINER + MAF_CHR_PREFIX;
 # MAF reference and scaffold id parsing
@@ -364,15 +369,31 @@ checkpoint maf_split_chr_by_group:
     run:
         with open(log.job_log, "w") as log_stream:
             try:
-                cmd = [ "mafutils", "fetch",
-                        input.maf,
-                        input.chr_group_bed,
-                        "-i", input.maf_index_scaff,
-                        "-o", params.outdir,
-                        "-p", str(resources.cpus_per_task),
-                        "-m", "scaffold" ];
-                        
-                COMMON.runCommand(cmd, log_stream, log_stream, params.rule_name, wc=f"{wildcards.chromosome_group}");
+                os.makedirs(params.outdir, exist_ok=True);
+                # If the input MAF is already exactly this group's single (uncompressed)
+                # scaffold, `mafutils fetch` would just copy the whole file - symlink it
+                # instead (avoids a redundant multi-hundred-GB copy on a pre-fetched
+                # single-chromosome MAF). Otherwise fetch as normal.
+                symlink_base = INTERVALS.maf_symlink_target_for_group(input.maf_index_scaff, input.chr_group_bed);
+                if symlink_base is not None:
+                    target = os.path.join(params.outdir, symlink_base + ".maf");
+                    src = os.path.abspath(input.maf);
+                    if os.path.lexists(target):
+                        os.remove(target);
+                    os.symlink(src, target);
+                    log_stream.write(
+                        f"Input MAF is exactly the single requested scaffold '{symlink_base}' "
+                        f"(uncompressed); symlinked instead of copying:\n  {target} -> {src}\n"
+                    );
+                else:
+                    cmd = [ "mafutils", "fetch",
+                            input.maf,
+                            input.chr_group_bed,
+                            "-i", input.maf_index_scaff,
+                            "-o", params.outdir,
+                            "-p", str(resources.cpus_per_task),
+                            "-m", "scaffold" ];
+                    COMMON.runCommand(cmd, log_stream, log_stream, params.rule_name, wc=f"{wildcards.chromosome_group}");
                 COMMON.writeBedManifest(input.chr_group_bed, output.maf_manifest);
             except Exception as e:
                 traceback.print_exc(file=log_stream)
@@ -386,8 +407,9 @@ rule ref_gff_split_by_chr:
     output:
         chromosome_gff = os.path.join(REFERENCE_GFF_DIR, "{chromosome_group}", REF_GFF_FILE.replace(".gff", ".{ref_chromosome}.gff"))
     params:
-        ref_chr = lambda wildcards: wildcards.ref_chromosome,
-        prefix = MAF_REF_PREFIX,
+        # match GFF rows by the GFF chromosome name; rewrite to the MAF sequence name.
+        match_chrom = lambda wildcards: f"{GFF_PREFIX}{wildcards.ref_chromosome}",
+        out_seqname = lambda wildcards: f"{MAF_REF_ID}{MAF_REF_CHR_JOINER}{MAF_PREFIX}{wildcards.ref_chromosome}",
         script_path = os.path.join(UTILS_DIR, "ref_gff_split_by_chr.awk")
     log:
         job_log = os.path.join(LOG_DIR, "ref_gff_split_by_chr", "{chromosome_group}", "{ref_chromosome}.log")
@@ -399,8 +421,8 @@ rule ref_gff_split_by_chr:
         with open(log.job_log, "w") as log_stream, open(output.chromosome_gff, "w") as out_stream:
             try:
                 cmd = [ "awk",
-                        "-v", f"chr={params.ref_chr}",
-                        "-v", f"prefix={params.prefix}",
+                        "-v", f"match_chrom={params.match_chrom}",
+                        "-v", f"out_seqname={params.out_seqname}",
                         "-f", params.script_path,
                         input.gff ]
 

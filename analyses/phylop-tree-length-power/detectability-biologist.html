@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Will per-site phyloP work on your tree?</title>
+<script>
+  MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  :root{ --ink:#1f2933; --muted:#606b76; --line:#e2e6ea; --accent:#20456e; --panel:#f6f8fa; --keybg:#eef4fb; }
+  *{box-sizing:border-box}
+  body{ margin:0; color:var(--ink); background:#fff;
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap{max-width:760px; margin:0 auto; padding:2.4rem 1.3rem 4rem}
+  h1{font-size:1.6rem; line-height:1.25; margin:0 0 .3rem}
+  h2{font-size:1.2rem; margin:2rem 0 .6rem; padding-top:.4rem; border-top:1px solid var(--line); color:var(--accent)}
+  p{margin:.7rem 0}
+  .lede{color:var(--muted); font-size:1.05rem; margin:.4rem 0 1.4rem}
+  a{color:var(--accent)}
+  code{background:var(--panel); padding:.08em .35em; border-radius:4px; font-size:.9em;
+       font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  figure{margin:1.4rem 0; text-align:center}
+  figure img{max-width:100%; height:auto; border:1px solid var(--line); border-radius:6px}
+  figcaption{color:var(--muted); font-size:.88rem; margin-top:.5rem; text-align:left}
+  .keybox{background:var(--keybg); border:1px solid #cfe0f2; border-left:4px solid var(--accent);
+          border-radius:6px; padding:.5rem 1rem; margin:1.2rem 0}
+  .takeaway{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:.4rem 1rem; margin:1.2rem 0}
+  ul{margin:.6rem 0 .6rem 0}
+  li{margin:.3rem 0}
+  .foot{margin-top:2.4rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Will per-site phyloP work on your tree?</h1>
+<p class="lede">Per-site phyloP asks, base by base, whether a site is evolving slower than neutral. Whether it can
+find <em>anything</em> depends on your tree — and on some trees it cannot call a single site, no matter how
+conserved. Here is why, and how to tell in advance.</p>
+
+<h2>The test, and the catch</h2>
+<p>
+phyloP scores every column of an alignment for conservation. Genome-wide that is millions of tests, so the
+scores are corrected for multiple comparisons: to be called conserved, a site's score must clear a
+<b>bar that rises with the number of sites you test</b> — more tests, higher bar.
+</p>
+<p>
+The catch is that there is also a <b>ceiling</b> on how high any per-site score can possibly go, and that
+ceiling is set by your tree. If the ceiling sits below the bar, <b>nothing passes</b> — phyloP returns roughly
+zero conserved sites. Not because nothing is conserved, but because the test cannot resolve conservation on
+that tree. It is a power problem, not a biology result.
+</p>
+
+<h2>Why there is a ceiling</h2>
+<p>
+The strongest evidence a site could ever show is <b>perfect conservation</b> — the same base in every species.
+How surprising is that under neutral evolution? It is essentially the chance that neutral evolution produced
+<b>zero substitutions</b> anywhere across the whole tree.
+</p>
+<p>
+So the ceiling is really a substitution count. A <b>deeper tree</b> — more total branch length, i.e. more
+evolutionary time summed over all branches — means neutral evolution would be <em>expected</em> to make more
+substitutions, which makes seeing none more surprising, which makes a stronger score. The ceiling climbs with
+total tree depth.
+</p>
+
+<h2>Two ways to run out of power</h2>
+<p>The climb doesn't go on forever. There are two distinct ways a tree can leave phyloP underpowered, and your
+ceiling is set by whichever one binds first:</p>
+<ul>
+<li><b>Too little depth (depth-limited).</b> If the tree is shallow — little total branch length — even perfect
+conservation isn't surprising enough to clear the bar. <em>Fix:</em> more or deeper branches (more evolutionary
+time / more divergent taxa), or test fewer sites.</li>
+<li><b>Too few species (taxon-limited).</b> Past a point, branches <em>saturate</em>: so much time has passed
+that bases randomize, and extra depth stops adding information. Then only <b>more species</b> can raise the
+ceiling. With few species there is a hard wall that no amount of tree depth can beat.</li>
+</ul>
+
+<figure>
+  <img src="figures/taxon_walls.png" alt="Detectability map: for a given number of species and number of sites tested, whether a conserved site is callable as a function of tree depth."/>
+  <figcaption>
+    The two limits as a map. Horizontal axis = total tree depth \(T\) (sum of branch lengths); vertical =
+    number of sites tested (the multiple-testing burden); each solid contour is the detectable/undetectable
+    boundary for one species count. Read across at your number of sites: with fewer species the boundary sits
+    farther right (you need a deeper tree), and eventually flattens into a horizontal <em>wall</em> — above it,
+    no amount of depth makes a call. The dashed lines show that a faster-evolving model (a larger
+    substitution rate) slides the boundary left — you need less depth — but cannot move the walls.
+    (Theoretical; solid contours drawn for equal substitution rates and equal base frequencies.)
+  </figcaption>
+</figure>
+
+<h2>What to do</h2>
+<div class="takeaway">
+<ul>
+<li><b>Deep, taxon-rich trees</b> (e.g. the 241-mammal alignment): per-site phyloP works well — you're far
+inside the detectable region.</li>
+<li><b>Shallow or few-taxon trees</b> (a handful of closely related genomes): per-site phyloP will find little
+or nothing. Reach for <b>element-based conservation</b> instead — phastCons / conserved elements pool signal
+across neighboring bases and can clear the bar where single sites can't — or add more divergent taxa / deeper
+outgroups.</li>
+<li>The pipeline checks this for you: a <b>pre-flight power gate</b> computes the ceiling from your fitted
+neutral model and skips the expensive per-site phyloP scan when the ceiling can't clear the bar (rather than
+running it just to return nothing).</li>
+</ul>
+</div>
+
+<p class="keybox">
+<b>In one line:</b> a conserved site is callable only when
+\(-\log_{10}\operatorname{erfc}\!\big(\sqrt{\mathrm{LRT}_{\max}/2}\big)\ge\log_{10}(M/\alpha)\) — the tree's
+best-possible score clears the correction for \(M\) tests at level \(\alpha\); deeper trees and more species
+raise the left side.
+</p>
+
+<div class="foot">
+<p>Want the derivation — where the ceiling and the two limits come from, step by step? See the
+<a href="detectability-math.html">full detectability math</a>.</p>
+</div>
+
+</div>
+</body>
+</html>

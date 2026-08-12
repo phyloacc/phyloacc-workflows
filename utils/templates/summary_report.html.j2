@@ -6,7 +6,7 @@
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; margin: 0; color: #222; }
-  .page { display: flex; align-items: flex-start; max-width: 1300px; margin: 2rem auto; gap: 2.5rem; padding: 0 1.5rem; }
+  .page { display: flex; align-items: flex-start; max-width: 1650px; margin: 2rem auto; gap: 2.5rem; padding: 0 1.5rem; }
   nav.toc { flex: 0 0 200px; position: sticky; top: 1.5rem; font-size: 0.85rem; }
   nav.toc strong { display: block; margin-bottom: 0.5rem; font-size: 0.95rem; }
   nav.toc a { display: block; color: #2a5a5f; text-decoration: none; padding: 0.15rem 0; }
@@ -16,12 +16,16 @@
   h1 { font-size: 1.6rem; margin-bottom: 0; }
   h2 { font-size: 1.25rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-top: 2.5rem; }
   h3 { font-size: 1.05rem; margin-top: 1.75rem; }
+  h4 { font-size: 0.97rem; margin: 1.25rem 0 0.3rem; color: #2a5a5f; }
   .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
   .command { font-family: ui-monospace, monospace; font-size: 0.78rem; background: #f4f6f6; border-radius: 6px; padding: 0.6rem 0.9rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
   .stat-row { display: flex; gap: 2rem; margin: 0.75rem 0 1.25rem 0; flex-wrap: wrap; }
   .stat { background: #f4f6f6; border-radius: 6px; padding: 0.6rem 1rem; }
   .stat .n { font-size: 1.4rem; font-weight: 600; color: #2a5a5f; }
   .stat .label { font-size: 0.8rem; color: #666; }
+  .stat.pass .n { color: #2a7a3f; }
+  .stat.fail .n { color: #a12; }
+  .note { font-size: 0.85rem; color: #666; }
   table.data-table { border-collapse: collapse; font-size: 0.85rem; margin: 0.5rem 0 1.5rem 0; }
   table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 4px 10px; text-align: right; }
   table.data-table th { background: #f4f6f6; }
@@ -29,7 +33,8 @@
   table.main-inputs { border-collapse: collapse; font-size: 0.9rem; margin: 0.75rem 0 1.5rem 0; }
   table.main-inputs td { padding: 3px 12px 3px 0; }
   table.main-inputs td:first-child { color: #567; white-space: nowrap; }
-  img.plot { max-width: 100%; margin: 0.5rem 0 1rem 0; }
+  /* Content column can be wide, but figures keep their size (capped ~1000px) and are centered. */
+  img.plot { display: block; margin: 0.5rem auto 1rem auto; max-width: min(100%, 1000px); height: auto; }
   .empty { color: #999; font-style: italic; }
   details summary { cursor: pointer; color: #2a5a5f; }
 </style>
@@ -44,10 +49,15 @@
 <a class="sub" href="#maf-chunks">MAF chunks</a>
 <a class="sub" href="#4d-sites">4d sites</a>
 <a class="sub" href="#ce-cnee-funnel">CE &rarr; CNEE funnel</a>
+<a href="#phylop">phyloP conserved sites</a>
+<a class="sub" href="#power-gate">Power gate</a>
+<a class="sub" href="#phylop-sites">Significant sites</a>
+<a class="sub" href="#phylop-regions">Conserved regions</a>
 <a href="#outputs">Outputs</a>
 <a class="sub" href="#neutral-models">Neutral models</a>
 <a class="sub" href="#ces">Conserved elements</a>
-<a class="sub" href="#cnees">CNEEs</a>
+<a class="sub" href="#cnees">CNEE sets</a>
+<a class="sub" href="#cnee-concordance">CNEE concordance</a>
 <a class="sub" href="#cnee-density">CNEE distribution</a>
 </nav>
 
@@ -85,7 +95,7 @@
 <div class="stat-row">
   <div class="stat"><div class="n">{{ maf_filter_total }}</div><div class="label">total chunks</div></div>
   <div class="stat"><div class="n">{{ maf_filter_kept }}</div><div class="label">kept after gap filter</div></div>
-  <div class="stat"><div class="n">{{ "%.1f"|format(100 * maf_filter_kept / maf_filter_total) }}%</div><div class="label">retained</div></div>
+  <div class="stat"><div class="n">{% if maf_filter_total %}{{ "%.1f"|format(100 * maf_filter_kept / maf_filter_total) }}%{% else %}n/a{% endif %}</div><div class="label">retained</div></div>
 </div>
 <img class="plot" src="data:image/png;base64,{{ maf_filter_plot }}">
 <details><summary>Per-chromosome table</summary>{{ table(maf_filter_table) }}</details>
@@ -103,23 +113,83 @@
 <p class="empty">No 4d-site filtering data (run_phylofit was not enabled for this run).</p>
 {% endif %}
 
-<h3 id="ce-cnee-funnel">CE &rarr; CNEE funnel</h3>
-{% if cnee_filter_table is defined %}
+<h3 id="ce-cnee-funnel">Conserved element &rarr; CNEE funnel</h3>
+<p class="note">Every filtering step from raw conserved elements to final CNEEs, with the count remaining after each:
+<b>(1) raw</b> conserved elements (phastCons CEs or phyloP-clustered regions);
+<b>(2) merged</b> - elements within <code>cnee_ces_merge_gap_bp</code> of each other are joined (count drops
+because elements combine, not because any are discarded);
+<b>(3) CDS-overlap drop</b> - any element overlapping a CDS at all (containing it, splitting it, or clipping one
+end) is dropped <em>in its entirety</em>, no flanking fragments kept;
+<b>(4) length filter</b> - only elements &ge; <code>cnee_min_len_bp</code> survive as final CNEEs.
+The <code>&minus;N</code> under steps 3 and 4 is how many were removed at that step. The step-4 count is the same
+CNEE total reported under Outputs below.</p>
+{% if cnee_funnels is defined %}
+{% for f in cnee_funnels %}
+<h4>{{ f.label }} ({{ f.raw_label }})</h4>
 <div class="stat-row">
-  <div class="stat"><div class="n">{{ cnee_filter_totals.ces_raw }}</div><div class="label">raw CEs (phastCons)</div></div>
-  <div class="stat"><div class="n">{{ cnee_filter_totals.ces_merged }}</div><div class="label">merged (gap &le; cnee_ces_merge_gap_bp)</div></div>
-  <div class="stat"><div class="n">{{ cnee_filter_totals.ces_dropped_cds_overlap }}</div><div class="label">dropped (overlaps a CDS)</div></div>
-  <div class="stat"><div class="n">{{ cnee_filter_totals.cnees_after_cds_drop }}</div><div class="label">no CDS overlap</div></div>
+  <div class="stat"><div class="n">{{ f.totals.ces_raw }}</div><div class="label">1. raw {{ f.raw_label }}</div></div>
+  <div class="stat"><div class="n">{{ f.totals.ces_merged }}</div><div class="label">2. merged (gap &le; cnee_ces_merge_gap_bp)</div></div>
+  <div class="stat"><div class="n">{{ f.totals.cnees_after_cds_drop }}</div><div class="label">3. kept, no CDS overlap (&minus;{{ f.totals.ces_dropped_cds_overlap }})</div></div>
+  <div class="stat"><div class="n">{{ f.totals.cnees_final }}</div><div class="label">4. {{ f.final_label }} (&minus;{{ f.totals.cnees_dropped_short }})</div></div>
 </div>
-<p style="font-size:0.85rem;color:#666;">Any conserved element that overlaps a CDS at all - fully containing it,
-splitting it into two flanking pieces, or clipping just one end - is dropped in its entirety; no partial or
-flanking fragments are kept. Only CEs with zero CDS overlap become CNEE candidates, so this count can only be
-less than or equal to the merged CE count. The final CNEE count (below, under Outputs) also applies the
-<code>cnee_min_len_bp</code> length filter.</p>
-<img class="plot" src="data:image/png;base64,{{ cnee_filter_plot }}">
-<details><summary>Per-chromosome table</summary>{{ table(cnee_filter_table) }}</details>
+<img class="plot" src="data:image/png;base64,{{ f.plot }}">
+<details><summary>Per-chromosome table</summary>{{ table(f.table) }}</details>
+{% endfor %}
 {% else %}
-<p class="empty">No CE/CNEE filtering data (run_phastcons and build_cnees were not both enabled for this run).</p>
+<p class="empty">No CE/CNEE filtering data (build_cnees was not enabled, or neither run_phastcons nor run_phylop ran).</p>
+{% endif %}
+
+<h2 id="phylop">phyloP conserved sites</h2>
+
+<h3 id="power-gate">Power gate</h3>
+{% if power_gate_table is defined %}
+<div class="stat-row">
+  <div class="stat {{ 'pass' if power_gate_all_pass else 'fail' }}"><div class="n">{{ "PASS" if power_gate_all_pass else "FAIL" }}</div><div class="label">gate result{% if not power_gate_enabled %} (advisory - gate disabled){% endif %}</div></div>
+  <div class="stat"><div class="n">{{ power_gate_n_pass }}/{{ power_gate_n }}</div><div class="label">chromosomes with power</div></div>
+</div>
+<p class="note">Per-site phyloP can call a conserved site only where the best-case score <b>ceiling</b> clears the
+multiple-testing <b>bar</b> = log10(M/&alpha;). The nomogram below places each chromosome at its (tree depth
+<em>T</em>, sites tested <em>M</em>): points in the blue region are detectable, points in the red region are
+power-limited (no site can pass, however conserved), and the yellow band is model-dependent (substitution
+structure &kappa; = 1&rarr;1.5). The <b>dark line</b> is the <em>actual fitted-model boundary</em> for this run
+(ceiling recomputed from the real neutral model), which resolves points that fall inside the generic band.
+Marker colour is the actual per-model gate result. See <code>analyses/phylop-tree-length-power</code> for the
+derivation.</p>
+{% if power_gate_plot is defined %}<img class="plot" src="data:image/png;base64,{{ power_gate_plot }}">{% endif %}
+<details><summary>Per-chromosome table</summary>{{ table(power_gate_table) }}</details>
+{% else %}
+<p class="empty">No phyloP power-gate data (run_phylop was not enabled for this run).</p>
+{% endif %}
+
+<h3 id="phylop-sites">FDR-significant sites</h3>
+{% if site_counts_table is defined %}
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ site_counts_totals.conserved }}</div><div class="label">conserved sites</div></div>
+  <div class="stat"><div class="n">{{ site_counts_totals.accelerated }}</div><div class="label">accelerated sites</div></div>
+</div>
+<img class="plot" src="data:image/png;base64,{{ site_counts_plot }}">
+<details><summary>Per-chromosome table</summary>{{ table(site_counts_table) }}</details>
+{% else %}
+<p class="empty">No phyloP site-count data (run_phylop was not enabled for this run).</p>
+{% endif %}
+
+<h3 id="phylop-regions">Conserved regions (clustered)</h3>
+{% if phylop_regions is not none %}
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ phylop_regions.n_total }}</div><div class="label">total regions</div></div>
+  <div class="stat"><div class="n">{{ phylop_regions.total_bp }}</div><div class="label">total bp</div></div>
+  <div class="stat"><div class="n">{{ phylop_regions.mean_len if phylop_regions.mean_len is not none else "-" }}</div><div class="label">mean length (bp)</div></div>
+  {% if phylop_regions.threshold_stats %}
+  <div class="stat"><div class="n">{{ phylop_regions.threshold_stats.n_above }}</div><div class="label">longer than {{ phylop_regions.threshold_stats.threshold }}bp ({{ phylop_regions.threshold_stats.pct_above }}%)</div></div>
+  {% endif %}
+</div>
+<p class="note">Significant conserved sites clustered into contiguous regions using the
+<b>{{ phylop_cluster_method or "configured" }}</b> method (<code>phylop_cluster_method</code>); these feed
+the phyloP-source CNEE calling the same way phastCons CEs feed the phastCons-source set.</p>
+{% if phylop_regions.box %}<img class="plot" src="data:image/png;base64,{{ phylop_regions.box }}">{% endif %}
+<details><summary>Per-chromosome table</summary>{{ table(phylop_regions.table) }}</details>
+{% else %}
+<p class="empty">No phyloP region data (run_phylop was not enabled for this run).</p>
 {% endif %}
 
 <h2 id="outputs">Outputs</h2>
@@ -152,32 +222,56 @@ less than or equal to the merged CE count. The final CNEE count (below, under Ou
 <p class="empty">No conserved element data (run_phastcons was not enabled for this run).</p>
 {% endif %}
 
-<h3 id="cnees">CNEEs</h3>
-{% if cnees is not none %}
+<h3 id="cnees">CNEE sets</h3>
+{% if cnee_outputs is defined %}
+{% for o in cnee_outputs %}
+<h4>{{ o.label }} CNEEs</h4>
 <div class="stat-row">
-  <div class="stat"><div class="n">{{ cnees.n_total }}</div><div class="label">total CNEEs</div></div>
-  <div class="stat"><div class="n">{{ cnees.total_bp }}</div><div class="label">total bp</div></div>
-  <div class="stat"><div class="n">{{ cnees.mean_len if cnees.mean_len is not none else "-" }}</div><div class="label">mean length (bp)</div></div>
-  {% if cnees.threshold_stats %}
-  <div class="stat"><div class="n">{{ cnees.threshold_stats.n_above }}</div><div class="label">longer than {{ cnees.threshold_stats.threshold }}bp ({{ cnees.threshold_stats.pct_above }}%)</div></div>
+  <div class="stat"><div class="n">{{ o.summary.n_total }}</div><div class="label">total CNEEs</div></div>
+  <div class="stat"><div class="n">{{ o.summary.total_bp }}</div><div class="label">total bp</div></div>
+  <div class="stat"><div class="n">{{ o.summary.mean_len if o.summary.mean_len is not none else "-" }}</div><div class="label">mean length (bp)</div></div>
+  {% if o.summary.threshold_stats %}
+  <div class="stat"><div class="n">{{ o.summary.threshold_stats.n_above }}</div><div class="label">longer than {{ o.summary.threshold_stats.threshold }}bp ({{ o.summary.threshold_stats.pct_above }}%)</div></div>
   {% endif %}
 </div>
-{% if cnees.box %}<img class="plot" src="data:image/png;base64,{{ cnees.box }}">{% endif %}
-<details><summary>Per-chromosome table</summary>{{ table(cnees.table) }}</details>
+{% if o.summary.box %}<img class="plot" src="data:image/png;base64,{{ o.summary.box }}">{% endif %}
+<details><summary>Per-chromosome table</summary>{{ table(o.summary.table) }}</details>
+{% endfor %}
 {% else %}
 <p class="empty">No CNEE data (build_cnees was not enabled for this run).</p>
 {% endif %}
 
-<h3 id="cnee-density">CNEE distribution along chromosomes</h3>
-{% if cnee_density_plot is defined %}
-<p style="font-size:0.85rem;color:#666;">Final CNEEs (opaque, after the <code>cnee_min_len_bp</code>
-length filter) binned into {{ (cnee_density_bin_bp // 1000) }}kb windows along each chromosome,
-against raw CE count in the same bins (translucent, before CDS-overlap dropping and length
-filtering) - the gap between the two shows what was filtered out of each window, not just
-genome-wide.</p>
-<img class="plot" src="data:image/png;base64,{{ cnee_density_plot }}">
+<h3 id="cnee-concordance">CNEE concordance (phastCons vs phyloP)</h3>
+{% if cnee_overlap_table is defined %}
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ cnee_overlap_totals.jaccard }}</div><div class="label">Jaccard (bp overlap / union)</div></div>
+  <div class="stat"><div class="n">{% if cnee_overlap_totals.pct_phastcons_w_phylop is not none %}{{ cnee_overlap_totals.pct_phastcons_w_phylop }}%{% else %}-{% endif %}</div><div class="label">phastCons CNEEs overlapping a phyloP CNEE</div></div>
+  <div class="stat"><div class="n">{% if cnee_overlap_totals.pct_phylop_w_phastcons is not none %}{{ cnee_overlap_totals.pct_phylop_w_phastcons }}%{% else %}-{% endif %}</div><div class="label">phyloP CNEEs overlapping a phastCons CNEE</div></div>
+</div>
+<p class="note">Agreement between the two independently derived CNEE sets. The Venn shows base pairs covered by each set
+and shared between them; <em>Jaccard</em> is base-level (shared bp / union bp), and the reciprocal-overlap
+percentages are the fraction of one set's CNEEs that overlap any CNEE in the other. Both sets are
+length-filtered by <code>cnee_min_len_bp</code> first, matching the CNEE sections above.</p>
+<img class="plot" src="data:image/png;base64,{{ cnee_overlap_plot }}">
+{% if cnee_overlap_bar is defined %}<img class="plot" src="data:image/png;base64,{{ cnee_overlap_bar }}">{% endif %}
+<details><summary>Per-chromosome table</summary>{{ table(cnee_overlap_table) }}</details>
 {% else %}
-<p class="empty">No CNEE density data (requires build_cnees and run_phastcons to be enabled for this run).</p>
+<p class="empty">CNEE concordance needs both a phastCons and a phyloP CNEE set (run_phastcons and run_phylop, both with build_cnees).</p>
+{% endif %}
+
+<h3 id="cnee-density">CNEE distribution along chromosomes</h3>
+{% if cnee_density_figs is defined %}
+<p class="note">Final CNEEs (blue, <b>left</b> axis, after the <code>cnee_min_len_bp</code> length filter) binned
+into {{ (cnee_density_bin_bp // 1000) }}kb windows along each chromosome, against the raw conserved
+elements/regions they were called from (orange, <b>right</b> axis, on its own scale - the raw elements are far
+more numerous, so a shared axis would hide the CNEEs). The x-axis is zoomed to the aligned extent, so a
+sub-chromosome window fills the panel.</p>
+{% for d in cnee_density_figs %}
+<h4>{{ d.label }}</h4>
+<img class="plot" src="data:image/png;base64,{{ d.plot }}">
+{% endfor %}
+{% else %}
+<p class="empty">No CNEE density data (requires build_cnees with run_phastcons and/or run_phylop).</p>
 {% endif %}
 
 </main>

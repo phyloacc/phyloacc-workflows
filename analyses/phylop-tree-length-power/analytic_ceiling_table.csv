@@ -1,0 +1,5 @@
+family,mod,tips,tree_length,LRT_max,kappa,ceiling_neglog10p,ceiling_p
+hamster (15 sp),data/hamsters/workflow-tests/test-full/02-neutral-model/phylofit/autosomes/CM000995.3-corrected.mod,15,0.929,2.303,2.479,0.889,0.12911468948261734
+birds (44 sp),data/birds/test1/03-phylofit/group1/chr10-corrected.mod,44,1.091,3.251,2.98,1.146,0.07137548100592811
+turtle (22 sp),data/turtles/small-test2/03-phylofit/shortest-scaffolds/NC_050095.1-corrected.mod,22,2.811,5.602,1.993,1.746,0.017939432445469437
+mammal (241 sp),data/mammals-v3/echolocation-v3/02-neutral-model/phylofit/autosomes/chr1-corrected.mod,241,16.074,48.677,3.028,11.52,3.0178877429339717e-12

@@ -136,9 +136,11 @@ def test_cnee_fasta_output_produced(pipeline_run):
 
 def test_summary_report_produced(pipeline_run):
     _, output_dir = pipeline_run
-    report_path = os.path.join(output_dir, "summary_report.html")
-    assert os.path.isfile(report_path)
-    assert os.path.getsize(report_path) > 0
+    # Report is named "<config-stem>.summary_report.html" (config-file-stem prefix), so
+    # match by suffix rather than a hard-coded basename.
+    reports = glob.glob(os.path.join(output_dir, "*summary_report.html"))
+    assert reports, "no summary report produced"
+    assert os.path.getsize(reports[0]) > 0
 
 
 def test_silver_standard_no_dramatic_drift(pipeline_run):
@@ -171,3 +173,73 @@ def test_silver_standard_no_dramatic_drift(pipeline_run):
                 f"difference - see the plan file for why this warns rather than fails).",
                 UserWarning,
             )
+
+
+#############################################################################
+# phyloP -> CNEE path end-to-end (workflow/cnees.smk with source=phylop).
+#
+# The fixture tree is shallow (hamster), so the phyloP power gate would normally
+# stop this stage - we set phylop_power_override to run it anyway, and phyloP finds
+# few/no conserved sites, so the phyloP CNEE set is legitimately (near-)empty. The
+# point is to exercise the real machinery end-to-end: gate override, run_phylop,
+# clustering, and the graceful empty short-circuit through cnees.smk - and to confirm
+# it produces its source-namespaced outputs and exits 0 rather than erroring on empty.
+
+@pytest.fixture(scope="module")
+def pipeline_run_phylop(tmp_path_factory):
+    missing = _missing_tools()
+    if missing:
+        pytest.skip(f"Real tool(s) not on PATH, skipping tier-3 phyloP test: {', '.join(missing)}")
+
+    tmp_path = tmp_path_factory.mktemp("tier3_phylop")
+    with open(FIXTURE_CONFIG) as f:
+        config = yaml.safe_load(f)
+    config.update({
+        "run_phylofit": True,
+        "run_phylop": True,
+        "run_phastcons": False,
+        "build_cnees": True,
+        "cnee_output_format": "fasta",
+        "phylop_power_override": True,  # shallow fixture: proceed despite the gate
+    })
+    config["output_dir"] = str(tmp_path / "out")
+    config["tmp_dir"] = str(tmp_path / "tmp")
+    config_path = tmp_path / "config.yaml"
+    with open(config_path, "w") as f:
+        yaml.dump(config, f)
+
+    result = subprocess.run(
+        [SNAKEMAKE_EXE, "-j", "1", "-s", SNAKEFILE, "--configfile", str(config_path)],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    )
+    return result, config["output_dir"]
+
+
+def test_phylop_pipeline_completes(pipeline_run_phylop):
+    result, _ = pipeline_run_phylop
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_phylop_power_check_report_written(pipeline_run_phylop):
+    _, output_dir = pipeline_run_phylop
+    report = os.path.join(output_dir, "03-phylop", "power-check", GROUP, f"{CHROM}.power.tsv")
+    assert os.path.isfile(report)
+    with open(report) as f:
+        rows = {r["metric"]: r["value"] for r in csv.DictReader(f, delimiter="\t")}
+    # Shallow tree -> the gate would fail; override let it proceed.
+    assert rows["passes"] == "False"
+    assert float(rows["tree_length"]) > 0
+
+
+def test_phylop_cnee_outputs_namespaced_and_present(pipeline_run_phylop):
+    # The phyloP-source CNEE set is produced under its own namespace (possibly empty).
+    _, output_dir = pipeline_run_phylop
+    base = os.path.join(output_dir, "05-cnees", "phylop")
+    cnees_bed = os.path.join(base, "bed", GROUP, f"{CHROM}.cnees.bed")
+    summary = os.path.join(base, "summary", GROUP, f"{CHROM}.cnees-filter-summary.tsv")
+    manifest = os.path.join(base, "fasta", GROUP, CHROM, "manifest.txt")
+    assert os.path.isfile(cnees_bed), "phyloP CNEE bed missing"
+    assert os.path.isfile(summary), "phyloP CNEE filter-summary missing"
+    assert os.path.isfile(manifest), "phyloP CNEE manifest missing"
+    # No phastCons CNEE set this run (run_phastcons was False).
+    assert not os.path.isdir(os.path.join(output_dir, "05-cnees", "phastcons"))

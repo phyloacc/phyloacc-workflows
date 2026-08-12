@@ -68,10 +68,26 @@ is needed unless you want a different one.
 Which stages run is controlled by `run_phylofit` / `run_phylop` /
 `run_phastcons` / `build_cnees` in your config file.
 
+The `run_phylop` stage (per-base phyloP scoring → FDR → conserved/accelerated sites →
+region clustering (method-selectable via `phylop_cluster_method`); see the "phyloP-only behavior" section of the config template
+for its rules and outputs) has a hard statistical-power limit on shallow trees: it needs
+a large total neutral tree length (roughly > ~10 substitutions/site) before any single
+conserved site can clear genome-wide FDR. On shallow-tree datasets it returns few/no
+conserved sites by construction (not a bug) — prefer phastCons there. A pre-flight gate
+(`phylop_power_check`, controlled by `phylop_power_*` config keys) detects this from the
+fitted neutral model and stops the phyloP stage early with an explanation rather than
+scanning and returning nothing; set `phylop_power_override: true` to run anyway. See
+`analyses/phylop-tree-length-power/` for the analysis.
+
+Both conservation stages feed a shared CNEE-building stage (`build_cnees: true`,
+`workflow/cnees.smk`): conserved elements from phastCons and/or phyloP are turned into
+CNEEs (drop CDS-overlapping elements, length-filter, extract alignments), written under
+`05-cnees/{phastcons,phylop}/` — one CNEE set per enabled source.
+
 ## Repo layout
 
 - `Snakefile` - entry point; includes the workflow files below based on config toggles
-- `workflow/` - the active Snakemake rule files (`phylofit_models.smk`, `phylop_regions.smk`, `phastcons_cnees.smk`); `workflow/legacy/` holds earlier versions of the pipeline not used by the current `Snakefile`
+- `workflow/` - the active Snakemake rule files (`phylofit_models.smk`, `phylop_regions.smk`, `phastcons_cnees.smk`, and `cnees.smk` - the shared, source-agnostic CNEE-building stage that turns conserved elements from phastCons and/or phyloP into CNEEs); `workflow/legacy/` holds earlier versions of the pipeline not used by the current `Snakefile`
 - `lib/` - shared Python helpers used across the workflow files
 - `utils/` - standalone scripts/tools invoked by rules
 - `envs/environment.yml` - pinned dependencies for the `phyloacc_workflows` environment
