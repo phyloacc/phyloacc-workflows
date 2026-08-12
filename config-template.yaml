@@ -13,6 +13,12 @@
 # Required project inputs - YOU MUST FILL THESE IN
 
 ###########################
+# Primary workflow switches
+
+run_phastcons: true
+run_phylop: false
+
+###########################
 # Main pipeline inputs and outputs
 
 maf:
@@ -34,8 +40,9 @@ ref_chromosome_groups:
     - 
 # The names of the reference chromosomes to analyze.
 # Grouping is organizational only - group names can be changed and added to and become subdirectories in the output.
-# - Chromosome IDs in ref_chromosome_groups should match the IDs in the
-#   reference FASTA and reference GFF before maf_ref_id / prefix joining.
+# - List the CORE chromosome id, i.e. the id with BOTH the MAF prefix (maf_prefix) and
+#   the GFF prefix (gff_prefix) removed. The MAF and GFF names are derived from it (see
+#   maf_prefix / gff_prefix below). E.g. MAF "chr1", GFF "1" -> core "1", maf_prefix "chr".
 
 output_dir:
 # Absolute path to the desired output directory for this workflow.
@@ -49,25 +56,27 @@ tmp_dir:
 ##############################################################################
 # MAF / reference header settings
 
-maf_chr_prefix: ""
-# If the chromsome IDs of the reference genome in the MAF are prefixed relative to those
-# in the GFF, set that prefix here.
-# E.g. if MAF chromosomes are labeled as "chr1" and GFF simply as "1", set maf_chr_prefix: "chr".
+maf_prefix: ""
+gff_prefix: ""
+# The MAF and GFF may label chromosomes differently (e.g. MAF "chr1" vs GFF "1"). Both
+# names are derived from the CORE id listed in ref_chromosome_groups:
+#     maf_name = maf_prefix + core        gff_name = gff_prefix + core
+# Set whichever side carries a prefix. Common case (MAF prefixed, GFF bare):
+#     maf_prefix: "chr",  gff_prefix: ""   -> core "1" gives MAF "chr1", GFF "1"
+# The other way (GFF prefixed, MAF bare):
+#     maf_prefix: "",  gff_prefix: "chr"   -> core "1" gives MAF "1", GFF "chr1"
+# All internal beds and alignment extraction use the MAF name; the GFF is read with the
+# GFF name. (maf_chr_prefix is still accepted as a legacy alias for maf_prefix.)
 
 maf_ref_chr_joiner: "."
 # The character joining the reference ID and chromosome in the MAF src field (e.g. "Homo_sapiens.chr1").
 
 # Examples:
-# - MAF src field is "Mus_musculus.CM001010.3"
-# - maf_ref_id: "Mus_musculus"
-# - maf_chr_prefix: ""
-# - maf_ref_chr_joiner: "."
+# - MAF src field is "Mus_musculus.CM001010.3", GFF "CM001010.3"
+# - maf_ref_id: "Mus_musculus"; maf_prefix: ""; gff_prefix: ""; maf_ref_chr_joiner: "."
 #
-# Another example:
-# - MAF src field is "Homo_sapiens.chr1"
-# - maf_ref_id: "Homo_sapiens"
-# - maf_chr_prefix: "chr"
-# - maf_ref_chr_joiner: "."
+# - MAF src field is "Homo_sapiens.chr1", GFF "1"
+# - maf_ref_id: "Homo_sapiens"; maf_prefix: "chr"; gff_prefix: ""; maf_ref_chr_joiner: "."
 
 ##############################################################################
 # Neutral model settings
@@ -96,6 +105,15 @@ accession_header: accession
 
 ##############################################################################
 # phastCons / CNEE behavior
+#
+# CNEE building (build_cnees: true; workflow/cnees.smk) is a shared stage: it turns
+# conserved elements from ANY enabled conservation source into CNEEs (merge -> drop
+# CDS-overlapping elements -> length-filter -> extract alignments). It runs for each
+# active source and writes source-namespaced outputs:
+#   <output_dir>/05-cnees/phastcons/...   (from phastCons conserved elements; run_phastcons)
+#   <output_dir>/05-cnees/phylop/...      (from phyloP-clustered regions;      run_phylop)
+# With both stages enabled you get both CNEE sets. The cnee_* options below apply to every
+# source. (CDS coordinates and the per-chromosome MAF index are computed once and shared.)
 
 ##########
 # Split strategy for phastCons
@@ -170,6 +188,15 @@ cnee_density_bin_bp: 1000000
 cnee_fasta_header: species-coords-id
 # Header mode is passed through to mafutils FASTA extraction.
 
+cnee_fasta_dedupe: most-seq
+# How a species appearing more than once in a block (paralogous / both-strand
+# alignments) is collapsed by mafutils fetch. One of:
+#   most-seq (default) - keep the copy with the most non-gap bases (one row per species,
+#            PhyloAcc-ready).
+#   none              - emit every copy; the downstream duplicate-species filter then
+#            DROPS the whole CNEE if any species is duplicated. On deep alignments
+#            (e.g. 241-way) this discards nearly every CNEE - use only for debugging.
+
 cnee_expected_species: ""
 # Optional comma-separated species list for FASTA extraction validation.
 # If blank, species will be read from the tree file.
@@ -180,14 +207,71 @@ cnee_expected_species_file: ""
 
 ##############################################################################
 # phyloP-only behavior
+#
+# NOTE: per-site conserved calling has a hard statistical-power limit on shallow trees.
+# The most-conserved possible site can only clear genome-wide FDR once the total neutral
+# tree length is large (roughly > ~10 substitutions/site); below that, phyloP returns
+# few/no conserved sites by construction (not a bug) while still returning accelerated
+# ones. On shallow-tree datasets, prefer phastCons. See analyses/phylop-tree-length-power/
+# for the full analysis.
 
 phylop_alpha: 0.05
-# FDR threshold for conserved site calling.
+# FDR threshold (alpha) for calling a site conserved/accelerated, after Benjamini-Hochberg
+# correction across all sites in the chromosome.
 
+phylop_power_num_sites: estimate
+# M (number of sites tested) for the FDR bar log10(M/alpha). One of:
+# - estimate (default): the number of aligned/scored reference bases, summed from the MAF
+#   block index for the chromosome. This equals the chromosome length for a whole-chromosome
+#   MAF but correctly reports the smaller true count for a sliced MAF (where the chromosome's
+#   srcSize would overcount). Falls back to MAF srcSize, then ref_fasta's .fai, then a constant.
+# - a positive integer: use it directly as M for every chromosome.
+# NOTE: deep-but-not-huge trees can sit right at the boundary; if the gate stops a tree you
+# know is adequately deep, set phylop_power_override or adjust M here.
+
+phylop_power_fallback_num_sites: 100000000
+# M used by 'estimate' only if the block index, MAF srcSize, and ref_fasta/.fai are all unavailable.
+
+##############################################################################
+# Conserved site clustering behavior
+# Conserved-region clustering (cluster_conserved_sites): how FDR-significant conserved
+# sites are grouped into regions.
+
+phylop_cluster_method: hmm
+# One of:
+# - hmm (default): a simple 2-state online HMM (in/out of a conserved element) over the
+#   per-position conserved/not stream. Best agreement with phastCons elements in our
+#   comparison (analyses/phylop-clustering-comparison), while staying simple and fast.
+#   NOTE: it scans every position up to the last conserved site, so on whole chromosomes
+#   it is O(chromosome length) - if it is slow on your data, raise this rule's time in
+#   rule_resources.
+# - gap_merge: merge significant sites that are close together, then length-filter (the
+#   pipeline's original method).
+# - windowed: fixed-size bins; bins with enough significant sites are conserved; merge
+#   adjacent bins.
+
+# hmm parameters (2-state HMM; defaults are from the phastCons-concordance tuning):
+hmm_t0_0: 0.9      # P(stay outside a conserved element)
+hmm_t1_1: 0.99     # P(stay inside a conserved element)  (higher -> longer elements)
+hmm_e0_0: 0.8      # P(emit a non-conserved position | outside an element)
+hmm_e1_1: 0.5      # P(emit a conserved site | inside an element)
+hmm_s0: 0.9        # P(start outside an element)
+hmm_min_len: 20    # drop predicted elements shorter than this (bp)
+hmm_max_len: 100000  # drop predicted elements longer than this (bp)
+
+# gap_merge parameters:
 naive_merge_gap_bp: 20
 naive_min_region_sites: 5
 naive_min_region_len_bp: 20
-# These control the naive phyloP conserved-region clustering step.
+# - naive_merge_gap_bp: merge significant sites no more than this far apart into one region.
+# - naive_min_region_sites: drop regions with fewer than this many significant sites.
+# - naive_min_region_len_bp: drop regions shorter than this.
+
+# windowed parameters:
+windowed_window_bp: 20
+windowed_min_sites_per_window: 5
+# - windowed_window_bp: bin size in bp.
+# - windowed_min_sites_per_window: a bin is 'conserved' if it holds at least this many sites.
 
 ##############################################################################
 # Resource defaults
@@ -230,7 +314,7 @@ rule_resources:
 
   # workflow/phylop_regions.smk
   #   scales with genome size: convert_wig_to_bed, adjust_pvals, get_conserved_sites,
-  #     get_accelerated_sites, site_counts, naive_cluster_conserved_sites, run_phylop
+  #     get_accelerated_sites, site_counts, cluster_conserved_sites, run_phylop
   #   scales with sample size: run_phylop
 
   # Snakefile
@@ -368,12 +452,17 @@ cleanup_chunk_intermediates: true
 keep_cnee_sidecars: false
 
 ###########################
-# Primary workflow switches
+# Secondary workflow switches
 
 run_phylofit: true
-run_phylop: true
-run_phastcons: true
 build_cnees: true
+
+phylop_power_gate: true
+# Master switch for the gate. false disables it entirely (phyloP always runs).
+
+phylop_power_override: false
+# true runs phyloP even when the gate fails (warns instead of stopping). Use if you
+# understand you expect few/no per-site conserved calls but want to proceed anyway.
 
 ##############################################################################
 # Rare meta/debug options

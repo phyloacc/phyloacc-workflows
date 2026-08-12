@@ -267,9 +267,113 @@ def test_phylop_no_chromosomes_selected(tmp_path):
     assert rc != 0
     assert "No chromosomes selected" in output
 
-# No "valid config successfully builds a full DAG" test here - reaching a genuinely
-# complete DAG needs real maf/ref_gff/tree_file content (not just placeholder paths),
-# which starts to mean building a small synthetic dataset - that's tier 3's job, not
-# tier 2's. Tier 2 stays scoped to config-validation error paths (above), which are
-# all reachable with placeholder paths alone since they raise before any real file
-# needs to exist or be read.
+
+# --- conserved-region clustering method selection (cluster_conserved_sites) ---
+
+def test_invalid_phylop_cluster_method(tmp_path):
+    rc, output = run_dryrun(tmp_path, {**PHYLOP_ONLY, "phylop_cluster_method": "bogus"})
+    assert rc != 0
+    assert "Invalid phylop_cluster_method" in output
+
+
+def test_phylop_cluster_method_hdbscan_blocked(tmp_path):
+    # hdbscan is implemented but blocked in the pipeline; the error must explain why (over-calls).
+    rc, output = run_dryrun(tmp_path, {**PHYLOP_ONLY, "phylop_cluster_method": "hdbscan"})
+    assert rc != 0
+    assert "'hdbscan' is not supported" in output
+    assert "false-positive" in output
+
+
+def test_windowed_window_bp_must_be_positive(tmp_path):
+    rc, output = run_dryrun(tmp_path, {**PHYLOP_ONLY, "phylop_cluster_method": "windowed",
+                                       "windowed_window_bp": 0})
+    assert rc != 0
+    assert "windowed_window_bp must be > 0" in output
+
+
+def test_hmm_probability_out_of_range(tmp_path):
+    rc, output = run_dryrun(tmp_path, {**PHYLOP_ONLY, "phylop_cluster_method": "hmm",
+                                       "hmm_t1_1": 1.5})
+    assert rc != 0
+    assert "hmm_t1_1 must be strictly between 0 and 1" in output
+
+
+def test_valid_phylop_cluster_method_passes_validation(tmp_path):
+    # A valid method must NOT trip the cluster-method validation. (The dry-run may still fail
+    # later - a full phyloP DAG needs real phyloFit inputs - which is tier 3's job; here we only
+    # assert our validation didn't fire.)
+    rc, output = run_dryrun(tmp_path, {**PHYLOP_ONLY, "phylop_cluster_method": "hmm"})
+    assert "Invalid phylop_cluster_method" not in output
+    assert "is not supported" not in output
+
+# --- phyloP power gate config validation (workflow/phylop_regions.smk) ---
+
+def test_invalid_phylop_power_num_sites(tmp_path):
+    rc, output = run_dryrun(tmp_path, {**PHYLOP_ONLY, "phylop_power_num_sites": "lots"})
+    assert rc != 0
+    assert "Invalid phylop_power_num_sites" in output
+
+
+def test_phylop_power_num_sites_estimate_and_int_ok(tmp_path):
+    # 'estimate' (default) and a positive int must both pass validation.
+    _, out_est = run_dryrun(tmp_path, {**PHYLOP_ONLY, "phylop_power_num_sites": "estimate"})
+    assert "Invalid phylop_power_num_sites" not in out_est
+    _, out_int = run_dryrun(tmp_path, {**PHYLOP_ONLY, "phylop_power_num_sites": 5000000})
+    assert "Invalid phylop_power_num_sites" not in out_int
+
+
+# No "valid config successfully builds a full DAG" test here with placeholder paths -
+# reaching a genuinely complete DAG needs real maf/ref_gff/tree_file content, which is
+# what the fixture-backed structural checks below (and tier 3) use instead. Tier 2's
+# placeholder-path tests stay scoped to config-validation error paths.
+
+#############################################################################
+# CNEE source fan-out (workflow/cnees.smk) - uses the tier-3 real fixture files so the
+# DAG actually resolves, but only dry-runs and inspects the planned target paths.
+
+INTEGRATION_CONFIG = os.path.join(REPO_ROOT, "tests", "integration", "data", "config.yaml")
+
+
+def _dryrun_integration(tmp_path, overrides):
+    with open(INTEGRATION_CONFIG) as f:
+        config = yaml.safe_load(f)
+    if not os.path.exists(config.get("maf", "")):
+        import pytest
+        pytest.skip("integration fixture MAF not present")
+    config.update(overrides)
+    config["output_dir"] = str(tmp_path / "out")
+    config["tmp_dir"] = str(tmp_path / "tmp")
+    config_path = tmp_path / "config.yaml"
+    with open(config_path, "w") as f:
+        yaml.dump(config, f)
+    result = subprocess.run(
+        [SNAKEMAKE_EXE, "-n", "-s", SNAKEFILE, "--configfile", str(config_path)],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    )
+    return result.returncode, result.stdout + result.stderr
+
+
+def test_both_sources_build_namespaced_cnees(tmp_path):
+    # run_phylop + run_phastcons + build_cnees -> a CNEE set per source, namespaced.
+    rc, output = _dryrun_integration(tmp_path, {"run_phylop": True, "run_phastcons": True})
+    assert rc == 0, output[-3000:]
+    assert "05-cnees/phastcons/bed/group1/CM000994.3.cnees.bed" in output
+    assert "05-cnees/phylop/bed/group1/CM000994.3.cnees.bed" in output
+    # CDS + MAF index are shared (computed once, not per source).
+    assert "05-cnees/cds/group1/CM000994.3.cds.bed" in output
+
+
+def test_phylop_only_builds_phylop_cnees_without_phastcons(tmp_path):
+    # phyloP-only + build_cnees still builds CNEEs (and the shared MAF index) with no phastCons.
+    rc, output = _dryrun_integration(tmp_path, {"run_phylop": True, "run_phastcons": False})
+    assert rc == 0, output[-3000:]
+    assert "05-cnees/phylop/bed/group1/CM000994.3.cnees.bed" in output
+    assert "05-cnees/phastcons/" not in output
+    assert "maf_index_chr" in output
+
+
+def test_phylop_power_check_in_phylop_dag(tmp_path):
+    # The pre-flight power gate is wired ahead of the phyloP scan.
+    rc, output = _dryrun_integration(tmp_path, {"run_phylop": True, "run_phastcons": False})
+    assert rc == 0, output[-3000:]
+    assert "phylop_power_check" in output

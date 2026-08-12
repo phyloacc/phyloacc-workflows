@@ -1,12 +1,17 @@
 __pycache__
 *.pyc
 
+.llm-tmp/
+
 .snakemake/
 analyses/*
 !analyses/resource-usage/
 !analyses/ucsc-mm39-comparison/
+!analyses/phylop-tree-length-power/
+!analyses/phylop-clustering-comparison/
 data/
 !tests/integration/data/
+!analyses/phylop-clustering-comparison/data/
 
 etc/phyloacc-sicb-ms/chr1/phyloacc-job-files/alns/
 

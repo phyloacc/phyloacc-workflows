@@ -43,6 +43,12 @@ with open(maf_block_index) as in_f:
             continue
         parts = line.rstrip("\n").split("\t")
         chrom = parts[0]
+        # A FASTA .fai lists bare chromosome names ("1"), but a MAF block index lists
+        # them as they appear in the MAF - carrying maf_chr_prefix ("chr1"). Strip the
+        # prefix so both input types match the (bare) config chromosome set; the output
+        # below re-adds the prefix.
+        if chrom_prefix and chrom.startswith(chrom_prefix):
+            chrom = chrom[len(chrom_prefix):]
         if chrom not in chrom_set:
             continue
         ref_start = int(parts[1])

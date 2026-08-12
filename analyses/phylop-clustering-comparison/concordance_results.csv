@@ -1,0 +1,5 @@
+method,default_f1,default_cov,tuned_f1,tuned_precision,tuned_recall,tuned_cov,tuned_fp_kb,tuned_fn_kb,tuned_n_regions,tuned_median_bp,tuned_params
+windowed,0.555,23.1,0.8,0.726,0.89,11.2,61,20,2903,20,"w=20,min=5"
+hmm,0.417,2.4,0.848,0.836,0.86,9.4,31,25,2081,48,"t11=0.99,e11=0.5,min=20"
+hdbscan,0.337,42.0,0.351,0.22,0.879,36.5,569,22,6764,57,"mcs=5,ms=None,eom"
+gap-merge (current),0.557,22.9,0.823,0.736,0.932,11.5,61,12,1898,75,"gap=10,min=10,len=20"

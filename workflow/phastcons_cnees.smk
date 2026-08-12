@@ -202,9 +202,18 @@ def get_chr_maf_for_stage(wildcards):
 # {MAF_SPLIT_BY_CHROM_DIR}/{chromosome_group}/{ref_chromosome}.maf
 
 MAF_REF_ID = config["maf_ref_id"]
-MAF_CHR_PREFIX = config["maf_chr_prefix"]
+# Config lists the CORE chromosome id; MAF/GFF names derive via maf_prefix/gff_prefix
+# (maf_chr_prefix is a legacy alias for maf_prefix). All bed contents / mafutils args
+# use the MAF name; the GFF is read with the GFF name.
+MAF_PREFIX = str(config.get("maf_prefix", config.get("maf_chr_prefix", "")))
+GFF_PREFIX = str(config.get("gff_prefix", ""))
+MAF_CHR_PREFIX = MAF_PREFIX  # legacy alias
 MAF_REF_CHR_JOINER = config["maf_ref_chr_joiner"]
 MAF_REF_PREFIX = MAF_REF_ID + MAF_REF_CHR_JOINER + MAF_CHR_PREFIX
+
+def maf_chrom(core):
+    """Chromosome name as it appears in the MAF (for bed contents / mafutils args)."""
+    return f"{MAF_PREFIX}{core}"
 
 #############################################################################
 # Other params
@@ -354,8 +363,8 @@ if GLOBAL_RHO_STAT not in {"p90", "median", "mean"}:
     raise ValueError(f"Invalid global_rho_stat '{GLOBAL_RHO_STAT}'. Use 'p90', 'median', or 'mean'.")
 
 MAKE_CNEES = _as_bool(config.get("build_cnees", config.get("make_cnees", True)), True)
-if MAKE_CNEES and not REF_GFF:
-    raise ValueError("build_cnees=true requires ref_gff to be set in config.")
+# build_cnees/ref_gff requirement is validated in workflow/cnees.smk (the CNEE stage),
+# which is included before this file whenever phastCons runs.
 CNEE_OUTPUT_FORMAT = str(config.get("cnee_output_format", "fasta")).strip().lower()
 legacy_make_cnee_mafs = config.get("make_cnee_mafs", None)
 legacy_cnee_extract_format = config.get("cnee_extract_format", config.get("cne_extract_format", None))
@@ -414,28 +423,18 @@ ALL_BED_TARGETS = expand(
     ref_chromosome=REF_CHROMOSOMES
 )
 
-ALL_CNEES_TARGETS = expand(
-    os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cnees.bed"),
-    zip,
-    chromosome_group=REF_CHR_GROUPS_LIST,
-    ref_chromosome=REF_CHROMOSOMES
-)
-
-ALL_CNEE_MAF_TARGETS = expand(
-    os.path.join(CNEE_MAF_DIR, "{chromosome_group}", "{ref_chromosome}", "manifest.txt"),
-    zip,
-    chromosome_group=REF_CHR_GROUPS_LIST,
-    ref_chromosome=REF_CHROMOSOMES
-)
+# CNEE target lists (ALL_CNEES_TARGETS / ALL_CNEE_MAF_TARGETS) now live in
+# workflow/cnees.smk, source-namespaced and fanned out over all active sources.
+# The phastCons conserved-element beds (ALL_BED_TARGETS) remain this stage's own.
 
 if PHASTCONS_STANDALONE:
     localrules: all
 
     rule all:
         input:
+            # Standalone phastcons builds conserved-element beds only; CNEE building
+            # is a shared stage that requires the master Snakefile (workflow/cnees.smk).
             ALL_BED_TARGETS
-            + (ALL_CNEES_TARGETS if MAKE_CNEES else [])
-            + (ALL_CNEE_MAF_TARGETS if MAKE_CNEE_MAFS else [])
 
 wildcard_constraints:
     chromosome_group = r"[^/]+",
@@ -640,7 +639,7 @@ rule fixed_windows_bed:
                 windows = INTERVALS.tile_fixed_windows(chrom_len, WINDOW_SIZE_BP, WINDOW_STEP_BP)
                 with open(output.chr_bed, "w") as out:
                     for start, end in windows:
-                        out.write(f"{wildcards.ref_chromosome}\t{start}\t{end}\n")
+                        out.write(f"{maf_chrom(wildcards.ref_chromosome)}\t{start}\t{end}\n")
 
                 log_stream.write(
                     f"window_size_bp={WINDOW_SIZE_BP}; window_overlap_bp={WINDOW_OVERLAP_BP}; step_bp={WINDOW_STEP_BP}\n"
@@ -651,30 +650,9 @@ rule fixed_windows_bed:
 
 ####################
 
-rule maf_index_chr:
-    input:
-        maf = get_chr_maf_for_stage
-    output:
-        maf_index_block = os.path.join(MAF_INDEX_DIR, "{chromosome_group}", "{ref_chromosome}.maf.block.idx"),
-        maf_index_scaff = os.path.join(MAF_INDEX_DIR, "{chromosome_group}", "{ref_chromosome}.maf.scaff.idx")
-    log:
-        job_log = os.path.join(LOG_DIR, "maf_index_chr", "{chromosome_group}", "{ref_chromosome}.log")
-    benchmark:
-        os.path.join(LOG_DIR, "benchmarks", "maf_index_chr", "{chromosome_group}", "{ref_chromosome}.txt")
-    resources:
-        **getRuleResources("maf_index_chr")
-    run:
-        with open(log.job_log, "w") as log_stream:
-            try:
-                cmd = ["mafutils", "index",
-                       input.maf, output.maf_index_block, output.maf_index_scaff]
-                COMMON.runCommand(cmd, log_stream, log_stream, "maf_index_chr",
-                                  wc=f"{wildcards.chromosome_group}.{wildcards.ref_chromosome}")
-            except Exception:
-                traceback.print_exc(file=log_stream)
-                raise
-
-
+# rule maf_index_chr moved to workflow/cnees.smk (shared per-chromosome MAF index,
+# used by both the phastCons chunking rules below and CNEE alignment extraction).
+# Referenced here via rules.maf_index_chr (cnees.smk is included first).
 
 ####################
 
@@ -718,7 +696,7 @@ rule num_seqs_chunk_bed_chr:
 
                 with open(output.chr_bed, "w") as out:
                     for s, e in chunks:
-                        out.write(f"{wildcards.ref_chromosome}\t{s}\t{e}\n")
+                        out.write(f"{maf_chrom(wildcards.ref_chromosome)}\t{s}\t{e}\n")
 
                 log_stream.write(
                     f"blocks={len(rows)}; chunks_kept={len(chunks)}\n"
@@ -753,6 +731,10 @@ rule maf_split_chunks:
                 split_outdir = os.path.dirname(output.manifest)
                 os.makedirs(split_outdir, exist_ok=True)
 
+                # Fail loud on a chromosome-name mismatch: the chunk bed's chromosome(s)
+                # must exist in the MAF block index, or mafutils silently extracts nothing.
+                INTERVALS.assert_bed_chroms_in_index(input.bed3, input.maf_index_block, "maf_split_chunks")
+
                 cmd = [
                     "mafutils", "fetch",
                     input.maf,
@@ -767,8 +749,9 @@ rule maf_split_chunks:
                     wc=f"{wildcards.chromosome_group}.{wildcards.ref_chromosome}"
                 )
 
-                # Write manifest listing produced chunk MAFs (basenames)
-                mafs = sorted(glob.glob(os.path.join(split_outdir, f"{wildcards.ref_chromosome}-*.maf")))
+                # Write manifest listing produced chunk MAFs (basenames). mafutils names
+                # chunks by the bed's chromosome, so glob on the MAF name.
+                mafs = sorted(glob.glob(os.path.join(split_outdir, f"{maf_chrom(wildcards.ref_chromosome)}-*.maf")))
                 with open(output.manifest, "w") as out:
                     for m in mafs:
                         out.write(os.path.basename(m) + "\n")
@@ -1175,10 +1158,11 @@ rule phastcons_concat_chr:
                                         # column 1 (splits its MAF src field on "." and drops
                                         # anything past the first token after the species
                                         # prefix, e.g. "CM000994.3" -> "CM000994") - overwrite
-                                        # with the wildcard's own trusted value rather than the
-                                        # truncated one.
+                                        # with the canonical MAF chromosome name (maf_chrom of
+                                        # the wildcard) rather than the truncated one, so the
+                                        # bed matches the CDS/conserved names cnees.smk expects.
                                         parts = line.split("\t")
-                                        parts[0] = wildcards.ref_chromosome
+                                        parts[0] = maf_chrom(wildcards.ref_chromosome)
                                         out.write("\t".join(parts) + "\n")
 
                 sort_cmd = ["sort", "-k1,1", "-k2,2n", "-k3,3n", tmp]
@@ -1227,225 +1211,9 @@ rule phastcons_concat_chr:
 
 ####################
 
-rule extract_cds_bed_chr:
-    input:
-        ref_gff = REF_GFF
-    output:
-        cds_bed = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cds.bed")
-    log:
-        job_log = os.path.join(LOG_DIR, "extract_cds_bed_chr", "{chromosome_group}", "{ref_chromosome}.log")
-    benchmark:
-        os.path.join(LOG_DIR, "benchmarks", "extract_cds_bed_chr", "{chromosome_group}", "{ref_chromosome}.txt")
-    resources:
-        **getRuleResources("extract_cds_bed_chr")
-    run:
-        import os
-        import traceback
-
-        with open(log.job_log, "w") as log_stream:
-            try:
-                os.makedirs(os.path.dirname(output.cds_bed), exist_ok=True)
-                with open(input.ref_gff) as gf:
-                    cds_rows = INTERVALS.gff_to_cds_bed(gf, wildcards.ref_chromosome)
-                with open(output.cds_bed, "w") as out:
-                    for chrom, start, end in cds_rows:
-                        out.write(f"{chrom}\t{start}\t{end}\n")
-            except Exception:
-                traceback.print_exc(file=log_stream)
-                raise
-
-####################
-
-rule cnees_from_conserved_chr:
-    input:
-        conserved_bed = os.path.join(CONSERVE_DIR, "{chromosome_group}", "{ref_chromosome}.bed"),
-        cds_bed = rules.extract_cds_bed_chr.output.cds_bed
-    output:
-        cnees_bed = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cnees.bed"),
-        filter_summary = os.path.join(CNEES_SUMMARY_DIR, "{chromosome_group}", "{ref_chromosome}.cnees-filter-summary.tsv")
-    log:
-        job_log = os.path.join(LOG_DIR, "cnees_from_conserved_chr", "{chromosome_group}", "{ref_chromosome}.log")
-    benchmark:
-        os.path.join(LOG_DIR, "benchmarks", "cnees_from_conserved_chr", "{chromosome_group}", "{ref_chromosome}.txt")
-    resources:
-        **getRuleResources("cnees_from_conserved_chr")
-    run:
-        import os
-        import traceback
-
-        with open(log.job_log, "w") as log_stream:
-            try:
-                os.makedirs(os.path.dirname(output.cnees_bed), exist_ok=True)
-                conserved_raw = INTERVALS.parse_bed3(input.conserved_bed, normalize_to=wildcards.ref_chromosome)
-                conserved = INTERVALS.merge_intervals(conserved_raw, CNEE_CES_MERGE_GAP_BP)
-                cds = INTERVALS.merge_intervals(
-                    INTERVALS.parse_bed3(input.cds_bed, normalize_to=wildcards.ref_chromosome), 0
-                )
-
-                log_stream.write(
-                    f"Conserved raw intervals: {len(conserved_raw)}; "
-                    f"merged (gap<={CNEE_CES_MERGE_GAP_BP}bp): {len(conserved)}\\n"
-                )
-
-                out_rows = INTERVALS.drop_overlapping(conserved, cds)
-
-                ces_dropped = len(conserved) - len(out_rows)
-                log_stream.write(
-                    f"CEs dropped for CDS overlap: {ces_dropped}; "
-                    f"CNEEs remaining: {len(out_rows)}\n"
-                )
-
-                with open(output.cnees_bed, "w") as out:
-                    for chrom, s, e in out_rows:
-                        if e > s:
-                            out.write(f"{chrom}\t{s}\t{e}\n")
-
-                os.makedirs(os.path.dirname(output.filter_summary), exist_ok=True)
-                with open(output.filter_summary, "w") as sf:
-                    sf.write("metric\tvalue\n")
-                    sf.write(f"ces_raw\t{len(conserved_raw)}\n")
-                    sf.write(f"ces_merged\t{len(conserved)}\n")
-                    sf.write(f"ces_dropped_cds_overlap\t{ces_dropped}\n")
-                    sf.write(f"cnees_after_cds_drop\t{len(out_rows)}\n")
-            except Exception:
-                traceback.print_exc(file=log_stream)
-                raise
-
-####################
-
-rule cnees_to_bed4_chr:
-    input:
-        cnees_bed = rules.cnees_from_conserved_chr.output.cnees_bed
-    output:
-        cnees_bed4 = os.path.join(CNEES_DIR, "{chromosome_group}", "{ref_chromosome}.cnees.bed4")
-    log:
-        job_log = os.path.join(LOG_DIR, "cnees_to_bed4_chr", "{chromosome_group}", "{ref_chromosome}.log")
-    benchmark:
-        os.path.join(LOG_DIR, "benchmarks", "cnees_to_bed4_chr", "{chromosome_group}", "{ref_chromosome}.txt")
-    resources:
-        **getRuleResources("cnees_to_bed4_chr")
-    run:
-        import os
-        import traceback
-
-        with open(log.job_log, "w") as log_stream:
-            try:
-                os.makedirs(os.path.dirname(output.cnees_bed4), exist_ok=True)
-                rows = INTERVALS.parse_bed3(input.cnees_bed)
-                bed4_rows = INTERVALS.filter_and_id_bed4(rows, CNEE_MIN_LEN_BP, wildcards.ref_chromosome)
-                n = len(bed4_rows)
-                kept = n
-                dropped = len(rows) - n
-                with open(output.cnees_bed4, "w") as outf:
-                    for chrom, s, e, cid in bed4_rows:
-                        outf.write(f"{chrom}\t{s}\t{e}\t{cid}\n")
-                log_stream.write(
-                    f"Filtered CNEEs by length > {CNEE_MIN_LEN_BP} bp: "
-                    f"kept={kept}, dropped={dropped}\\n"
-                )
-                log_stream.write(f"Wrote {n} CNEE intervals to BED4\n")
-            except Exception:
-                traceback.print_exc(file=log_stream)
-                raise
-
-####################
-
-rule cnee_alignments_chr:
-    input:
-        cnees_bed4 = rules.cnees_to_bed4_chr.output.cnees_bed4,
-        maf = rules.maf_index_chr.input.maf,
-        maf_index_block = rules.maf_index_chr.output.maf_index_block
-    output:
-        manifest = os.path.join(CNEE_MAF_DIR, "{chromosome_group}", "{ref_chromosome}", "manifest.txt")
-    params:
-        outdir = os.path.join(CNEE_MAF_DIR, "{chromosome_group}", "{ref_chromosome}"),
-        rule_name = "cnee_alignments_chr"
-    log:
-        job_log = os.path.join(LOG_DIR, "cnee_alignments_chr", "{chromosome_group}", "{ref_chromosome}.log")
-    benchmark:
-        os.path.join(LOG_DIR, "benchmarks", "cnee_alignments_chr", "{chromosome_group}", "{ref_chromosome}.txt")
-    resources:
-        **getRuleResources("cnee_alignments_chr")
-    run:
-        import glob
-        import os
-        import traceback
-
-        with open(log.job_log, "w") as log_stream:
-            try:
-                os.makedirs(params.outdir, exist_ok=True)
-                # Remove stale per-CNEE outputs so manifest reflects current filtering.
-                stale = glob.glob(os.path.join(params.outdir, f"{wildcards.ref_chromosome}.cnee*.maf"))
-                stale += glob.glob(os.path.join(params.outdir, f"{wildcards.ref_chromosome}.cnee*.fa"))
-                for fp in stale:
-                    try:
-                        os.remove(fp)
-                    except OSError:
-                        pass
-                p = min(int(resources.cpus_per_task), 4)
-                cmd = [
-                    "mafutils", "fetch",
-                    input.maf,
-                    input.cnees_bed4,
-                    "-i", input.maf_index_block,
-                    "-o", params.outdir,
-                    "-p", str(p),
-                    "-m", "block",
-                    "-b", "id",
-                ]
-                if CNEE_OUTPUT_FORMAT == "fasta":
-                    cmd += ["-f", "-fh", CNEE_FASTA_HEADER]
-                    if CNEE_EXPECTED_SPECIES:
-                        cmd += ["--expected-species", ",".join(CNEE_EXPECTED_SPECIES)]
-                COMMON.runCommand(
-                    cmd, log_stream, log_stream, params.rule_name,
-                    wc=f"{wildcards.chromosome_group}.{wildcards.ref_chromosome}"
-                )
-
-                ext = "fa" if CNEE_OUTPUT_FORMAT == "fasta" else "maf"
-                outs = sorted(glob.glob(os.path.join(params.outdir, f"{wildcards.ref_chromosome}.cnee*.{ext}")))
-
-                if CNEE_OUTPUT_FORMAT == "fasta":
-                    dropped_files = 0
-                    kept_outs = []
-
-                    for fp in outs:
-                        with open(fp, "r") as inf:
-                            has_dup = PARSING.filter_duplicate_species_fasta(inf)
-                        if has_dup:
-                            try:
-                                os.remove(fp)
-                            except OSError:
-                                pass
-                            dropped_files += 1
-                        else:
-                            kept_outs.append(fp)
-
-                    outs = kept_outs
-                    log_stream.write(
-                        "Filtered CNEE FASTAs: "
-                        f"dropped_files_with_duplicate_species={dropped_files}\n"
-                    )
-
-                with open(output.manifest, "w") as out:
-                    for m in outs:
-                        out.write(os.path.basename(m) + "\n")
-                log_stream.write(f"Wrote manifest with {len(outs)} CNEE {CNEE_OUTPUT_FORMAT.upper()} files\n")
-
-                # Keep only essential outputs by default: manifest + extracted alignments.
-                if not KEEP_CNEE_SIDECARS:
-                    for side_pat in ("*.tsv", "*.log"):
-                        for fp in glob.glob(os.path.join(params.outdir, side_pat)):
-                            try:
-                                os.remove(fp)
-                            except OSError:
-                                pass
-
-            except Exception:
-                traceback.print_exc(file=log_stream)
-                raise
-
-
+# CNEE-building rules (extract_cds_bed_chr, cnees_from_conserved_chr,
+# cnees_to_bed4_chr, cnee_alignments_chr) moved to workflow/cnees.smk, where they
+# are source-parameterized (phastcons + phylop) and share the CDS/MAF-index work.
 ####################
 
 # rule phastcons_chunk moved to workflow/stash.smk - dead code, orphaned since

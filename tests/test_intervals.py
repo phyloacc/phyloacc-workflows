@@ -4,6 +4,8 @@
 # inline `run:` blocks. Run with `pytest tests/` from the repo root.
 #############################################################################
 
+import pytest
+
 import lib.intervals as intervals
 
 #############################################################################
@@ -202,3 +204,91 @@ def test_read_chrom_length_gapless_block_index(tmp_path):
 
 def test_read_chrom_length_missing_file_returns_none(tmp_path):
     assert intervals.read_chrom_length(str(tmp_path / "does-not-exist.idx")) is None
+
+
+#############################################################################
+# block-index chromosome set + fail-loud name check
+
+def _write_idx(path):
+    path.write_text(
+        "# mafutils-index format=2 maf=x.maf compression=none size=1 mtime=1.0 hash=md5:x\n"
+        "chr1\t0\t100\t100\t101\t5\t0\t100\n"
+        "chr1\t100\t50\t50\t51\t5\t100\t150\n"
+        "chr2\t0\t80\t80\t81\t5\t150\t230\n"
+    )
+
+
+def test_read_block_index_chroms(tmp_path):
+    idx = tmp_path / "x.maf.block.idx"
+    _write_idx(idx)
+    assert intervals.read_block_index_chroms(str(idx)) == {"chr1", "chr2"}
+
+
+def test_assert_bed_chroms_in_index_passes_when_names_match(tmp_path):
+    idx = tmp_path / "x.maf.block.idx"; _write_idx(idx)
+    bed = tmp_path / "regions.bed"
+    bed.write_text("chr1\t0\t50\nchr2\t10\t20\n")  # MAF names -> present in index
+    intervals.assert_bed_chroms_in_index(str(bed), str(idx), "test_rule")  # no raise
+
+
+def test_assert_bed_chroms_in_index_raises_on_prefix_mismatch(tmp_path):
+    idx = tmp_path / "x.maf.block.idx"; _write_idx(idx)
+    bed = tmp_path / "regions.bed"
+    bed.write_text("1\t0\t50\n")  # bare name vs "chr1" in the index -> mismatch
+    with pytest.raises(ValueError) as exc:
+        intervals.assert_bed_chroms_in_index(str(bed), str(idx), "test_rule")
+    assert "chromosome-name mismatch" in str(exc.value)
+    assert "maf_prefix" in str(exc.value)
+
+
+#############################################################################
+# maf_symlink_target_for_group
+
+def _write_scaffold_idx(path, scaffolds, compression="none"):
+    # scaffolds: list of (name, size). Mirrors the mafutils .scaffold.idx format.
+    lines = [f"# mafutils-index format=2 maf=x.maf compression={compression} size=999\n"]
+    off = 16
+    for name, size in scaffolds:
+        lines.append(f"{name}\t{off}\t{size}\n")
+        off += size
+    path.write_text("".join(lines))
+
+
+def test_maf_symlink_single_uncompressed_scaffold_matches(tmp_path):
+    idx = tmp_path / "chr1.maf.scaffold.idx"
+    _write_scaffold_idx(idx, [("chr1", 5000)])
+    bed = tmp_path / "autosomes.bed"
+    bed.write_text("chr1\t0\t4999\tchr1\n")  # col4 = output basename
+    assert intervals.maf_symlink_target_for_group(str(idx), str(bed)) == "chr1"
+
+
+def test_maf_symlink_none_when_multi_scaffold_input(tmp_path):
+    idx = tmp_path / "genome.maf.scaffold.idx"
+    _write_scaffold_idx(idx, [("chr1", 5000), ("chr2", 4000)])
+    bed = tmp_path / "autosomes.bed"
+    bed.write_text("chr1\t0\t4999\tchr1\n")
+    assert intervals.maf_symlink_target_for_group(str(idx), str(bed)) is None
+
+
+def test_maf_symlink_none_when_compressed(tmp_path):
+    idx = tmp_path / "chr1.maf.gz.scaffold.idx"
+    _write_scaffold_idx(idx, [("chr1", 5000)], compression="gzip")
+    bed = tmp_path / "autosomes.bed"
+    bed.write_text("chr1\t0\t4999\tchr1\n")
+    assert intervals.maf_symlink_target_for_group(str(idx), str(bed)) is None
+
+
+def test_maf_symlink_none_when_scaffold_name_mismatch(tmp_path):
+    idx = tmp_path / "chr1.maf.scaffold.idx"
+    _write_scaffold_idx(idx, [("chr1", 5000)])
+    bed = tmp_path / "autosomes.bed"
+    bed.write_text("chr2\t0\t4999\tchr2\n")  # group wants chr2, input has chr1
+    assert intervals.maf_symlink_target_for_group(str(idx), str(bed)) is None
+
+
+def test_maf_symlink_none_when_group_has_multiple_chroms(tmp_path):
+    idx = tmp_path / "chr1.maf.scaffold.idx"
+    _write_scaffold_idx(idx, [("chr1", 5000)])
+    bed = tmp_path / "autosomes.bed"
+    bed.write_text("chr1\t0\t4999\tchr1\nchr2\t0\t100\tchr2\n")  # >1 requested
+    assert intervals.maf_symlink_target_for_group(str(idx), str(bed)) is None

@@ -109,26 +109,3 @@ def summarize_rho(values, stat="p90"):
     mean = float(sum(vals) / n)
     selected = {"p90": p90, "median": median, "mean": mean}.get(stat, mean)
     return {"mean": mean, "median": median, "p90": p90, "selected": selected, "n": n}
-
-#############################################################################
-
-SPECIES_KEY_RE = re.compile(r"^([A-Za-z]+)_([A-Za-z]+)")
-
-
-def filter_duplicate_species_fasta(fasta_lines):
-    # fasta_lines: iterable of lines from a CNEE FASTA file (as produced by mafutils
-    # fetch -f). Returns True if two or more headers share the same genus_species key
-    # (first two underscore-separated tokens of the species name before ":"), meaning
-    # this alignment has a duplicated species and should be dropped.
-    seen = set()
-    for line in fasta_lines:
-        if not line.startswith(">"):
-            continue
-        token = line[1:].strip().split()[0]
-        species = token.split(":", 1)[0]
-        m = SPECIES_KEY_RE.match(species)
-        species_key = f"{m.group(1)}_{m.group(2)}" if m else species
-        if species_key in seen:
-            return True
-        seen.add(species_key)
-    return False

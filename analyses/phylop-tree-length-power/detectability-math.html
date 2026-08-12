@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The detectability limit of per-site phyloP</title>
+<script>
+  MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+              svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  :root{
+    --ink:#1f2933; --muted:#606b76; --line:#e2e6ea; --accent:#20456e;
+    --panel:#f6f8fa; --warn:#7a1f1f; --warnbg:#fbecec; --keybg:#eef4fb;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; color:var(--ink); background:#fff;
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap{max-width:1200px; margin:0 auto; padding:2.4rem 2rem 4rem}
+  h1{font-size:1.7rem; line-height:1.25; margin:0 0 .3rem}
+  h2{font-size:1.25rem; margin:2.4rem 0 .7rem; padding-top:.4rem; border-top:1px solid var(--line); color:var(--accent)}
+  h3{font-size:1.05rem; margin:1.6rem 0 .4rem}
+  p{margin:.7rem 0}
+  .lede{color:var(--muted); font-size:1.05rem; margin:.4rem 0 1.4rem}
+  a{color:var(--accent)}
+  code{background:var(--panel); padding:.08em .35em; border-radius:4px; font-size:.9em;
+       font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  figure{margin:1.4rem 0; text-align:center}
+  figure img{max-width:100%; height:auto; border:1px solid var(--line); border-radius:6px}
+  figcaption{color:var(--muted); font-size:.88rem; margin-top:.5rem; text-align:left}
+  .keybox{background:var(--keybg); border:1px solid #cfe0f2; border-left:4px solid var(--accent);
+          border-radius:6px; padding:.4rem 1rem; margin:1.2rem 0}
+  .defs{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:.6rem 1rem; margin:1.2rem 0;
+        display:grid; grid-template-columns:max-content 1fr; column-gap:.8rem; row-gap:.5rem; align-items:baseline}
+  .defs dt{font-weight:600}
+  .defs dd{margin:0}
+  .callout{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:.2rem 1rem; margin:1.1rem 0}
+  .warn{background:var(--warnbg); border:1px solid #edcaca; border-left:4px solid var(--warn);
+        border-radius:6px; padding:.4rem 1rem; margin:1.2rem 0}
+  table{border-collapse:collapse; width:100%; margin:1.1rem 0; font-size:.93rem}
+  th,td{border:1px solid var(--line); padding:.4rem .6rem; text-align:left}
+  th{background:var(--panel)}
+  details{margin:1.2rem 0; border:1px solid var(--line); border-radius:6px; padding:.2rem 1rem; background:#fcfdfe}
+  summary{cursor:pointer; font-weight:600; color:var(--accent); padding:.5rem 0}
+  ol.steps>li{margin:1rem 0; padding-left:.2rem}
+  ol.steps>li::marker{color:var(--accent); font-weight:700}
+  .steps .eq{display:block}
+  .steps .narr{display:block; margin-top:.3rem}
+  .steps .why{display:block; color:var(--muted); font-size:.88em; margin-top:.25rem}
+  .foot{margin-top:2.6rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>The detectability limit of per-site phyloP</h1>
+<p class="lede">From the exact score phyloP computes at a site, to the largest score any site can reach, to
+exactly how tree depth \(T\), species count \(n\), and the substitution model set that ceiling —
+derived from first principles, no example datasets.</p>
+
+<p>
+Per-site phyloP tests, one alignment column at a time, whether a base is evolving more slowly than neutral
+(conserved). A genome-wide run performs many such tests and corrects for multiple comparisons, which has a
+consequence worth stating plainly: on some trees <em>no site can pass, however perfectly conserved</em>. This
+page derives where that limit falls, using the computation phyloP actually performs. Everything is stated for a
+general reversible model; every symbol introduced is defined, and every step is carried out explicitly.
+</p>
+
+<h2>0 · The neutral model and notation</h2>
+
+<p>phyloP is given a fitted <b>neutral model</b>: a phylogeny plus a substitution process. Fix notation once.</p>
+
+<dl class="defs">
+<dt>\(n\)</dt><dd>= the number of species (leaves of the tree).</dd>
+<dt>branch length \(\ell_e\)</dt><dd>= the length of tree branch \(e\), in <em>expected substitutions per
+site</em>.</dd>
+<dt>\(T\)</dt><dd>\(=\sum_e \ell_e\) = the total tree depth (sum of all branch lengths), the tree's total
+expected substitutions per site.</dd>
+<dt>\(\pi=(\pi_A,\pi_C,\pi_G,\pi_T)\)</dt><dd>= the model's <b>equilibrium base frequencies</b>: the fraction of
+sites each base settles to once the substitution process has run long enough to forget where it started — the
+one composition that no longer changes under further evolution (the <em>stationary distribution</em>, defined
+by \(\pi Q=0\)). It is four numbers, one per base, summing to \(\sum_b\pi_b=1\), and it is a property of the
+model, not of any single site. In practice phyloFit sets \(\pi\) to the observed base composition of the
+neutral (4-fold degenerate) sites, so numerically it is close to just the normalized base counts — but the
+role it plays below is as the process's long-run equilibrium, not a raw tally.</dd>
+<dt>\(Q\)</dt><dd>= the \(4\times4\) <b>instantaneous rate matrix</b>, the engine of a continuous-time
+substitution process (a general reversible model, e.g. GTR). For \(r\ne b\), \(Q_{rb}\ge0\) = the
+<em>instantaneous rate</em> of \(r\to b\): over a vanishingly short time \(dt\) the chance of that
+substitution is \(Q_{rb}\,dt\). "Instantaneous" means it is a rate per unit time, not a probability over a
+real branch — formally \(Q=\left.\tfrac{d}{dt}e^{Qt}\right|_{t=0}\), the slope of the transition
+probabilities at length zero; finite-branch probabilities come from \(P(t)=e^{Qt}\) below. The diagonal is
+fixed by \(Q_{bb}=-\sum_{x\ne b}Q_{bx}\) so each row sums to zero (probability is conserved), and \(-Q_{bb}\)
+= the total rate of leaving base \(b\). The rates are not computed from a formula — they are
+<b>estimated by maximum likelihood</b> (phyloFit) from the neutral alignment: in reversible/GTR form
+\(Q_{rb}=s_{rb}\,\pi_b\), where \(s_{rb}=s_{br}\) are six symmetric "exchangeability" parameters, and phyloFit
+picks the \(s_{rb}\) and \(\pi\) that make the observed neutral columns most probable. Finally \(Q\) is scaled
+so the mean rate \(-\sum_b\pi_b Q_{bb}=1\), which puts \(\ell_e\) and \(T\) in substitutions per site.</dd>
+<dt>\(P(t)\)</dt><dd>\(=e^{Qt}\) = the transition-probability matrix over a branch of length \(t\); its entry
+\(P_{r\to b}(t)=\big(e^{Qt}\big)_{rb}\) = the probability that a lineage entering the branch as base \(r\)
+leaves it as base \(b\). Here \(e^{Qt}=\sum_{k\ge0}(Qt)^k/k!\) is the matrix exponential.</dd>
+</dl>
+
+<h2>1 · How phyloP scores a site</h2>
+
+<p>
+phyloP measures how much a column deviates from neutral by scaling the whole tree. Introduce one parameter:
+</p>
+<dl class="defs">
+<dt>\(\rho\)</dt><dd>\(\ge0\) = the branch-scaling factor: every branch length \(\ell_e\) is replaced by
+\(\rho\,\ell_e\). \(\rho=1\) is the neutral tree as fitted; \(\rho<1\) means the site evolves slower than
+neutral (conserved); \(\rho>1\) faster (accelerated).</dd>
+</dl>
+
+<p>
+For an observed column, the model assigns a likelihood \(L(\rho)\) = the probability of the observed leaf
+bases when every branch is scaled by \(\rho\). It is computed by <b>Felsenstein pruning</b>. Define, for each
+tree node \(v\) and base \(x\),
+</p>
+<div class="callout">
+\[ F_v(x)\;=\;\Pr\big(\text{observed bases at the leaves below }v \,\big|\, v \text{ holds base } x\big), \]
+</div>
+<p>computed bottom-up, where \(\mathrm{child}(v)\) = the set of children of \(v\) and \(\ell_c\) = the length
+of the branch above child \(c\):</p>
+
+<ol class="steps">
+<li><b>Leaf</b> \(v\) with observed base \(a\):
+\(\;F_v(x)=\mathbb{1}[x=a]\) (i.e. 1 if \(x=a\), else 0), where \(\mathbb{1}[\cdot]\) = the indicator.</li>
+<li><b>Internal node</b> \(v\):
+\(\;F_v(x)=\displaystyle\prod_{c\,\in\,\mathrm{child}(v)}\Big(\sum_{y}P_{x\to y}(\rho\,\ell_c)\,F_c(y)\Big)\),
+where the inner sum is over the four bases \(y\), and \(P_{x\to y}(\rho\ell_c)=\big(e^{Q\rho\ell_c}\big)_{xy}\).</li>
+<li><b>Root</b> \(r\):
+\(\;L(\rho)=\displaystyle\sum_{x}\pi_x\,F_r(x)\).</li>
+</ol>
+
+<p>The site score is a likelihood-ratio test of \(\rho\) against the neutral \(\rho=1\):</p>
+
+<div class="keybox">
+\[ \hat\rho=\operatorname*{arg\,max}_{\rho\ge0}L(\rho),
+   \qquad
+   \mathrm{LRT}=2\big[\ln L(\hat\rho)-\ln L(\rho{=}1)\big], \]
+\[ p=\operatorname{erfc}\!\Big(\sqrt{\mathrm{LRT}/2}\Big),\qquad \text{score}=-\log_{10}p, \]
+</div>
+
+<dl class="defs">
+<dt>\(\hat\rho\)</dt><dd>= the maximum-likelihood scaling for this column (the \(\rho\) that maximizes
+\(L(\rho)\)).</dd>
+<dt>\(\mathrm{LRT}\)</dt><dd>= twice the log-likelihood gap between the best-fit and neutral trees — the amount
+of evidence that this site departs from neutral.</dd>
+<dt>\(\operatorname{erfc}(z)\)</dt><dd>\(=\dfrac{2}{\sqrt\pi}\displaystyle\int_z^\infty e^{-u^2}\,du\) = the
+<b>complementary error function</b>. It is not a lookup table — it is a standard special function that any math
+library (C's <code>erfc</code>, Python's <code>math.erfc</code>, R, scipy) evaluates on the fly to machine
+precision. Its role here is to return an upper-tail probability: by Wilks' theorem the \(\mathrm{LRT}\) of one
+parameter is \(\chi^2_1\)-distributed under the neutral null, and that distribution's tail has this closed
+form, so \(\;p=\Pr(\chi^2_1>\mathrm{LRT})=\operatorname{erfc}\!\big(\sqrt{\mathrm{LRT}/2}\big)\).</dd>
+<dt>\(p\)</dt><dd>= the site's p-value — the \(\chi^2_1\) tail probability just defined; how surprising this much
+evidence would be under neutrality.</dd>
+<dt>score</dt><dd>\(=-\log_{10}p\), signed by direction (the <code>CONACC</code> convention): \(\rho<1\) gives a
+positive (conserved) score, \(\rho>1\) a negative (accelerated) one.</dd>
+</dl>
+
+<p>
+Note the order: phyloP forms the \(\mathrm{LRT}\), turns it into the p-value \(p\) via \(\operatorname{erfc}\),
+and then reports <em>only</em> the signed score \(-\log_{10}p\) — the p-value itself is an intermediate that
+never leaves the binary. Downstream the pipeline recovers it by simply inverting the log,
+\(p=10^{-\text{score}}\), before applying genome-wide FDR correction (§4). This
+\(\mathrm{LRT}\to\operatorname{erfc}\to p\to\text{score}\) chain is exactly what the phyloP binary computes;
+<code>lib/phylop_power.py</code> reproduces its numbers.
+</p>
+
+<p>
+These lines are the whole method. Note where the model enters: only through \(P(t)=e^{Qt}\) in step 2. There
+is no shortcut — for a general \(Q\) the matrix exponential requires the full eigen-decomposition of \(Q\), one
+per distinct branch length, so \(L(\rho)\) is evaluated numerically, not in closed form.
+</p>
+
+<h2>2 · The ceiling: the largest score a site can reach</h2>
+
+<p>
+The <b>ceiling</b> = the maximum score over every possible column, on a given tree and model. It is attained by
+the most extreme evidence a column can carry: <em>perfect conservation</em>, where all \(n\) leaves hold one
+base \(b\). The score depends on the two likelihoods in the §1 gap \(\mathrm{LRT}=2\big[\ln L(\hat\rho)-\ln
+L(1)\big]\); feed the perfectly-conserved column through step 1 and both become exact.
+</p>
+
+<p><b>The best-fit likelihood \(L(\hat\rho)\).</b> The best fit to an all-\(b\) column needs no substitutions, so
+\(\hat\rho\to0\). Setting \(\rho=0\) shrinks every branch length \(\rho\ell_e\) to 0, and \(P_{x\to y}(0)=
+\big(e^{Q\cdot0}\big)_{xy}=\big(I\big)_{xy}=\mathbb{1}[x=y]\). Here \(I\) = the <b>identity matrix</b>: 1s on
+the diagonal and 0s off it (\((I)_{xy}=1\) if \(x=y\), else 0), the matrix analog of the number 1 and the
+consequence of \(e^{Q\cdot0}=I\) just as \(e^0=1\). It is the transition matrix of a zero-length branch —
+over no time a base stays itself with certainty. So each internal product in step 2 forces \(x=b\) down the
+whole tree, and the root sum collapses to \(L(0)=\pi_b\) — the probability that the single unchanged ancestral
+base is \(b\).</p>
+
+<p><b>The neutral likelihood \(L(1)\).</b> With \(\rho=1\) the branches keep their neutral lengths, so
+\(L(1)=P_{\mathrm{all}}(b)\), where</p>
+<div class="callout">
+\[ P_{\mathrm{all}}(b)\;=\;\Pr\big(\text{all }n\text{ leaves}=b \,\big|\, \text{neutral tree}\big)
+   \;=\;\sum_{x}\pi_x\,F_r(x)\ \text{ with every leaf fixed to }b. \]
+</div>
+<p>This is just the pruning of step 1 run once, with every leaf's indicator set to \(b\). Where the best-fit
+likelihood collapsed to \(\pi_b\) using nothing but the base frequency, \(P_{\mathrm{all}}(b)\) is the one
+piece that uses the <b>entire fitted neutral model</b> — the rate matrix \(Q\) and every branch length
+\(\ell_e\) (entering through \(P(t)=e^{Qt}\)) laid over the tree topology. It has no shortcut to a handful of
+numbers, and it is exactly the quantity §3 approximates to expose how \(T\), \(n\), and the model set the
+ceiling.</p>
+
+<p>Substituting both into the step-1 score gives the ceiling:</p>
+
+<div class="keybox">
+\[ \mathrm{LRT}_{\max}\;=\;\max_{b}\;2\big[\ln\pi_b-\ln P_{\mathrm{all}}(b)\big],
+   \qquad
+   \text{ceiling}\;=\;-\log_{10}\operatorname{erfc}\!\Big(\sqrt{\mathrm{LRT}_{\max}/2}\Big), \]
+</div>
+
+<p>
+where \(\max_b\) picks whichever base gives the largest gap. No real site can exceed the ceiling, so if the
+ceiling falls below the significance bar (§4), nothing is detectable. Everything so far is exact for the actual
+model. What it does <em>not</em> give is a formula in interpretable knobs — \(P_{\mathrm{all}}(b)\) depends on
+all of \(Q\) and the topology. To expose the dependence on \(T\), \(n\), and the model, we take the two
+regimes in which \(P_{\mathrm{all}}(b)\) <em>does</em> collapse to a closed form.
+</p>
+
+<h2>3 · Exactly how \(T\), \(n\), and the model enter the ceiling</h2>
+
+<p>The exact ceiling (§2) uses the whole model, but not every part of it matters equally — and the reason is that
+the ceiling is a <em>best case</em>. The top score belongs to a perfectly conserved column (§2), and among the
+four possible ones — all&#8209;A, all&#8209;C, all&#8209;G, all&#8209;T — the winner is whichever base gives
+the largest gap between the best-fit likelihood \(\pi_b\) and the neutral likelihood \(P_{\mathrm{all}}(b)\):
+whichever base's perfect conservation is the strongest evidence against neutral evolution. Which base that is,
+and how large the gap, turns out to depend on the model through just one number in each regime. Rather than
+give those numbers new names, we write each as the plain expression it is:</p>
+<ul>
+<li>the short-branch limit depends on \(\max_b(-Q_{bb})\) — the <b>largest per-base exit rate</b> (the
+fastest-changing base's rate of turnover);</li>
+<li>the long-branch limit depends on \(\min_b\pi_b\) — the <b>smallest equilibrium frequency</b> (the rarest
+base).</li>
+</ul>
+
+<p><b>What \(\max_b(-Q_{bb})\) means.</b> From §0, \(-Q_{bb}\) is the total rate at which base \(b\) is
+substituted into something else — base \(b\)'s exit rate. The four bases generally differ, so
+\(-Q_{AA},\,-Q_{CC},\,-Q_{GG},\,-Q_{TT}\) are four different numbers, and \(\max_b(-Q_{bb})\) is just the
+largest of them. Because \(Q\) is scaled (§0) so the <em>average</em> exit rate, weighted by how often each
+base occurs, is exactly 1 (\(-\sum_b\pi_b Q_{bb}=1\)), that maximum is read against a yardstick where the
+average base exits once per unit of branch length: \(\max_b(-Q_{bb})\ge1\) always, and \(=1\) only when all
+four bases exit at the same rate — the Jukes–Cantor case. It is one number pulled from \(Q\)'s diagonal — a
+summary of the model, not a stand-in for it — and §3a shows it is exactly the part the short-branch ceiling
+responds to.</p>
+
+<p>
+To make the geometry explicit, idealize the tree as a <b>star</b>: \(n\) leaves attached to one root, every
+branch the same length \(t\), so the depth constraint is \(n\,t = T\), i.e. \(t=T/n\). For an all-\(b\) column
+each leaf is reached from the root independently, so the pruning of §1 gives, exactly,
+</p>
+<div class="callout">
+\[ P_{\mathrm{all}}(b)\;=\;\sum_{x}\pi_x\big[P_{x\to b}(t)\big]^{\,n},\qquad t=T/n, \]
+</div>
+<p>where \(x\) = the base at the root (the leaves' common ancestor), summed over all four possibilities because
+the ancestor is never observed, each weighted by its prior \(\pi_x\); \(P_{x\to b}(t)=\big(e^{Qt}\big)_{xb}\)
+as in §0; and the exponent \(n\) is because the \(n\) leaves share that one ancestor \(x\) and each must
+independently arrive at \(b\). (It is the same \(x\), and the same marginalization over the root, as the root
+rule \(L(\rho)=\sum_x\pi_x F_r(x)\) in §1.)</p>
+
+<p>
+<b>Where is the rate?</b> Not in this formula — and that is the point. Only \(T\) and \(n\) appear explicitly,
+because they are geometry (\(t=T/n\): depth and leaf count). The model's rates sit inside the transition
+probability \(P_{x\to b}(t)=\big(e^{Qt}\big)_{xb}\), which depends on every entry of \(Q\); there is no
+\(\max_b(-Q_{bb})\) to read off the exact expression. That one number only <em>emerges</em> when §3a expands
+\(e^{Qt}\) for short branches — \(P_{b\to b}(t)\approx1+Q_{bb}t\) — and the maximization over \(b\) keeps the
+largest exit rate. Pulling it out of the matrix exponential is exactly what §3a does (and §3b does the same at
+saturation, where \(e^{Qt}\) reduces to \(\pi\) and the number becomes \(\min_b\pi_b\)).
+</p>
+
+<p>
+Why sum over every \(x\) rather than just set \(x=b\)? Because \(P_{\mathrm{all}}(b)\) is the <em>neutral</em>
+likelihood (\(\rho=1\)) of the observed leaves alone, and the ancestor is never observed — so the likelihood
+must add up every base it could have been. On full-length neutral branches, all-\(b\) leaves can descend even
+from a non-\(b\) root if every lineage independently changed to \(b\); ignoring those cases would compute
+\(\Pr(\text{all leaves}=b\text{ and root}=b)\), a different, smaller quantity. (Fixing \(x=b\) <em>is</em>
+correct for the best-fit piece \(L(\hat\rho)\) of §2, where \(\rho\to0\) shrinks the branches to zero and
+\(P_{x\to b}(0)=\mathbb{1}[x=b]\) collapses the sum to the \(x=b\) term, \(\pi_b\).) The two limits below are
+the two fates of this sum: on short branches the \(x=b\) term dominates (§3a), while at saturation the root is
+forgotten and all four \(x\) contribute equally (§3b).</p>
+
+<p>(A real tree is not a star; shared internal branches make leaves partly redundant, and then
+\(P_{\mathrm{all}}(b)\) is the full pruning of §2. The star is the clean skeleton that exposes \(T\), \(n\), and
+the model; the two limits below hold for any topology, as noted.)</p>
+
+<p><b>Two regimes, one curve.</b> \(P_{\mathrm{all}}(b)\) has no clean formula for a general branch length
+\(t\), but it collapses at the two extremes — and those extremes are §3a and §3b. They are not two pieces of
+\(P_{\mathrm{all}}(b)\); each is the <em>whole</em> thing, evaluated once for short branches and once for long
+ones. Picture the ceiling as a function of tree depth \(T\) at a fixed number of species: it is a single curve
+that <em>rises</em> while branches are short — more depth, more evidence (§3a) — then <em>flattens</em> onto a
+plateau once branches are long enough that the leaves are randomized and extra depth adds nothing new (§3b).
+§3a computes the rising line, §3b the plateau height, and §3c stitches them together as the smaller of the
+two.</p>
+
+<div class="callout">
+<p style="text-align:center; font-size:1.08em; margin:.5rem 0 .3rem">
+\( P_{\mathrm{all}}(b)=\displaystyle\sum_x\pi_x\big[\,\boxed{P_{x\to b}(t)}\,\big]^{\,n} \)
+</p>
+<p style="text-align:center; color:var(--muted); margin:.2rem 0 .9rem">
+Only the boxed piece decides the regime, and it turns entirely on the branch length \(t\) — because a lineage
+changes differently over a short branch than a long one:
+</p>
+<div style="display:grid; grid-template-columns:max-content 1fr; gap:.6rem .9rem; align-items:baseline">
+<div style="color:#20456e; font-weight:700; white-space:nowrap">short \(t\) → §3a</div>
+<div>too brief for much change, so <span style="color:#20456e; font-weight:600">\(P_{x\to b}(t)\approx1\) when
+\(x=b\), and \(\approx0\) otherwise</span>. Only the "ancestor was already \(b\), nothing changed" term
+survives: \(P_{\mathrm{all}}(b)\approx\pi_b(1+Q_{bb}t)^n\) — set by the <b>exit rate and depth</b>, giving
+\(\;2\,T\max_b(-Q_{bb})\).</div>
+<div style="color:#b55405; font-weight:700; white-space:nowrap">long \(t\) → §3b</div>
+<div>long enough to forget the ancestor, so <span style="color:#b55405; font-weight:600">\(P_{x\to
+b}(t)\to\pi_b\) for <em>every</em> starting base \(x\)</span>. The sum flattens to
+\(P_{\mathrm{all}}(b)\to\pi_b^{\,n}\) — set by the <b>species count and composition</b>, giving
+\(\;2(n-1)(-\ln\min_b\pi_b)\).</div>
+</div>
+</div>
+
+<h3>3a · Short branches → depth-limited: \(\mathrm{LRT}_{\max}=2\,T\max_b(-Q_{bb})\)</h3>
+
+<div class="keybox">
+<p><b>The goal of this part.</b> §2 gave the exact ceiling, but it was trapped inside \(P_{\mathrm{all}}(b)\), a
+matrix exponential with no clean formula — so we couldn't see how tree depth \(T\) affects it. §3a does one
+thing: it shows that <em>when the branches are short</em>, that messy expression collapses to a clean answer,
+\[ \mathrm{LRT}_{\max}=2\,T\max_b(-Q_{bb})\quad\text{— the ceiling } = 2\times(\text{depth})\times(\text{fastest exit rate}). \]
+The six steps below are just the assembly: steps&nbsp;1–2 get the transition probabilities (the raw pieces),
+steps&nbsp;3–4 build \(P_{\mathrm{all}}(b)\) from them, and steps&nbsp;5–6 turn that into the ceiling. The
+transition probabilities are ingredients, not the point — the point is the boxed formula, which shows the
+ceiling climbs linearly with depth.</p>
+</div>
+
+<p>Take \(t\) small (equivalently many species: \(t=T/n\to0\) as \(n\) grows), and expand the matrix exponential
+to first order in \(t\):</p>
+<div class="callout">
+\[ e^{Qt}=I+Qt+O(t^2), \]
+</div>
+<p>where \(I\) = the identity matrix (§2), and \(Qt\) = the matrix \(Q\) with every entry multiplied by \(t\).</p>
+
+<p>The \(O(t^2)\) is the part we throw away. The expansion of \(e^{Qt}\) actually runs on forever —
+\(I+Qt+\tfrac12(Qt)^2+\cdots\) — and \(O(t^2)\) is just a name for that whole tail, everything from the
+\((Qt)^2\) term onward. We can drop it because when \(t\) is small the tail is tiny next to the \(Qt\) term we
+keep: at \(t=0.01\), the \(Qt\) term is about \(0.01\)-sized while the tail is about \(t^2=0.0001\)-sized —
+100&times; smaller — and the gap only widens as \(t\to0\). (Read "\(O(t^2)\)" as "order \(t^2\)": no bigger
+than a constant times \(t^2\). Step&nbsp;3's \(O(t^n)\) is the same idea with a higher power.)</p>
+
+<p>To get one transition probability we <b>read off a single entry</b> of the matrix equation: the entry in row
+\(x\), column \(y\) is \(P_{x\to y}(t)\), and on the right it is \(\mathbb{1}[x=y]\) (from \(I\)) plus
+\(Q_{xy}t\) (from \(Qt\)). The next two steps are this <em>same</em> function \(P_{\text{start}\to b}(t)\) for
+the two kinds of starting base — the target \(b\) is fixed (right subscript), the left subscript is where the
+lineage starts — first start\(\,=b\) (step&nbsp;1: does \(b\) stay \(b\)?), then start\(\,\ne b\) (step&nbsp;2:
+does a different base turn into \(b\)?). Recalling \(-Q_{bb}\) from §0 is base \(b\)'s exit rate, so
+\(Q_{bb}<0\):</p>
+<ol class="steps">
+<li><span class="eq">\(P_{b\to b}(t)=1+Q_{bb}\,t+O(t^2)\)</span>
+<span class="narr">Write down how likely base \(b\) is to sit on one short branch and come out unchanged: nearly certain,
+minus a sliver for the small chance it mutates away.</span>
+<span class="why">this is \(P_{x\to b}(t)\) for the \(x=b\) ancestor; the sliver is \(|Q_{bb}|\,t\). Feeds step&nbsp;3.</span></li>
+
+<li><span class="eq">\(P_{x\to b}(t)=Q_{xb}\,t+O(t^2)\quad(x\ne b)\)</span>
+<span class="narr">And how likely a <em>different</em> starting base is to turn into \(b\) over that same short branch:
+only a small chance, and the shorter the branch the smaller it gets.</span>
+<span class="why">this is \(P_{x\to b}(t)\) for the \(x\ne b\) ancestors; order \(t\), since \(P_{x\to b}(0)=0\). Also feeds step&nbsp;3.</span></li>
+
+<li><span class="eq">\(P_{\mathrm{all}}(b)\approx\pi_b\,(1+Q_{bb}t)^n\)</span>
+<span class="narr">Combine those into the chance that neutral evolution leaves <em>all</em> \(n\) leaves showing \(b\).
+The only realistic way is that the ancestor was already \(b\) and nothing changed; the alternative — a different
+ancestor independently mutating into \(b\) at every one of the \(n\) leaves — is far too unlikely to matter.</span>
+<span class="why">substitute steps&nbsp;1–2 into \(P_{\mathrm{all}}(b)=\sum_x\pi_x[P_{x\to b}(t)]^n\): the \(x=b\) term
+(step&nbsp;1) is \(\pi_b(1+Q_{bb}t)^n\); each \(x\ne b\) term (step&nbsp;2) is \(\pi_x(Q_{xb}t)^n=O(t^n)\),
+negligible. Only \(x=b\) survives.</span></li>
+
+<li><span class="eq">\(P_{\mathrm{all}}(b)\approx\pi_b\,e^{Q_{bb}T}\)</span>
+<span class="narr">Rewrite that chance in terms of the whole tree's depth \(T\) rather than a per-branch length. It
+becomes the ancestor-was-\(b\) probability times the chance of <em>zero</em> substitutions across all \(T\)
+worth of tree.</span>
+<span class="why">put \(t=T/n\): \((1+Q_{bb}t)^n=\big(1+\tfrac{Q_{bb}T}{n}\big)^n\to e^{Q_{bb}T}\) as \(n\to\infty\),
+using \((1+\tfrac{a}{n})^n\to e^{a}\).</span></li>
+
+<li><span class="eq">\(\mathrm{LRT}_b=2\big[\ln\pi_b-\ln(\pi_b e^{Q_{bb}T})\big]=2\,(-Q_{bb})\,T\)</span>
+<span class="narr">Now score it: compare the "site is conserved" explanation against that neutral chance. Almost
+everything cancels, and what's left is exactly how surprised neutral evolution would be to see zero changes —
+which grows with the exit rate and the depth.</span>
+<span class="why">the \(\ln\pi_b\) cancels; positive since \(Q_{bb}<0\).</span></li>
+
+<li><span class="eq">\(\mathrm{LRT}_{\max}=\max_b 2(-Q_{bb})T=2\,T\max_b(-Q_{bb})\)</span>
+<span class="narr">The ceiling belongs to whichever base scores highest — the fastest-changing one — so it comes out as
+twice the tree depth times the fastest exit rate.</span>
+<span class="why">maximizing over the base keeps the largest exit rate.</span></li>
+</ol>
+
+<div class="keybox">
+\[ \boxed{\;\mathrm{LRT}_{\max}\;=\;2\,T\max_b(-Q_{bb})\;}\qquad(\text{short branches / depth-limited}). \]
+</div>
+
+<p>
+The species count \(n\) has cancelled (it entered only through \(t=T/n\)); the result depends on the tree only
+through the total depth \(T\), so it holds for any topology, not just a star (the "no substitution on any
+branch" path has probability \(\pi_b\prod_e(1+Q_{bb}\ell_e)\approx\pi_b e^{Q_{bb}\sum_e\ell_e}=\pi_b e^{Q_{bb}T}\)).
+Notice <em>why the fastest base sets the ceiling</em>: step&nbsp;5 gives each base its own evidence
+\(\mathrm{LRT}_b=2(-Q_{bb})T\), proportional to that base's exit rate \(-Q_{bb}\) — a base that would neutrally
+change fast, found perfectly preserved across depth \(T\), is the most surprising — so the maximum over bases
+picks the fastest, \(\max_b(-Q_{bb})\). The evidence then grows linearly in depth at slope \(2\max_b(-Q_{bb})\):
+a model whose fastest base turns over more quickly scores like a proportionally deeper tree.
+</p>
+
+<h3>3b · Long branches → taxon-limited: \(\mathrm{LRT}_{\max}=2(n-1)\big(-\ln\min_b\pi_b\big)\)</h3>
+
+<p>Now take \(t\) large (saturation). As \(t\to\infty\) every lineage forgets its ancestor and lands at
+equilibrium: \(P_{x\to b}(t)\to\pi_b\) for every starting base \(x\) (a standard property of a reversible
+\(e^{Qt}\)). Then:</p>
+<ol class="steps">
+<li><span class="eq">\(P_{\mathrm{all}}(b)=\sum_x\pi_x[P_{x\to b}(t)]^n\to\pi_b^{\,n}\)</span>
+<span class="narr">Now the opposite extreme — very long branches. Each leaf has "forgotten" its ancestor and is just a
+random draw from the background composition, so the chance all \(n\) leaves happen to be \(b\) is \(\pi_b\)
+multiplied by itself \(n\) times.</span>
+<span class="why">at saturation \(P_{x\to b}(t)\to\pi_b\) for every \(x\), so \(\sum_x\pi_x\pi_b^{\,n}=\pi_b^{\,n}\)
+(since \(\sum_x\pi_x=1\)); topology drops out too.</span></li>
+
+<li><span class="eq">\(\mathrm{LRT}_b=2\big[\ln\pi_b-\ln\pi_b^{\,n}\big]=2(n-1)\,(-\ln\pi_b)\)</span>
+<span class="narr">Score it the same way as before. This time the evidence grows with the <em>number of species</em>,
+not the tree depth — each extra leaf that independently landed on \(b\) makes the all-\(b\) coincidence more
+surprising.</span>
+<span class="why">since \(\ln\pi_b^{\,n}=n\ln\pi_b\), the bracket is \((1-n)\ln\pi_b\).</span></li>
+
+<li><span class="eq">\(\mathrm{LRT}_{\max}=\max_b 2(n-1)(-\ln\pi_b)=2(n-1)\,\big(-\ln\min_b\pi_b\big)\)</span>
+<span class="narr">And the ceiling goes to whichever base is rarest, because an all-rarest-base column is the least
+likely coincidence of all — and therefore the strongest possible evidence.</span>
+<span class="why">\(-\ln\pi_b\) is largest at the smallest frequency \(\min_b\pi_b\), since \(-\ln\) is decreasing.</span></li>
+</ol>
+
+<div class="keybox">
+\[ \boxed{\;\mathrm{LRT}_{\max}\;=\;2(n-1)\,\big(-\ln\min_b\pi_b\big)\;}\qquad(\text{long branches / taxon-limited}). \]
+</div>
+
+<p>
+Now the depth \(T\) and the exit rate have dropped out entirely: once branches saturate, extra depth buys
+nothing. And here the <em>rarest</em> base sets the ceiling, for the mirror image of the reason above: at
+saturation the \(n\) leaves are independent draws from equilibrium, so a perfectly conserved all-\(b\) column
+arises by chance with probability \(\pi_b^{\,n}\), which is smallest for the rarest base — the least-likely
+coincidence is the strongest evidence, so the maximum over bases picks \(\min_b\pi_b\). The evidence is then
+capped by the species count \(n\) and the composition \(\min_b\pi_b\) — a hard ceiling no tree depth can raise.
+(For equal base frequencies, \(\min_b\pi_b=\tfrac14\) and \(-\ln\tfrac14=\ln4\), giving \(2(n-1)\ln4\); a
+skewed composition, \(\min_b\pi_b<\tfrac14\), raises the cap.)
+</p>
+
+<h3>3c · The two together</h3>
+
+<p>The true \(\mathrm{LRT}_{\max}\) rises with depth along \(2\,T\max_b(-Q_{bb})\) until it reaches the taxon cap,
+then flattens; each expression above is the exact limit of §2 in its regime, so the ceiling is set by whichever
+binds:</p>
+
+<div class="keybox">
+\[ \mathrm{LRT}_{\max}\;\approx\;\min\!\Big(\underbrace{2\,T\max_b(-Q_{bb})}_{\text{depth-limited}},\;\;
+   \underbrace{2(n-1)\big(-\ln\min_b\pi_b\big)}_{\text{taxon-limited}}\Big),
+   \qquad
+   \text{ceiling}=-\log_{10}\operatorname{erfc}\!\Big(\sqrt{\mathrm{LRT}_{\max}/2}\Big). \]
+</div>
+
+<p>
+The crossover — where depth stops mattering — is where the two are equal,
+\(2\,T\max_b(-Q_{bb})=2(n-1)\big(-\ln\min_b\pi_b\big)\), i.e. at depth
+\(T^\*=\dfrac{(n-1)\big(-\ln\min_b\pi_b\big)}{\max_b(-Q_{bb})}\). The two limits are exact; the bend between them
+has no closed form and is the pruning of §2. So the interpretable knobs are: <b>\(T\) and the fastest exit rate
+\(\max_b(-Q_{bb})\)</b> set the climbing slope; <b>\(n\) and the rarest frequency \(\min_b\pi_b\)</b> set the
+ceiling it climbs toward.
+</p>
+
+<h2>4 · The bar: the score a site must clear</h2>
+
+<p>The ceiling is the best score available; the <b>bar</b> is the score required to survive multiple testing.</p>
+<dl class="defs">
+<dt>\(M\)</dt><dd>= the number of sites (independent tests) in the run.</dd>
+<dt>\(\alpha\)</dt><dd>= the target false-discovery level (<code>phylop_alpha</code>, default \(0.05\)).</dd>
+</dl>
+<p>The single most significant of \(M\) tests must reach \(p\le\alpha/M\) (the rank-1 Benjamini–Hochberg
+condition; equivalently Bonferroni for the top test). In \(-\log_{10}\) units:</p>
+<div class="keybox">
+\[ \text{bar}\;=\;-\log_{10}\!\big(\alpha/M\big)\;=\;\log_{10}(M/\alpha). \]
+</div>
+<p>This side is model-free: it depends only on how many tests you ran. More sites tested → a higher bar.</p>
+
+<h2>5 · Detectable when ceiling ≥ bar</h2>
+
+<div class="keybox">
+\[ \underbrace{-\log_{10}\operatorname{erfc}\!\Big(\sqrt{\mathrm{LRT}_{\max}/2}\Big)}_{\text{ceiling: best score the tree can give}}
+   \;\;\ge\;\;
+   \underbrace{\log_{10}(M/\alpha)}_{\text{bar: what correction demands}}. \]
+</div>
+
+<p>
+Because the ceiling caps at the taxon limit \(2(n-1)\big(-\ln\min_b\pi_b\big)\), the bar translates into a
+largest testable \(M\) for a given species count. Writing the capped ceiling as
+\(\mathrm{cap}(n)=-\log_{10}\operatorname{erfc}\!\big(\sqrt{(n-1)(-\ln\min_b\pi_b)}\big)\) (from
+\(\sqrt{\mathrm{LRT}_{\max}/2}=\sqrt{(n-1)(-\ln\min_b\pi_b)}\)), the wall is at
+\(M_{\text{wall}}(n)=\alpha\cdot10^{\,\mathrm{cap}(n)}\): above it, no amount of tree depth can make a call.
+</p>
+
+<div class="callout">
+<p><b>Illustrative (chosen values, not a dataset).</b> Take \(\max_b(-Q_{bb})=1.3\), \(\min_b\pi_b=\tfrac14\),
+\(n=100\), \(T=20\), \(\alpha=0.05\), \(M=10^{6}\):</p>
+<ul>
+<li>depth term \(2\,T\max_b(-Q_{bb})=2(20)(1.3)=52\); &nbsp; taxon term
+\(2(n-1)\big(-\ln\min_b\pi_b\big)=2(99)(\ln4)=274\); &nbsp; so \(\mathrm{LRT}_{\max}\approx\min(52,274)=52\)
+(depth-limited).</li>
+<li>ceiling \(=-\log_{10}\operatorname{erfc}\!\big(\sqrt{52/2}\big)=-\log_{10}\operatorname{erfc}(5.10)\approx12.3\).</li>
+<li>bar \(=\log_{10}(10^{6}/0.05)=\log_{10}(2\times10^{7})\approx7.3\).</li>
+<li>\(12.3\ge7.3\) → detectable. (Shrink \(T\) to \(2\): depth term \(=5.2\), ceiling \(\approx1.6<7.3\) → not
+detectable — the depth-limited failure. Shrink \(n\) to \(8\): taxon cap \(=2(7)\ln4\approx19.4\), ceiling
+\(\approx5.0<7.3\) even as \(T\to\infty\) → the taxon wall.)</li>
+</ul>
+</div>
+
+<figure>
+  <img src="figures/taxon_walls.png" alt="Detectability map: minimum species needed vs tree depth and number of sites tested."/>
+  <figcaption>
+    The inequality drawn as a map (theoretical; equal base frequencies, so the score cap is \(2(n-1)\ln4\)).
+    Horizontal axis = tree depth \(T\); vertical = number of sites tested \(M\); each solid contour is the
+    detectable/undetectable boundary for one species count \(n\), and the shaded regions show the minimum
+    number of species that can make a call there — all drawn at \(\max_b(-Q_{bb})=1\). The dashed lines
+    show the \(n\to\infty\) edge for faster models, \(\max_b(-Q_{bb})=1.5\) and \(2\): a larger exit rate
+    slides the rising part of every boundary left by \(1/\text{rate}\) (less depth needed), while the taxon
+    walls stay put. Reading across: fewer species pushes the boundary right (needs more depth), then flattens
+    into that count's taxon wall, above which no depth helps — the two regimes of §3 made visible.
+  </figcaption>
+</figure>
+
+<details>
+<summary>Notes — the tail convention and the interpolation</summary>
+<p>
+<b>Tail.</b> The p-value uses the \(\chi^2_1\) upper tail,
+\(p=\operatorname{erfc}(\sqrt{\mathrm{LRT}/2})\) (two-sided <code>CONACC</code>); this was checked directly
+against the phyloP binary on a fully-conserved probe column, and <code>lib/phylop_power.py</code> implements
+the §1–§2 computation.
+</p>
+<p>
+<b>Between the limits.</b> \(2\,T\max_b(-Q_{bb})\) (§3a) and \(2(n-1)\big(-\ln\min_b\pi_b\big)\) (§3b) are exact asymptotes; near
+the crossover \(T^\*\) the true \(\mathrm{LRT}_{\max}\) sits just under both, and there is no closed form — it
+is the exact pruning of §2. The \(\min(\cdot,\cdot)\) is the sharp-corner approximation to that smooth bend.
+</p>
+<p>
+<b>Best case.</b> The ceiling is the score of a perfectly conserved column at the most informative base, so it
+is an upper bound on any real per-site score — which is exactly what a detectability limit should be.
+</p>
+</details>
+
+<div class="foot">
+<p>
+Companion code in <code>analyses/phylop-tree-length-power/</code>: the exact §1–§2 scoring/ceiling (pruning
+with \(e^{Qt}\)) is in <code>lib/phylop_power.py</code>, validated against the phyloP binary; the map is drawn
+by <code>08_taxon_walls.py</code>; the plain-text derivation is <code>MATH.md</code>.
+</p>
+</div>
+
+</div>
+</body>
+</html>

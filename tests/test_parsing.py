@@ -86,25 +86,3 @@ def test_summarize_rho_empty_list():
     summary = parsing.summarize_rho([])
     assert summary["n"] == 0
     assert math.isnan(summary["selected"])
-
-#############################################################################
-# filter_duplicate_species_fasta
-
-def test_filter_duplicate_species_fasta_no_duplicates():
-    lines = [">Mus_musculus:chr1-100-200\n", "ACGT\n", ">Rattus_norvegicus:chr1-100-200\n", "ACGT\n"]
-    assert parsing.filter_duplicate_species_fasta(lines) is False
-
-
-def test_filter_duplicate_species_fasta_detects_duplicate():
-    lines = [
-        ">Mus_musculus:chr1-100-200\n", "ACGT\n",
-        ">Mus_musculus:chr2-300-400\n", "ACGT\n",
-    ]
-    assert parsing.filter_duplicate_species_fasta(lines) is True
-
-
-def test_filter_duplicate_species_fasta_non_conforming_header_falls_back_to_full_token():
-    # No genus_species-shaped prefix - falls back to using the whole species token as
-    # the dedup key, so two distinct oddly-named entries are not flagged as duplicates.
-    lines = [">weird123:chr1-1-2\n", "ACGT\n", ">weird456:chr1-1-2\n", "ACGT\n"]
-    assert parsing.filter_duplicate_species_fasta(lines) is False
