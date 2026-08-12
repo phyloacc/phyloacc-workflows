@@ -10,7 +10,10 @@ import traceback
 import lib.common as COMMON
 from lib.common import spacedOut as SO
 import lib.intervals as INTERVALS
-import lib.clustering as CLUSTER
+# lib.clustering is imported at runtime inside the cluster_conserved_sites run block, not
+# here: it pulls in numpy, and the Snakefile must parse for DAG validation in a numpy-free
+# environment. Importing it at the point of use keeps parsing dependency-free and still
+# fails fast (clear ImportError) if numpy is ever missing when the rule actually runs.
 
 from functools import partial
 
@@ -581,6 +584,7 @@ rule cluster_conserved_sites:
         # Output BED4+count: chrom, start, end, <method>_cluster_NNNNNNN, n_sites.
         with open(log.job_log, "w") as log_stream:
             try:
+                import lib.clustering as CLUSTER  # runtime-only (numpy-backed); see import note near top
                 os.makedirs(os.path.dirname(output.conserved_regions_bed), exist_ok=True)
                 sites = []
                 with open(input.conserved_sites_bed) as inf:
