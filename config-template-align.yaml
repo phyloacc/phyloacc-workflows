@@ -1,0 +1,119 @@
+# Config template for ALIGN-ONLY mode of the phyloacc workflow.
+#
+# Align-only mode BYPASSES the entire MAF-based prediction pipeline (phyloFit / phastCons /
+# phyloP / CNEE prediction). It takes a directory of UNALIGNED per-element FASTA files (one
+# multi-FASTA per element, one record per sample/species) and aligns each with an aligner
+# (mafft by default), producing a directory of aligned per-element FASTAs + manifest.txt +
+# skipped.tsv. It is selected simply by setting 'align_input_dir' (and NOT 'maf').
+#
+# Fill in the three required paths at the top; the rest have working defaults.
+# Run: phyloacc_workflows --env-name <env> run -j <N> -e slurm --configfile <this file>
+#      (drop -e slurm to run locally).
+#
+# For the full, comprehensive reference (every option in every workflow fork) see
+# config-template.yaml; this file is the pared-down align-only subset.
+
+##############################################################################
+# Required inputs - YOU MUST FILL THESE IN
+
+align_input_dir:
+# Absolute path to a directory of unaligned per-element FASTA files. Setting this selects
+# align-only mode. Files matching align_input_glob are picked up from this dir (and, per
+# align_batch_subdir_glob, one level down in batchN subdirs). The OUTPUT mirrors the input
+# layout (flat -> flat; batched -> the same batchN subdirs recreated under aligned/).
+
+output_dir:
+# Absolute path for run outputs. Aligned FASTAs + manifest.txt + skipped.tsv go to
+# <output_dir>/aligned-elements/ ; logs/benchmarks to <output_dir>/logs/.
+
+tmp_dir:
+# Absolute path to a directory for temporary files.
+
+##############################################################################
+# Options below have working defaults and MAY NOT NEED TO BE CHANGED
+
+##############################################################################
+# Aligner
+
+aligner: mafft
+# Which aligner to run (must have a command template in aligner_commands below).
+
+aligner_commands:
+  mafft: ["mafft", "--auto", "{input}"]
+# Per-aligner command templates. Tokens {input}/{output} are substituted per element; if a
+# template contains {output} it is passed as an argument (muscle/prank style), otherwise the
+# aligner's stdout is captured to the output file (mafft style). Add entries (e.g.
+# muscle: ["muscle","-align","{input}","-output","{output}"]) to use other aligners.
+
+##############################################################################
+# Input discovery
+
+align_input_glob:
+  - "*.fa"
+  - "*.fasta"
+  - "*.fna"
+# Filename patterns picked up from align_input_dir.
+
+align_batch_subdir_glob: "batch[0-9]*"
+# Also search one level down in subdirectories matching this glob (e.g. the batchN dirs some
+# CNEE extractors write, ~10k files each). Blank = flat top-level only. NOT recursive. A flat
+# input dir works with either setting. The output mirrors the input layout.
+
+##############################################################################
+# Filtering (off by default)
+
+align_min_seqs: 2
+# Skip an element with fewer than this many sequences (cannot be aligned) -> skipped.tsv
+# (reason too-few-seqs). Raise to also drop sparse elements.
+
+align_min_len_bp: 50
+# Drop an element whose LONGEST ungapped record is shorter than this (bp). Default 50
+# (matches the pipeline's cnee_min_len_bp); set 0 to align everything, incl. very short
+# elements. Skipped -> skipped.tsv (reason too-short).
+
+##############################################################################
+# Output header trimming (off by default)
+
+align_header_split:
+# If set, rewrite each ALIGNED record's header by splitting on this character and keeping one
+# field (see align_header_field) - e.g. " " (a space). Blank = keep headers as-is. The ">" is
+# never part of a field and is always kept.
+
+align_header_field: 0
+# Which field of the split header to keep (0-based; negatives index from the end). E.g.
+# align_header_split " " + align_header_field 0 turns ">gGal ce1 coords" into ">gGal".
+# Out-of-range field for a given header -> that header is left unchanged.
+
+##############################################################################
+# Scatter-gather batching
+
+align_batch_size: 2000
+# Elements per SLURM job (scatter-gather); number of jobs = ceil(n_elements / this). Each
+# job aligns its elements in a thread pool (cpus below); a gather step concatenates the
+# per-batch manifests into the final manifest.txt.
+
+##############################################################################
+# Optional overrides
+
+align_output_dir: ""
+# Redirect the aligned-output tree (aligned/, manifest.txt, skipped.tsv, run-info/) elsewhere.
+# Blank -> <output_dir>/aligned-elements.
+
+##############################################################################
+# Resources
+
+rule_resources:
+  default:
+    partition:
+    mem_mb: 4000
+    cpus: 1
+    time: 60
+
+  align_batch:
+    # One job per batch of align_batch_size elements; the aligner runs over the batch's
+    # elements in a thread pool (cpus = pool width). Scales with align_batch_size and element
+    # size, not genome/sample size. (The gather step uses `default`.)
+    partition:
+    mem_mb: 4000
+    cpus: 8
+    time: 120
