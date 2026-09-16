@@ -9,6 +9,7 @@ dependencies:
   - samtools
   - picard
   - phast
+  - mafft  # aligner for align-only mode (workflow/align_elements.smk)
   - ncbi-datasets-cli
   - pyyaml
   - pandas

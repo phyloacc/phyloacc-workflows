@@ -3,7 +3,9 @@
 Snakemake workflows for preparing comparative genomic alignment inputs for
 [PhyloAcc](https://github.com/phyloacc/phyloacc-workflows), from a whole-genome
 alignment (MAF) through neutral model estimation (phyloFit), site- and
-region-level conservation scoring (phyloP, phastCons), and CNEE extraction.
+region-level conservation scoring (phyloP, phastCons), and CNEE extraction. An
+[align-only mode](#align-only-mode) skips all of that and just aligns a directory of
+unaligned elements you already have.
 
 A tutorial exists [on the PhyloAcc website](https://phyloacc.github.io/workflow.html).
 
@@ -26,13 +28,24 @@ conda environment (defined in `envs/environment.yml`) and runs Snakemake.
 
 ## Configuration
 
-Copy `config-template.yaml` and fill in the required inputs at the top
-(`output_dir`, `maf`, `tree_file`, `ref_chromosome_groups`, etc.). `ref_fasta` is
-only required if `split_strategy` is `ns` or `fixed_windows` (see below) - the
-default `num_seqs` strategy needs no reference FASTA at all.
-Everything below that section has working defaults but can be adjusted -
-see the comments in the template for what each option controls. Example
-configs for past runs are in `cfgs/` for reference.
+Generate a starter config with the wrapper's `init` subcommand, which strips
+`config-template.yaml` down to keys and defaults (required fields left blank for you):
+
+```bash
+./phyloacc_workflows init -o my-config.yaml                 # full MAF pipeline
+./phyloacc_workflows init --mode phylop -o my-config.yaml   # or: phastcons | both | align
+```
+
+`--mode` tailors the output to one workflow fork (emitting only that fork's relevant
+options with the `run_*` switches preset); `--mode align` uses the dedicated
+`config-template-align.yaml`. Or copy `config-template.yaml` directly - it is the
+fully-documented reference covering every option in every fork.
+
+Fill in the required inputs at the top (`output_dir`, `maf`, `tree_file`,
+`ref_chromosome_groups`, etc.). `ref_fasta` is only required if `split_strategy` is `ns`
+or `fixed_windows` (see below) - the default `num_seqs` strategy needs no reference FASTA
+at all. Everything below has working defaults but can be adjusted - see the comments in
+the template for what each option controls. Example configs for past runs are in `cfgs/`.
 
 ### Resource requirements
 
@@ -84,10 +97,23 @@ Both conservation stages feed a shared CNEE-building stage (`build_cnees: true`,
 CNEEs (drop CDS-overlapping elements, length-filter, extract alignments), written under
 `05-cnees/{phastcons,phylop}/` — one CNEE set per enabled source.
 
+### Align-only mode
+
+If you already have your elements and only need them aligned, set `align_input_dir`
+(instead of `maf`) to a directory of unaligned per-element FASTAs. This bypasses the whole
+MAF / phyloFit / phastCons / phyloP / CNEE pipeline and simply aligns each element with
+`mafft` (the aligner is configurable via `aligner_commands`), writing per-element aligned
+FASTAs plus `manifest.txt` and `skipped.tsv` under `<output_dir>/aligned-elements/`. Input
+in `batch<N>/` subdirs is discovered and mirrored in the output; elements are dropped
+(with a reason in `skipped.tsv`) below `align_min_seqs` sequences or `align_min_len_bp` bp,
+and headers can be trimmed to a chosen field. It runs as a SLURM scatter-gather (or locally
+without `-e slurm`). Generate a config with `./phyloacc_workflows init --mode align`;
+requires `mafft` in the environment (installed by `setup`).
+
 ## Repo layout
 
 - `Snakefile` - entry point; includes the workflow files below based on config toggles
-- `workflow/` - the active Snakemake rule files (`phylofit_models.smk`, `phylop_regions.smk`, `phastcons_cnees.smk`, and `cnees.smk` - the shared, source-agnostic CNEE-building stage that turns conserved elements from phastCons and/or phyloP into CNEEs); `workflow/legacy/` holds earlier versions of the pipeline not used by the current `Snakefile`
+- `workflow/` - the active Snakemake rule files (`phylofit_models.smk`, `phylop_regions.smk`, `phastcons_cnees.smk`, `cnees.smk` - the shared, source-agnostic CNEE-building stage that turns conserved elements from phastCons and/or phyloP into CNEEs - and `align_elements.smk` - the align-only mode); `workflow/legacy/` holds earlier versions of the pipeline not used by the current `Snakefile`
 - `lib/` - shared Python helpers used across the workflow files
 - `utils/` - standalone scripts/tools invoked by rules
 - `envs/environment.yml` - pinned dependencies for the `phyloacc_workflows` environment

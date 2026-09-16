@@ -36,6 +36,20 @@ if cnee_output_format not in {"none", "fasta", "maf"}:
 config["build_cnees"] = build_cnees
 config["cnee_output_format"] = cnee_output_format
 
+# --- align-only mode: inferred from presence of align_input_dir (no explicit switch) ---
+# If align_input_dir is set, bypass the entire MAF-based prediction pipeline and only align
+# a directory of user-supplied unaligned per-element FASTAs (workflow/align_elements.smk).
+align_input_dir = str(config.get("align_input_dir", "")).strip()
+align_only = bool(align_input_dir)
+if align_only:
+    if str(config.get("maf", "")).strip():
+        raise ValueError(
+            "Ambiguous mode: set either 'maf' (predict pipeline) OR 'align_input_dir' "
+            "(align-only), not both."
+        )
+    run_phylofit = run_phylop = run_phastcons = build_cnees = False
+    config["build_cnees"] = False
+
 config["__master_workflow__"] = True
 config_flag = config.get("display", False)
 version_flag = config.get("version", False)
@@ -72,6 +86,8 @@ if include_cnees:
     include: "workflow/cnees.smk"
 if run_phastcons:
     include: "workflow/phastcons_cnees.smk"
+if align_only:
+    include: "workflow/align_elements.smk"
 
 localrules: all
 
@@ -112,6 +128,12 @@ ALL_TARGETS = (
     + (ALL_CNEE_MAF_TARGETS if build_cnees and cnee_output_format != "none" else [])
 )
 
+# In align-only mode the sole target is the aligned-elements manifest from
+# workflow/align_elements.smk; none of the MAF-based sublists above apply.
+ALL_ALIGN_TARGETS = globals().get("ALL_ALIGN_TARGETS", []) if align_only else []
+if align_only:
+    ALL_TARGETS = list(ALL_ALIGN_TARGETS)
+
 PIPELINE_DIR = os.path.dirname(os.path.abspath(workflow.snakefile))
 UTILS_DIR = os.path.join(PIPELINE_DIR, "utils")
 
@@ -126,7 +148,7 @@ SUMMARY_REPORT_PATH = os.path.join(
 
 rule all:
     input:
-        ALL_TARGETS + [SUMMARY_REPORT_PATH]
+        ALL_TARGETS + ([] if align_only else [SUMMARY_REPORT_PATH])
 
 rule summary_report:
     input:
@@ -152,8 +174,8 @@ rule summary_report:
                 "ref_gff": config.get("ref_gff"),
                 "tree_file": config.get("tree_file"),
                 "sample_file": config.get("sample_file"),
-                "n_chromosome_groups": len(config["ref_chromosome_groups"]),
-                "n_chromosomes": sum(len(v) for v in config["ref_chromosome_groups"].values()),
+                "n_chromosome_groups": len(config.get("ref_chromosome_groups", {})),
+                "n_chromosomes": sum(len(v) for v in config.get("ref_chromosome_groups", {}).values()),
                 "run_phylofit": run_phylofit,
                 "run_phastcons": run_phastcons,
                 "build_cnees": build_cnees,
@@ -174,7 +196,7 @@ rule summary_report:
                 "use_gc_corrected_models": USE_GC_CORRECTED_MODELS if run_phylofit else None,
                 "rho_mode": RHO_MODE if run_phastcons else None,
             },
-            "chromosome_groups": config["ref_chromosome_groups"],
+            "chromosome_groups": config.get("ref_chromosome_groups", {}),
             # Resolve the canonical MAF chromosome prefix from the new maf_prefix key,
             # falling back to the legacy maf_chr_prefix alias - the summary collectors
             # build MAF-named filenames ("chr1.bed") from this, so an unset value on a
@@ -186,7 +208,9 @@ rule summary_report:
                 "filter_threshold_4d": SEQ_THRESHOLD_4D if run_phylofit else None,
                 "avg_gc_file": AVG_GC_FILE if run_phylofit else None,
                 "maf_chunk_summary_dir": MAF_CHUNK_SUMMARY_DIR if run_phastcons else None,
-                "maf_index_dir": MAF_INDEX_DIR if (run_phastcons or (run_phylop and build_cnees)) else None,
+                # Per-chromosome block index is now co-located with the chromosome MAF
+                # (maf_index_chr), named <prefix><chrom>.maf.block.idx - not the old maf-index/ dir.
+                "maf_index_dir": MAF_SPLIT_BY_CHROM_DIR if (run_phastcons or (run_phylop and build_cnees)) else None,
                 "conserve_dir": CONSERVE_DIR if run_phastcons else None,
                 "cnees_dir": CNEES_DIR if (run_phastcons and build_cnees) else None,
                 "cnees_summary_dir": CNEES_SUMMARY_DIR if (run_phastcons and build_cnees) else None,

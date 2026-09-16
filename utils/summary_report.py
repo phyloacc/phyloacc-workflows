@@ -301,6 +301,7 @@ def collect_cnee_density(m, bin_bp, raw_dir_key, cnee_dir_key, raw_filename_fn):
     # (conserve_dir CEs + cnees_dir CNEEs) or phyloP (phylop_regions_dir + phylop_cnees_dir).
     # Final CNEEs are length-filtered by cnee_min_len_bp, matching the CNEE sections.
     maf_index_dir = m["paths"].get("maf_index_dir")
+    maf_chr_prefix = m.get("maf_chr_prefix", "")
     raw_dir = m["paths"].get(raw_dir_key)
     cnee_dir = m["paths"].get(cnee_dir_key)
     min_len_bp = m["paths"].get("cnee_min_len_bp")
@@ -308,7 +309,8 @@ def collect_cnee_density(m, bin_bp, raw_dir_key, cnee_dir_key, raw_filename_fn):
         return None
     rows = []
     for group, chrom in chrom_pairs(m["chromosome_groups"]):
-        chrom_len = INTERVALS.read_chrom_length(os.path.join(maf_index_dir, group, f"{chrom}.maf.block.idx"))
+        # Block index is co-located with the chromosome MAF and MAF-named (prefix + chrom).
+        chrom_len = INTERVALS.read_chrom_length(os.path.join(maf_index_dir, group, f"{maf_chr_prefix}{chrom}.maf.block.idx"))
         if chrom_len is None:
             continue
 

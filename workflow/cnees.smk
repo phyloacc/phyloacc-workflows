@@ -205,8 +205,14 @@ rule maf_index_chr:
     input:
         maf = _cnee_chr_maf
     output:
-        maf_index_block = os.path.join(MAF_INDEX_DIR, "{chromosome_group}", "{ref_chromosome}.maf.block.idx"),
-        maf_index_scaff = os.path.join(MAF_INDEX_DIR, "{chromosome_group}", "{ref_chromosome}.maf.scaff.idx")
+        # Write the per-chromosome indexes NEXT TO the chromosome MAF, with mafutils'
+        # canonical names (<maf>.block.idx / <maf>.scaffold.idx). This matters because
+        # block-mode `mafutils fetch` (maf_split_chunks, cnee_alignments_chr) always
+        # auto-looks-up the scaffold index at <maf>.scaffold.idx with no flag to redirect
+        # it - so it must be co-located and canonically named, not tucked in a separate
+        # maf-index/ dir under an abbreviated ".scaff.idx" name.
+        maf_index_block = os.path.join(MAF_SPLIT_BY_CHROM_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.maf.block.idx"),
+        maf_index_scaff = os.path.join(MAF_SPLIT_BY_CHROM_DIR, "{chromosome_group}", MAF_CHR_PREFIX + "{ref_chromosome}.maf.scaffold.idx")
     log:
         job_log = os.path.join(LOG_DIR, "maf_index_chr", "{chromosome_group}", "{ref_chromosome}.log")
     benchmark:

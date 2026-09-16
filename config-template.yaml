@@ -47,8 +47,72 @@ ref_chromosome_groups:
 output_dir:
 # Absolute path to the desired output directory for this workflow.
 
-tmp_dir: 
+tmp_dir:
 # Absolute path to a directory for temporary files.
+
+##############################################################################
+# Align-only mode (ALTERNATIVE entry point)
+# init-fork: align
+#
+# Set align_input_dir to a directory of UNALIGNED per-element FASTA files (one
+# multi-FASTA per element, one record per species) to BYPASS the entire MAF-based
+# prediction pipeline above and simply align each element with an aligner (mafft by
+# default). Output is a directory of per-element aligned FASTAs + a manifest.txt
+# (aligned elements) + a skipped.tsv (elements dropped, e.g. too few sequences or too
+# short: tab-delimited columns locus, reason, n_seqs, max_len_bp). Leave align_input_dir
+# BLANK to run the normal prediction pipeline. align_input_dir
+# and maf are mutually exclusive (setting both is an error).
+
+align_input_dir:
+# Absolute path to a directory of unaligned per-element FASTA files. Blank = normal
+# prediction pipeline (uses 'maf' above).
+
+aligner: mafft
+# Which aligner to run (must have a command template in aligner_commands below).
+
+align_output_dir: ""
+# Where aligned elements + manifest.txt are written. Blank -> <output_dir>/aligned-elements.
+
+align_input_glob:
+  - "*.fa"
+  - "*.fasta"
+  - "*.fna"
+# Filename patterns picked up from align_input_dir.
+
+align_batch_subdir_glob: "batch[0-9]*"
+# Also search one level down in subdirectories matching this glob (e.g. the batchN dirs
+# some CNEE extractors write, ~10k files each). Blank = flat top-level only. NOT recursive
+# (only the top level and one level of matching subdirs are searched). A flat input dir
+# works with either setting. The OUTPUT mirrors the input layout: a flat input dir gives
+# flat output; batched input recreates the same batchN subdirs under aligned-elements/aligned/.
+
+align_min_seqs: 2
+# Elements with fewer sequences than this cannot be aligned and are skipped with a
+# warning (never emitted as output). Raise to also drop sparse elements.
+
+align_min_len_bp: 50
+# Drop an element if its LONGEST ungapped record is shorter than this (bp). Default 50
+# (matches cnee_min_len_bp); set 0 to align everything. Skipped -> skipped.tsv ("too-short").
+
+align_header_split:
+# If set, rewrite each ALIGNED record's header by splitting on this character and keeping
+# one field (see align_header_field) - e.g. " " (space). Blank = keep headers as-is.
+
+align_header_field: 0
+# Which field of the split header to keep (0-based; negatives index from the end). E.g.
+# align_header_split " " + align_header_field 0 turns ">gGal ce1 coords" into ">gGal".
+# Out-of-range field for a given header -> that header is left unchanged.
+
+align_batch_size: 2000
+# Elements per SLURM job (scatter-gather); number of jobs = ceil(n_elements / this).
+
+aligner_commands:
+  mafft: ["mafft", "--auto", "{input}"]
+# Per-aligner command templates. Tokens {input}/{output} are substituted per element;
+# if a template contains {output} it is passed as an argument (muscle/prank style),
+# otherwise the aligner's stdout is captured to the output file (mafft style). Add
+# entries (e.g. muscle: ["muscle","-align","{input}","-output","{output}"]) to use
+# other aligners without code changes.
 
 ##############################################################################
 # Options below have been set with default values and MAY NOT NEED TO BE CHANGED
@@ -104,16 +168,11 @@ accession_header: accession
 # Header in 'sample_file' containing assembly accessions for GC lookup.
 
 ##############################################################################
-# phastCons / CNEE behavior
+# phastCons behavior
+# init-fork: phastcons
 #
-# CNEE building (build_cnees: true; workflow/cnees.smk) is a shared stage: it turns
-# conserved elements from ANY enabled conservation source into CNEEs (merge -> drop
-# CDS-overlapping elements -> length-filter -> extract alignments). It runs for each
-# active source and writes source-namespaced outputs:
-#   <output_dir>/05-cnees/phastcons/...   (from phastCons conserved elements; run_phastcons)
-#   <output_dir>/05-cnees/phylop/...      (from phyloP-clustered regions;      run_phylop)
-# With both stages enabled you get both CNEE sets. The cnee_* options below apply to every
-# source. (CDS coordinates and the per-chromosome MAF index are computed once and shared.)
+# phastCons calls conserved ELEMENTS directly from the neutral model. These options control
+# how the reference is chunked for phastCons and the rho (expected-coverage) it uses.
 
 ##########
 # Split strategy for phastCons
@@ -174,6 +233,18 @@ global_rho_stat: p90
 # Used when rho_mode: estimate
 # One of: p90, median, mean
 
+##############################################################################
+# CNEE behavior (shared across conservation sources)
+#
+# CNEE building (build_cnees: true; workflow/cnees.smk) is a shared stage: it turns
+# conserved elements from ANY enabled conservation source into CNEEs (merge -> drop
+# CDS-overlapping elements -> length-filter -> extract alignments). It runs for each
+# active source and writes source-namespaced outputs:
+#   <output_dir>/05-cnees/phastcons/...   (from phastCons conserved elements; run_phastcons)
+#   <output_dir>/05-cnees/phylop/...      (from phyloP-clustered regions;      run_phylop)
+# With both stages enabled you get both CNEE sets. The cnee_* options below apply to every
+# source. (CDS coordinates and the per-chromosome MAF index are computed once and shared.)
+
 cnee_output_format: fasta
 # One of:
 # - none
@@ -207,6 +278,7 @@ cnee_expected_species_file: ""
 
 ##############################################################################
 # phyloP-only behavior
+# init-fork: phylop
 #
 # NOTE: per-site conserved calling has a hard statistical-power limit on shallow trees.
 # The most-conserved possible site can only clear genome-wide FDR once the total neutral
@@ -234,6 +306,7 @@ phylop_power_fallback_num_sites: 100000000
 
 ##############################################################################
 # Conserved site clustering behavior
+# init-fork: phylop
 # Conserved-region clustering (cluster_conserved_sites): how FDR-significant conserved
 # sites are grouped into regions.
 
@@ -423,6 +496,16 @@ rule_resources:
     partition:
     mem_mb: 6000
     cpus: 4
+    time: 120
+
+  align_batch:
+    # workflow/align_elements.smk (align-only mode). One job per batch of
+    # align_batch_size elements; the aligner (mafft) runs over the batch's elements
+    # in a thread pool (cpus = pool width). Scales with align_batch_size and element
+    # size, not genome/sample size. (align_gather uses `default`.)
+    partition:
+    mem_mb: 4000
+    cpus: 8
     time: 120
 
 ##############################################################################

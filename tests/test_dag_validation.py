@@ -377,3 +377,86 @@ def test_phylop_power_check_in_phylop_dag(tmp_path):
     rc, output = _dryrun_integration(tmp_path, {"run_phylop": True, "run_phastcons": False})
     assert rc == 0, output[-3000:]
     assert "phylop_power_check" in output
+
+#############################################################################
+# Align-only mode (workflow/align_elements.smk) - inferred from align_input_dir.
+# These use NO real MAF/tree/GFF: align mode forces the MAF modules off, so the
+# only hard requirement (config["ref_chromosome_groups"]) must not KeyError at
+# parse time. This is the regression guard for that isolation.
+
+
+def _make_elements_dir(tmp_path, n):
+    indir = tmp_path / "elements"
+    indir.mkdir()
+    for i in range(n):
+        # 2 records so a real run would align; for a dry-run only existence matters.
+        (indir / f"element{i}.fa").write_text(f">a\nACGT\n>b\nACGT\n")
+    return indir
+
+
+def test_align_only_dag_builds_and_batches(tmp_path):
+    # align_input_dir set + maf unset -> align mode. 3 elements at batch_size 2 -> 2
+    # batches -> 2 align_batch jobs + 1 align_gather, and the DAG must resolve.
+    indir = _make_elements_dir(tmp_path, 3)
+    rc, output = run_dryrun(tmp_path, {
+        "maf": "",
+        "align_input_dir": str(indir),
+        "align_batch_size": 2,
+    })
+    assert rc == 0, output[-3000:]
+    assert "align_batch" in output
+    assert "align_gather" in output
+    # The MAF-based pipeline must be entirely absent in align mode.
+    assert "run_phylofit" not in output
+    assert "run_phastcons_chr" not in output
+
+
+def test_align_only_and_maf_is_ambiguous(tmp_path):
+    # Both maf (from BASELINE) and align_input_dir set -> hard error at parse time.
+    rc, output = run_dryrun(tmp_path, {"align_input_dir": "/placeholder/elements"})
+    assert rc != 0
+    assert "Ambiguous mode" in output
+
+
+def test_align_only_empty_dir_still_resolves(tmp_path):
+    # An existing but empty input dir -> zero batches -> align_gather still produces
+    # an (empty) manifest, so the DAG resolves rather than erroring.
+    indir = tmp_path / "elements"
+    indir.mkdir()
+    rc, output = run_dryrun(tmp_path, {
+        "maf": "",
+        "align_input_dir": str(indir),
+    })
+    assert rc == 0, output[-3000:]
+    assert "align_gather" in output
+
+
+def test_align_only_discovers_batch_subdirs(tmp_path):
+    # Files live ONLY in a batchN subdir (none at the top level, as the CNEE extractor
+    # writes them) -> align_batch_subdir_glob must still discover them.
+    indir = tmp_path / "elements"
+    (indir / "batch1").mkdir(parents=True)
+    for i in range(3):
+        (indir / "batch1" / f"ce{i}_orthologs.fasta").write_text(">a\nACGT\n>b\nACGT\n")
+    rc, output = run_dryrun(tmp_path, {
+        "maf": "",
+        "align_input_dir": str(indir),
+        "align_batch_size": 2,
+    })
+    assert rc == 0, output[-3000:]
+    assert "align_batch" in output
+    assert "align_gather" in output
+
+
+def test_align_only_same_basename_across_batches_ok(tmp_path):
+    # Output mirrors each input's path relative to align_input_dir, so the same basename
+    # in two different batch dirs maps to two distinct output paths (batch1/... vs
+    # batch2/...) - no collision, the DAG resolves.
+    indir = tmp_path / "elements"
+    (indir / "batch1").mkdir(parents=True)
+    (indir / "batch2").mkdir(parents=True)
+    (indir / "batch1" / "ce0_orthologs.fasta").write_text(">a\nACGT\n>b\nACGT\n")
+    (indir / "batch2" / "ce0_orthologs.fasta").write_text(">a\nACGT\n>b\nACGT\n")
+    rc, output = run_dryrun(tmp_path, {"maf": "", "align_input_dir": str(indir)})
+    assert rc == 0, output[-3000:]
+    assert "align_gather" in output
