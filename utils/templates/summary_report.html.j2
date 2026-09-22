@@ -284,11 +284,13 @@ length-filtered by <code>cnee_min_len_bp</code> first, matching the CNEE section
 
 <h3 id="cnee-density">CNEE distribution along chromosomes</h3>
 {% if cnee_density_figs is defined %}
-<p class="note">Final CNEEs (blue, <b>left</b> axis, after the <code>cnee_min_len_bp</code> length filter) binned
-into {{ (cnee_density_bin_bp // 1000) }}kb windows along each chromosome, against the raw conserved
-elements/regions they were called from (orange, <b>right</b> axis, on its own scale - the raw elements are far
-more numerous, so a shared axis would hide the CNEEs). The x-axis is zoomed to the aligned extent, so a
-sub-chromosome window fills the panel.</p>
+<p class="note">Counts binned into {{ (cnee_density_bin_bp // 1000) }}kb windows along each chromosome, as small
+multiples: one row per chromosome with the raw conserved elements/regions on the <b>left</b> (orange) and the
+final CNEEs they were called from on the <b>right</b> (blue, after the <code>cnee_min_len_bp</code> length
+filter). Every panel uses its own y-scale - it differs between the two columns (raw vs CNEEs) <b>and</b> between rows
+(chromosomes), so bar heights are comparable only <b>within</b> a panel, never across rows or columns. (This
+avoids the shared axis that would otherwise hide the far more numerous raw elements.) The two panels in a row
+share the same x-window (zoomed to the aligned extent, so a sub-chromosome window fills the panel).</p>
 {% for d in cnee_density_figs %}
 <h4>{{ d.label }}</h4>
 <img class="plot" src="data:image/png;base64,{{ d.plot }}">

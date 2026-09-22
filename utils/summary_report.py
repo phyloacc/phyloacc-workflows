@@ -713,42 +713,44 @@ def box_plot(lengths, title):
 
 
 def cnee_density_plot(rows, bin_bp, raw_label, source_label):
-    # One combined figure, one row per chromosome. Final CNEEs (the subject) go on the
-    # PRIMARY axis so they're always visible; the raw elements/regions they came from go
-    # on a faint SECONDARY axis (their own scale) - otherwise the far more numerous raw
-    # elements crush the CNEE bars to an invisible line.
-    fig, axes = plt.subplots(nrows=len(rows), ncols=1, figsize=(10, 1.5 * len(rows)), squeeze=False)
-    axes = axes[:, 0]
-    cnee_handle = raw_handle = None
-    for ax, row in zip(axes, rows):
+    # Small multiples, one ROW per chromosome and two COLUMNS: raw elements/regions on the
+    # left, final CNEEs on the right. Each panel has its own independent y-scale, so the far
+    # more numerous raw elements no longer need a shared/twin axis that crushed the CNEE bars
+    # (and no overlapping bars). The two panels in a row share the same x-window for
+    # side-by-side comparison.
+    fig, axes = plt.subplots(nrows=len(rows), ncols=2, figsize=(12, 1.5 * len(rows)),
+                             squeeze=False, sharex="row")
+    for r, row in enumerate(rows):
+        ax_raw, ax_cnee = axes[r, 0], axes[r, 1]
         bin_starts_mb = [i * bin_bp / 1e6 for i in range(row["n_bins"])]
         if row["raw_counts"] is not None:
-            ax2 = ax.twinx()
-            raw_handle = ax2.bar(bin_starts_mb, row["raw_counts"], width=bin_bp / 1e6, align="edge",
-                                 color="C1", alpha=0.30, zorder=1, label=f"{raw_label} (raw)")
-            ax2.set_ylim(bottom=0)
-            ax2.tick_params(axis="y", labelsize=6, colors="C1")
-        cnee_handle = ax.bar(bin_starts_mb, row["cnee_counts"], width=bin_bp / 1e6, align="edge",
-                             color="C0", zorder=3, label="CNEEs (final)")
-        ax.set_ylim(bottom=0)
-        ax.set_zorder(2); ax.patch.set_visible(False)  # keep CNEE bars above the twin-axis raw bars
+            ax_raw.bar(bin_starts_mb, row["raw_counts"], width=bin_bp / 1e6, align="edge", color="C1")
+        ax_cnee.bar(bin_starts_mb, row["cnee_counts"], width=bin_bp / 1e6, align="edge", color="C0")
+        for ax, colour in ((ax_raw, "C1"), (ax_cnee, "C0")):
+            ax.set_ylim(bottom=0)
+            ax.tick_params(axis="y", labelsize=6, colors=colour)
         # Zoom the x-axis to the ALIGNED extent (first->last non-empty bin) rather than
-        # 0..chrom_len, so a sub-chromosome window (e.g. a 2 Mb chunk of chr1) fills the
-        # panel instead of hugging one edge; full-chromosome runs start near 0 unchanged.
+        # 0..chrom_len, so a sub-chromosome window (e.g. a 2 Mb chunk of chr1) fills the panel
+        # instead of hugging one edge; full-chromosome runs start near 0 unchanged.
         occupied = [i for i in range(row["n_bins"])
                     if row["cnee_counts"][i] or (row["raw_counts"] and row["raw_counts"][i])]
         if occupied:
             lo = occupied[0] * bin_bp / 1e6
             hi = min(row["chrom_len"], (occupied[-1] + 1) * bin_bp) / 1e6
             pad = 0.02 * (hi - lo) if hi > lo else bin_bp / 1e6
-            ax.set_xlim(max(0, lo - pad), hi + pad)
+            ax_raw.set_xlim(max(0, lo - pad), hi + pad)   # shared with ax_cnee via sharex
         else:
-            ax.set_xlim(0, row["chrom_len"] / 1e6)
-        ax.set_ylabel(row["chrom"], rotation=0, ha="right", va="center", fontsize=8)
-        ax.tick_params(axis="y", labelsize=6, colors="C0")
-    axes[-1].set_xlabel("Position (Mb)")
-    fig.suptitle(f"{source_label} CNEE density along each chromosome ({bin_bp // 1000}kb bins)\n"
-                 f"blue = CNEEs (left axis) · orange = {raw_label} (right axis, own scale)", fontsize=10)
+            ax_raw.set_xlim(0, row["chrom_len"] / 1e6)
+        # Chromosome label on the far-left of the row.
+        ax_raw.set_ylabel(row["chrom"], rotation=0, ha="right", va="center", fontsize=8)
+    axes[0, 0].set_title(f"{raw_label} (raw)", fontsize=9, color="C1")
+    axes[0, 1].set_title("CNEEs (final)", fontsize=9, color="C0")
+    axes[-1, 0].set_xlabel("Position (Mb)")
+    axes[-1, 1].set_xlabel("Position (Mb)")
+    fig.suptitle(f"{source_label} density along each chromosome ({bin_bp // 1000}kb bins) - "
+                 f"{raw_label} (left) vs final CNEEs (right)\n"
+                 f"every panel has its own y-scale (differs across both rows and columns) - "
+                 f"compare heights only within a panel", fontsize=10)
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     return fig_to_base64(fig)
 
