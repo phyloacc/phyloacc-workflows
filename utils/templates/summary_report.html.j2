@@ -139,6 +139,29 @@ CNEE total reported under Outputs below.</p>
 <p class="empty">No CE/CNEE filtering data (build_cnees was not enabled, or neither run_phastcons nor run_phylop ran).</p>
 {% endif %}
 
+{% if cnee_ortho_filters is defined %}
+<h3 id="cnee-ortho-filter">Clean single-copy ortholog filter</h3>
+<p class="note">Applied to the per-CNEE alignment FASTAs so the retained folder is a clean single-copy ortholog
+set for PhyloAcc. Each species' row is classified (single / contiguous / split / multi_scaffold / multi_strand /
+no_bases). Rows kept: <b>single</b>, <b>contiguous</b>, and <b>split</b> with gap &le; <code>cnee_split_max_gap_bp</code>{% if cnee_split_max_gap_bp is not none %} ({{ cnee_split_max_gap_bp }} bp){% endif %}.
+Rows blanked to N (missing data): multi_scaffold, multi_strand, no_bases, and long lineage-specific splits (the
+reference row is never masked). Elements left with fewer than <code>cnee_min_species</code>{% if cnee_min_species is not none %} ({{ cnee_min_species }}){% endif %}
+real species, or missing the reference, are moved out to <code>05-cnees/&lt;source&gt;/fasta-rejected/</code>.
+Reference-deletion <b>shared-boundary</b> elements are kept intact and only flagged.</p>
+{% for f in cnee_ortho_filters %}
+<h4>{{ f.label }}</h4>
+<div class="stat-row">
+  <div class="stat"><div class="n">{{ f.totals.fetched }}</div><div class="label">extracted</div></div>
+  <div class="stat"><div class="n">{{ f.totals.retained }}</div><div class="label">retained (clean set)</div></div>
+  <div class="stat"><div class="n">{{ f.totals.rejected }}</div><div class="label">rejected (&minus;min species/&minus;ref)</div></div>
+  <div class="stat"><div class="n">{{ f.totals.elements_masked }}</div><div class="label">elements with masked rows</div></div>
+  <div class="stat"><div class="n">{{ f.totals.rows_masked }}</div><div class="label">rows blanked to N</div></div>
+  <div class="stat"><div class="n">{{ f.totals.elements_shared_boundary }}</div><div class="label">shared-boundary (flagged, kept)</div></div>
+</div>
+<details><summary>Per-chromosome table</summary>{{ table(f.table) }}</details>
+{% endfor %}
+{% endif %}
+
 <h2 id="phylop">phyloP conserved sites</h2>
 
 <h3 id="power-gate">Power gate</h3>

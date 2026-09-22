@@ -276,6 +276,41 @@ cnee_expected_species_file: ""
 # Optional newline-delimited species list file.
 # If blank, species will be read from the tree file.
 
+#####
+# Clean single-copy ortholog filtering (fasta output only)
+#
+# After extraction, mafutils classifies every (element, species) row as single /
+# contiguous / split / multi_scaffold / multi_strand / no_bases. MAF blocks are
+# contiguous in the REFERENCE only, so a non-reference row can stitch non-adjacent
+# genome pieces or blank all-gap. This step makes the retained FASTA folder a clean
+# single-copy ortholog set, usable directly as PhyloAcc input:
+#   - keep single/contiguous rows, and split rows with gap <= cnee_split_max_gap_bp;
+#   - blank other rows to N (missing data) - multi_scaffold/multi_strand/no_bases, and
+#     long lineage-specific splits (the reference row is never masked);
+#   - keep, but only FLAG, reference-deletion "shared-boundary" elements (their gap is
+#     non-reference sequence, unrecoverable in a reference-based pipeline);
+#   - move elements with fewer than cnee_min_species real species (after masking), or
+#     missing the reference, OUT of the folder to 05-cnees/<source>/fasta-rejected/...
+# Counts are reported in the summary report. Requires a mafutils build with the extended
+# summary + --loci-table.
+
+cnee_filter_enabled: true
+# false = keep every extracted row as-is (no masking, no rejects).
+
+cnee_split_max_gap_bp: 50
+# A split row is kept (benign indel) if its largest inter-chunk gap is <= this many bp;
+# otherwise the row is blanked to N (rearrangement / paralog risk). Not more than ~50.
+
+cnee_min_species: 4
+# Minimum real (non-N) species remaining after masking for an element to be retained.
+# Dataset-dependent - set relative to how many taxa PhyloAcc needs.
+
+cnee_shared_boundary_min_frac: 0.5
+cnee_shared_boundary_max_gap_spread_bp: 10
+# An element is a "shared-boundary" (reference-deletion) event - kept intact and only
+# flagged - when at least this fraction of its split species (and >= 3 absolute) split at
+# one reference boundary with their gap sizes agreeing within this many bp.
+
 ##############################################################################
 # phyloP-only behavior
 # init-fork: phylop
@@ -532,7 +567,14 @@ target_ref_chromosomes: []
 
 debug_keep_intermediates: false
 cleanup_chunk_intermediates: true
-keep_cnee_sidecars: false
+keep_cnee_sidecars: true
+# The per-CNEE-fetch sidecars from mafutils - maf_fetch_summary.tsv (per-element locus
+# classifications), maf_fetch_loci.tsv (per-species/per-block detail), maf_fetch.log.
+# true (default): move them into the source summary folder, chromosome-prefixed
+# (05-cnees/<source>/summary/<group>/<chrom>.maf_fetch_summary.tsv, etc.), so the FASTA dir
+# stays a clean *.fa + manifest.txt set for PhyloAcc while the classifications are kept
+# beside the other per-chromosome summaries. false: delete them (maf_fetch_loci.tsv is large
+# - ~regions x species rows - so set false to save disk on whole-genome runs).
 
 ###########################
 # Secondary workflow switches

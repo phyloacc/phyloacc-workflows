@@ -235,6 +235,63 @@ def collect_cnee_filtering(m, summary_dir_key="cnees_summary_dir", bed_dir_key=N
     return pd.DataFrame(rows) if rows else None
 
 
+ORTHO_KEYS = [
+    "cnee_fetched", "cnee_retained", "cnee_rejected",
+    "cnee_elements_all_clean", "cnee_elements_masked", "cnee_elements_shared_boundary",
+    "cnee_rows_masked_split_long", "cnee_rows_masked_multi_scaffold",
+    "cnee_rows_masked_multi_strand", "cnee_rows_masked_no_bases", "cnee_rows_masked_unknown",
+    "cnee_rejected_min_species", "cnee_rejected_ref_absent",
+]
+
+
+def collect_cnee_ortho_filtering(m, summary_dir_key="cnees_summary_dir"):
+    # Per-chromosome clean single-copy ortholog filter stats (cnee_alignments_chr),
+    # from {chrom}.cnee-ortho-filter.tsv (metric<TAB>value). fasta output only.
+    summary_dir = m["paths"].get(summary_dir_key)
+    if not summary_dir:
+        return None
+    rows = []
+    for group, chrom in chrom_pairs(m["chromosome_groups"]):
+        fpath = os.path.join(summary_dir, group, f"{chrom}.cnee-ortho-filter.tsv")
+        vals = read_metric_tsv(fpath)
+        if not vals:
+            continue
+        row = {"group": group, "chrom": chrom}
+        for k in ORTHO_KEYS:
+            row[k] = int(vals.get(k, 0))
+        rows.append(row)
+    if not rows:
+        return None
+    df = pd.DataFrame(rows)
+    if df["cnee_fetched"].sum() == 0:
+        return None
+    return df
+
+
+def build_ortho_filter(df):
+    # Funnel context for the clean single-copy ortholog filter: retained vs rejected
+    # elements, rows blanked to N (by reason), and shared-boundary flags.
+    df = df.copy()
+    df["rows_masked"] = (
+        df["cnee_rows_masked_split_long"] + df["cnee_rows_masked_multi_scaffold"]
+        + df["cnee_rows_masked_multi_strand"] + df["cnee_rows_masked_no_bases"]
+        + df["cnee_rows_masked_unknown"]
+    )
+    totals = {k[len("cnee_"):] if k.startswith("cnee_") else k: int(df[k].sum())
+              for k in ORTHO_KEYS}
+    totals["rows_masked"] = int(df["rows_masked"].sum())
+    disp = df[["group", "chrom", "cnee_fetched", "cnee_retained", "cnee_rejected",
+               "cnee_elements_masked", "cnee_elements_shared_boundary", "rows_masked"]].copy()
+    disp["pct_retained"] = (100 * df["cnee_retained"] / df["cnee_fetched"]).round(1)
+    table = add_total_row(
+        disp,
+        sum_cols=["cnee_fetched", "cnee_retained", "cnee_rejected",
+                  "cnee_elements_masked", "cnee_elements_shared_boundary", "rows_masked"],
+        pct_specs=[("pct_retained", "cnee_retained", "cnee_fetched")],
+    )
+    return {"totals": totals, "table": table}
+
+
 def collect_neutral_models(m):
     phylofit_dir = m["paths"].get("phylofit_dir")
     if not phylofit_dir:
@@ -853,6 +910,20 @@ def main():
             funnels.append(funnel)
     if funnels:
         ctx["cnee_funnels"] = funnels
+
+    # Clean single-copy ortholog filter (fasta output only), one block per source.
+    if m["paths"].get("cnee_filter_enabled"):
+        ortho_filters = []
+        for src in cnee_sources:
+            of = collect_cnee_ortho_filtering(m, src["summary_key"])
+            if of is not None:
+                bo = build_ortho_filter(of)
+                bo["label"] = src["label"]
+                ortho_filters.append(bo)
+        if ortho_filters:
+            ctx["cnee_ortho_filters"] = ortho_filters
+            ctx["cnee_split_max_gap_bp"] = m["paths"].get("cnee_split_max_gap_bp")
+            ctx["cnee_min_species"] = m["paths"].get("cnee_min_species")
 
     neutral_models = collect_neutral_models(m)
     if neutral_models is not None:
