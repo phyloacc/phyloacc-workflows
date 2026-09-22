@@ -28,6 +28,7 @@ from functools import partial
 
 import lib.common as COMMON
 import lib.intervals as INTERVALS
+import lib.cnee_filter as CFILT
 from lib.parsing import parse_newick_tip_names
 
 _setup = config["__pipeline_setup__"]
@@ -126,7 +127,30 @@ if MAKE_CNEES and CNEE_OUTPUT_FORMAT == "fasta":
 if MAKE_CNEES and not REF_GFF:
     raise ValueError("build_cnees=true requires ref_gff to be set in config (CDS coordinates for CNEE calling).")
 
-KEEP_CNEE_SIDECARS = _as_bool(config.get("keep_cnee_sidecars", False), False)
+KEEP_CNEE_SIDECARS = _as_bool(config.get("keep_cnee_sidecars", True), True)
+
+# --- clean single-copy ortholog filtering of the per-CNEE FASTAs (fasta output only) ---
+# Post-fetch, mafutils classifies every (element, species) as single/contiguous/split/
+# multi_scaffold/multi_strand/no_bases (see lib/cnee_filter.py). We mask non-ortholog rows
+# to N, move elements that fall below a species floor out to a rejects tree, and keep
+# reference-deletion (shared-boundary) elements while only flagging them.
+MAF_REF_ID = str(config.get("maf_ref_id", "")).strip()
+CNEE_FILTER_ENABLED = _as_bool(config.get("cnee_filter_enabled", True), True)
+CNEE_SPLIT_MAX_GAP_BP = int(config.get("cnee_split_max_gap_bp", 50))
+if CNEE_SPLIT_MAX_GAP_BP < 0:
+    raise ValueError("cnee_split_max_gap_bp must be >= 0.")
+CNEE_MIN_SPECIES = int(config.get("cnee_min_species", 4))
+if CNEE_MIN_SPECIES < 1:
+    raise ValueError("cnee_min_species must be >= 1.")
+CNEE_SHARED_BOUNDARY_MIN_FRAC = float(config.get("cnee_shared_boundary_min_frac", 0.5))
+if not (0.0 <= CNEE_SHARED_BOUNDARY_MIN_FRAC <= 1.0):
+    raise ValueError("cnee_shared_boundary_min_frac must be in [0, 1].")
+CNEE_SHARED_BOUNDARY_MAX_GAP_SPREAD_BP = int(config.get("cnee_shared_boundary_max_gap_spread_bp", 10))
+if CNEE_SHARED_BOUNDARY_MAX_GAP_SPREAD_BP < 0:
+    raise ValueError("cnee_shared_boundary_max_gap_spread_bp must be >= 0.")
+if CNEE_FILTER_ENABLED and CNEE_OUTPUT_FORMAT == "fasta" and not MAF_REF_ID:
+    raise ValueError("cnee_filter_enabled with fasta output requires maf_ref_id (the reference "
+                     "species is never masked and must be present in each retained CNEE).")
 
 #############################################################################
 # Chromosome list (recomputed here so this file is order-independent).
@@ -364,7 +388,9 @@ rule cnee_alignments_chr:
     output:
         manifest = os.path.join(CNEES_STAGE_DIR, "{source}",
                                 CNEE_OUTPUT_FORMAT if CNEE_OUTPUT_FORMAT == "fasta" else "maf",
-                                "{chromosome_group}", "{ref_chromosome}", "manifest.txt")
+                                "{chromosome_group}", "{ref_chromosome}", "manifest.txt"),
+        ortho_filter = os.path.join(CNEES_STAGE_DIR, "{source}", "summary",
+                                    "{chromosome_group}", "{ref_chromosome}.cnee-ortho-filter.tsv")
     params:
         outdir = os.path.join(CNEES_STAGE_DIR, "{source}",
                               CNEE_OUTPUT_FORMAT if CNEE_OUTPUT_FORMAT == "fasta" else "maf",
@@ -380,15 +406,24 @@ rule cnee_alignments_chr:
         with open(log.job_log, "w") as log_stream:
             try:
                 os.makedirs(params.outdir, exist_ok=True)
+                os.makedirs(os.path.dirname(output.ortho_filter), exist_ok=True)
                 mchrom = maf_chrom(wildcards.ref_chromosome)  # CNEE ids/files are MAF-named
-                # Remove stale per-CNEE outputs so manifest reflects current filtering.
+                # fasta output only: mask non-ortholog rows, move rejects out to a sibling tree.
+                do_filter = (CNEE_OUTPUT_FORMAT == "fasta") and CNEE_FILTER_ENABLED
+                rejects_dir = os.path.join(CNEES_STAGE_DIR, wildcards.source, "fasta-rejected",
+                                           wildcards.chromosome_group, wildcards.ref_chromosome)
+
+                # Remove stale per-CNEE outputs (main + rejects) so results reflect current filtering.
                 stale = glob.glob(os.path.join(params.outdir, f"{mchrom}.cnee*.maf"))
                 stale += glob.glob(os.path.join(params.outdir, f"{mchrom}.cnee*.fa"))
+                stale += glob.glob(os.path.join(rejects_dir, f"{mchrom}.cnee*.fa"))
                 for fp in stale:
                     try:
                         os.remove(fp)
                     except OSError:
                         pass
+
+                stats = {}  # metric -> int, written to the ortholog-filter summary TSV
 
                 # Graceful short-circuit: no CNEEs to extract (e.g. an empty phyloP
                 # source) -> write an empty manifest, don't invoke mafutils on empty input.
@@ -416,6 +451,8 @@ rule cnee_alignments_chr:
                         cmd += ["--fasta-dedupe", CNEE_FASTA_DEDUPE]
                         if CNEE_EXPECTED_SPECIES:
                             cmd += ["--expected-species", ",".join(CNEE_EXPECTED_SPECIES)]
+                        if do_filter:
+                            cmd += ["--loci-table"]  # per-species class/gap for ortholog filtering
                     COMMON.runCommand(
                         cmd, log_stream, log_stream, params.rule_name,
                         wc=f"{wildcards.source}.{wildcards.chromosome_group}.{wildcards.ref_chromosome}"
@@ -424,23 +461,66 @@ rule cnee_alignments_chr:
                     ext = "fa" if CNEE_OUTPUT_FORMAT == "fasta" else "maf"
                     outs = sorted(glob.glob(os.path.join(params.outdir, f"{mchrom}.cnee*.{ext}")))
 
-                    # Duplicate species (paralogous / both-strand alignments) are collapsed
-                    # upstream by `mafutils fetch --fasta-dedupe` (cnee_fasta_dedupe), so every
-                    # fetched FASTA already carries at most one record per species - manifest
-                    # them all as-is.
-                    with open(output.manifest, "w") as out:
-                        for m in outs:
-                            out.write(os.path.basename(m) + "\n")
-                    log_stream.write(f"Wrote manifest with {len(outs)} CNEE {CNEE_OUTPUT_FORMAT.upper()} files\n")
+                    if do_filter:
+                        summary_path = os.path.join(params.outdir, "maf_fetch_summary.tsv")
+                        loci_path = os.path.join(params.outdir, "maf_fetch_loci.tsv")
+                        if not (os.path.isfile(summary_path) and os.path.isfile(loci_path)):
+                            raise ValueError(
+                                "cnee_filter_enabled requires a mafutils build that writes "
+                                "maf_fetch_summary.tsv and maf_fetch_loci.tsv (extended summary + "
+                                "--loci-table). Not found - upgrade mafutils or set cnee_filter_enabled: false."
+                            )
+                        summary = CFILT.load_summary(summary_path)
+                        loci = CFILT.load_loci(loci_path)
+                        thr = CFILT.Thresholds(
+                            split_max_gap_bp=CNEE_SPLIT_MAX_GAP_BP,
+                            min_species=CNEE_MIN_SPECIES,
+                            shared_boundary_min_frac=CNEE_SHARED_BOUNDARY_MIN_FRAC,
+                            shared_boundary_max_gap_spread_bp=CNEE_SHARED_BOUNDARY_MAX_GAP_SPREAD_BP,
+                        )
+                        retained, rejected, stats = CFILT.filter_cnee_directory(
+                            outs, rejects_dir, summary, loci, MAF_REF_ID, thr)
+                        with open(output.manifest, "w") as out:
+                            for b in retained:
+                                out.write(b + "\n")
+                        with open(os.path.join(rejects_dir, "rejected_manifest.txt"), "w") as out:
+                            for b in rejected:
+                                out.write(b + "\n")
+                        log_stream.write(
+                            f"Ortholog filter: fetched={stats['cnee_fetched']} "
+                            f"retained={stats['cnee_retained']} rejected={stats['cnee_rejected']} "
+                            f"(min_species={stats['cnee_rejected_min_species']}, "
+                            f"ref_absent={stats['cnee_rejected_ref_absent']}); "
+                            f"masked_elems={stats['cnee_elements_masked']} "
+                            f"shared_boundary={stats['cnee_elements_shared_boundary']}\n"
+                        )
+                    else:
+                        # No ortholog filtering (maf output or cnee_filter_enabled=false): manifest all.
+                        with open(output.manifest, "w") as out:
+                            for m in outs:
+                                out.write(os.path.basename(m) + "\n")
+                        log_stream.write(f"Wrote manifest with {len(outs)} CNEE {CNEE_OUTPUT_FORMAT.upper()} files (no ortholog filtering)\n")
+                        stats = {"cnee_fetched": len(outs), "cnee_retained": len(outs), "cnee_rejected": 0}
 
-                # Keep only essential outputs by default: manifest + extracted alignments.
-                if not KEEP_CNEE_SIDECARS:
-                    for side_pat in ("*.tsv", "*.log"):
-                        for fp in glob.glob(os.path.join(params.outdir, side_pat)):
-                            try:
-                                os.remove(fp)
-                            except OSError:
-                                pass
+                # Durable ortholog-filter summary for the report (metric<TAB>value).
+                with open(output.ortho_filter, "w") as sf:
+                    sf.write("metric\tvalue\n")
+                    if not do_filter:
+                        sf.write("# ortholog filtering not applied (maf output or cnee_filter_enabled=false)\n")
+                    for k in CFILT.STATS_KEYS:
+                        sf.write(f"{k}\t{stats.get(k, 0)}\n")
+
+                # Keep the fetch dir a clean *.fa + manifest.txt set for PhyloAcc: by default
+                # (keep_cnee_sidecars) MOVE the mafutils sidecars (maf_fetch_summary.tsv,
+                # maf_fetch_loci.tsv, maf_fetch.log - the per-element/per-species locus
+                # classifications + log) into the source summary/ folder, chromosome-prefixed
+                # (e.g. 1.maf_fetch_summary.tsv) so they sit beside the other per-chrom
+                # summaries; set keep_cnee_sidecars false to delete them instead.
+                CFILT.stow_sidecars(
+                    params.outdir, KEEP_CNEE_SIDECARS,
+                    dest_dir=os.path.dirname(output.ortho_filter),
+                    prefix=f"{wildcards.ref_chromosome}.",
+                )
             except Exception:
                 traceback.print_exc(file=log_stream)
                 raise

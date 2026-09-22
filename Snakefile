@@ -216,6 +216,10 @@ rule summary_report:
                 "cnees_summary_dir": CNEES_SUMMARY_DIR if (run_phastcons and build_cnees) else None,
                 "cnee_min_len_bp": CNEE_MIN_LEN_BP if (build_cnees and (run_phastcons or run_phylop)) else None,
                 "cnee_density_bin_bp": CNEE_DENSITY_BIN_BP if (run_phastcons and build_cnees) else None,
+                # Ortholog-filter thresholds (fasta output) - for labeling the report funnel.
+                "cnee_filter_enabled": CNEE_FILTER_ENABLED if (build_cnees and (run_phastcons or run_phylop) and cnee_output_format == "fasta") else None,
+                "cnee_split_max_gap_bp": CNEE_SPLIT_MAX_GAP_BP if (build_cnees and (run_phastcons or run_phylop) and cnee_output_format == "fasta") else None,
+                "cnee_min_species": CNEE_MIN_SPECIES if (build_cnees and (run_phastcons or run_phylop) and cnee_output_format == "fasta") else None,
                 # phyloP branch (per-site LRT -> clustered regions -> phyloP-source CNEEs)
                 "phylop_power_dir": os.path.join(PHYLOP_STAGE_DIR, "power-check") if run_phylop else None,
                 "phylop_summary_dir": PHYLOP_SUMMARY_DIR if run_phylop else None,
