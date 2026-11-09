@@ -323,6 +323,23 @@ def assert_index_seq_counts_exact(block_index_path, rule_name):
         )
 
 
+def leftover_chunk_mafs(chunk_dir, bed_path):
+    # Chunk MAFs in chunk_dir that `mafutils fetch` would not write for bed_path, sorted.
+    # fetch (block mode, no -b) names each chunk <chrom>-<start>-<end>.maf after its bed
+    # row, so any other .maf here was written for different chunk boundaries (an earlier
+    # run). Same-named files are fine: fetch overwrites them.
+    if not os.path.isdir(chunk_dir):
+        return []
+    expected = set()
+    with open(bed_path) as fh:
+        for line in fh:
+            if not line.strip() or line.startswith("#"):
+                continue
+            p = line.rstrip("\n").split("\t")
+            expected.add(f"{p[0]}-{int(p[1])}-{int(p[2])}.maf")
+    return sorted(f for f in os.listdir(chunk_dir) if f.endswith(".maf") and f not in expected)
+
+
 def maf_symlink_target_for_group(scaffold_index_path, group_bed_path):
     # Decide whether maf_split_chr_by_group can just SYMLINK the input MAF for this group
     # instead of re-running `mafutils fetch` (which, for a single-scaffold input, merely

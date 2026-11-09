@@ -751,6 +751,23 @@ rule maf_split_chunks:
                 # must exist in the MAF block index, or mafutils silently extracts nothing.
                 INTERVALS.assert_bed_chroms_in_index(input.bed3, input.maf_index_block, "maf_split_chunks")
 
+                # Fail loud on chunk MAFs from an earlier run with other chunk boundaries:
+                # the manifest below lists every chunk MAF in this directory, so they would
+                # be scored as extra chunks. Checked before fetch so it fails fast.
+                leftover = INTERVALS.leftover_chunk_mafs(split_outdir, input.bed3)
+                if leftover:
+                    for fname in leftover:
+                        log_stream.write(f"LEFTOVER: {os.path.join(split_outdir, fname)}\n")
+                    raise ValueError(
+                        f"{len(leftover)} chunk MAF(s) in {split_outdir} are not chunks of the current "
+                        f"chunk bed {input.bed3}: " + ", ".join(leftover[:10])
+                        + (f" ... and {len(leftover) - 10} more (all listed in the job log)" if len(leftover) > 10 else "")
+                        + ". They are left over from an earlier run with different chunk boundaries "
+                        f"(one that stopped before phastcons_concat_chr removed this directory, or ran "
+                        f"with cleanup_chunk_intermediates off) and would be scored as extra chunks. "
+                        f"Delete {split_outdir} and rerun."
+                    )
+
                 cmd = [
                     "mafutils", "fetch",
                     input.maf,
@@ -1204,10 +1221,34 @@ rule phastcons_concat_chr:
 
                 tmp = output.chr_bed + ".tmp"
 
-                # Concatenate only non-empty chunk beds discovered on disk
+                # Concatenate the chunk beds of exactly the chunks in manifest.filtered.txt.
+                # The .state directory is not specific to the split settings, so it can still
+                # hold chunk beds from an earlier run with other chunk boundaries.
                 chunk_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome + ".state")
-                bed_files = sorted(glob.glob(os.path.join(chunk_dir, "*.conserved.bed")))
-                log_stream.write(f"Found {len(bed_files)} chunk bed files in {chunk_dir}\n")
+                with open(input.manifest) as mf:
+                    chunks = [os.path.splitext(l.strip())[0] for l in mf if l.strip()]
+                bed_files = [os.path.join(chunk_dir, f"{c}.conserved.bed") for c in chunks]
+
+                # run_phastcons_chr writes a bed for every chunk (empty if nothing is
+                # conserved), so a missing one means a chunk was never scored.
+                missing = [b for b in bed_files if not os.path.exists(b)]
+                if missing:
+                    for b in missing:
+                        log_stream.write(f"MISSING: {b}\n")
+                    raise FileNotFoundError(
+                        f"{len(missing)} of {len(bed_files)} chunk bed(s) for the chunks in "
+                        f"{input.manifest} are missing from {chunk_dir}: "
+                        + ", ".join(os.path.basename(b) for b in missing[:20])
+                        + (f" ... and {len(missing) - 20} more (all listed in the job log)" if len(missing) > 20 else "")
+                    )
+
+                listed = {os.path.basename(b) for b in bed_files}
+                n_other = sum(1 for f in os.listdir(chunk_dir) if f.endswith(".conserved.bed") and f not in listed)
+                log_stream.write(
+                    f"Concatenating {len(bed_files)} chunk bed files from {chunk_dir}"
+                    + (f"; ignoring {n_other} other chunk bed(s) there (earlier run, other chunk boundaries)" if n_other else "")
+                    + "\n"
+                )
 
                 with open(tmp, "w") as out:
                     for bedf in bed_files:
