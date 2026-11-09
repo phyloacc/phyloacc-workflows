@@ -38,30 +38,50 @@ def picard_dict_path(ref_path: str) -> str:
     return ref_path + ".dict"
 
 
-def gap_pct_other(maf_path: str) -> float:
+# phastCons fits a phylogenetic model to each chunk, which needs at least 3 aligned
+# sequences. On a chunk where every block has only 1-2 sequences it either crashes
+# (mu/nu = -nan, then a segfault in Viterbi) or calls the whole chunk one conserved
+# element. filter_maf_by_gap fails if a chunk it keeps has no block with this many.
+PHASTCONS_MIN_SEQS = 3
+
+
+def chunk_maf_stats(maf_path: str):
+    """One pass over a chunk MAF -> (gap_pct_other, max_seqs).
+
+    gap_pct_other: fraction of non-reference alignment cells that are '-' (1.0 when
+    the chunk has no non-reference sequences at all).
+    max_seqs: the largest number of aligned sequences (s lines, reference included)
+    in any one block. Only s lines count; i/e/q lines carry no sequence.
+    """
     total_gaps = 0
     total_positions = 0
+    max_seqs = 0
     in_block = False
     block_seqs = []
+
+    def close_block():
+        nonlocal total_gaps, total_positions, max_seqs
+        if block_seqs:
+            max_seqs = max(max_seqs, len(block_seqs))
+            aln_len = len(block_seqs[0])  # reference = first s line
+            nonref = block_seqs[1:]
+            if nonref:
+                total_positions += aln_len * len(nonref)
+                for seq in nonref:
+                    total_gaps += seq.count('-')
+        block_seqs.clear()
 
     with open(maf_path, "r") as f:
         for line in f:
             if not line.strip():
-                if in_block and block_seqs:
-                    ref_seq = block_seqs[0]
-                    aln_len = len(ref_seq)
-                    nonref = block_seqs[1:]
-                    if nonref:
-                        total_positions += aln_len * len(nonref)
-                        for seq in nonref:
-                            total_gaps += seq.count('-')
+                if in_block:
+                    close_block()
                 in_block = False
-                block_seqs = []
                 continue
 
             if line.startswith('a'):
+                close_block()
                 in_block = True
-                block_seqs = []
                 continue
 
             if in_block and line.startswith('s '):
@@ -69,19 +89,11 @@ def gap_pct_other(maf_path: str) -> float:
                 if len(parts) >= 7:
                     block_seqs.append(parts[6])
 
-        # handle file without trailing blank line
-        if in_block and block_seqs:
-            ref_seq = block_seqs[0]
-            aln_len = len(ref_seq)
-            nonref = block_seqs[1:]
-            if nonref:
-                total_positions += aln_len * len(nonref)
-                for seq in nonref:
-                    total_gaps += seq.count('-')
+    # handle file without trailing blank line
+    close_block()
 
-    if total_positions == 0:
-        return 1.0
-    return total_gaps / total_positions
+    gap_pct = 1.0 if total_positions == 0 else total_gaps / total_positions
+    return gap_pct, max_seqs
 
 #############################################################################
 # System setup
@@ -656,6 +668,39 @@ rule fixed_windows_bed:
 
 ####################
 
+def no_chunks_message(chrom, rows, max_for_gap, min_gap_bp, min_keep, index_path):
+    # Error text for a chromosome where num_seqs chunking (INTERVALS.complement_gaps) keeps
+    # no chunk. rows = (ref_start, ref_len, num_seqs) from the block index. mafutils fetch
+    # would stop on the empty chunk bed ("no usable regions") without saying why.
+    max_n = max(r[2] for r in rows)
+    msg = f"num_seqs_chunk_bed_chr: {chrom} has no region for phastCons to score: "
+    if max_n <= max_for_gap:
+        msg += (
+            f"all {len(rows):,} of its MAF blocks have at most {max_n} aligned sequences "
+            f"(num_seqs_max_for_gap = {max_for_gap}), so the whole chromosome is one "
+            f"low-coverage gap (num_seqs_min_gap_bp = {min_gap_bp}). "
+        )
+        if max_n < PHASTCONS_MIN_SEQS:
+            msg += (
+                f"No block has the {PHASTCONS_MIN_SEQS}+ sequences phastCons needs, so this "
+                f"chromosome cannot be scored: remove it from ref_chromosome_groups in the config. "
+            )
+        else:
+            msg += (
+                f"Remove it from ref_chromosome_groups in the config, or lower "
+                f"num_seqs_max_for_gap below {max_n} to score blocks this sparse. "
+            )
+    else:
+        msg += (
+            f"blocks with more than num_seqs_max_for_gap = {max_for_gap} sequences exist (up to "
+            f"{max_n}), but every stretch between low-coverage gaps is shorter than "
+            f"num_seqs_min_keep_region_len = {min_keep} bp. Remove the chromosome from "
+            f"ref_chromosome_groups, or lower num_seqs_min_keep_region_len. "
+        )
+    msg += f"If this is unexpected, check that {index_path} was built from this chromosome's MAF."
+    return msg
+
+
 rule num_seqs_chunk_bed_chr:
     input:
         maf_index_block = rules.maf_index_chr.output.maf_index_block
@@ -676,6 +721,10 @@ rule num_seqs_chunk_bed_chr:
             try:
                 os.makedirs(os.path.dirname(output.chr_bed), exist_ok=True)
 
+                # Column 6 (num_seqs) counts only s lines from index format 3 on; refuse
+                # older indexes, whose counts include i/e/q lines.
+                INTERVALS.assert_index_seq_counts_exact(input.maf_index_block, "num_seqs_chunk_bed_chr")
+
                 # Block index columns: ref_scaff, ref_start, ref_len, seq_len, line_len,
                 # num_seqs, byte_start, byte_end. Only ref_start/ref_len/num_seqs matter here.
                 rows = []
@@ -693,6 +742,11 @@ rule num_seqs_chunk_bed_chr:
                 chunks = INTERVALS.complement_gaps(
                     rows, params.max_num_seqs_for_gap, params.min_gap_bp, params.min_keep_region_len
                 )
+                if not chunks:
+                    raise ValueError(no_chunks_message(
+                        maf_chrom(wildcards.ref_chromosome), rows, params.max_num_seqs_for_gap,
+                        params.min_gap_bp, params.min_keep_region_len, input.maf_index_block,
+                    ))
 
                 with open(output.chr_bed, "w") as out:
                     for s, e in chunks:
@@ -731,9 +785,39 @@ rule maf_split_chunks:
                 split_outdir = os.path.dirname(output.manifest)
                 os.makedirs(split_outdir, exist_ok=True)
 
+                # Fail loud on an empty chunk bed: mafutils fetch (>= 0.9.0) exits 1 with
+                # "no usable regions" and no reason. Under num_seqs, num_seqs_chunk_bed_chr
+                # already fails first with the cause; this covers the other split strategies.
+                with open(input.bed3) as bf:
+                    n_regions = sum(1 for l in bf if l.strip() and not l.startswith(("#", "track", "browser")))
+                if n_regions == 0:
+                    raise ValueError(
+                        f"maf_split_chunks: the chunk bed {input.bed3} has no regions, so there is "
+                        f"nothing to extract or score on {maf_chrom(wildcards.ref_chromosome)} "
+                        f"(split_strategy = {SPLIT_STRATEGY}). Check the chunk bed step for this "
+                        f"chromosome, or remove it from ref_chromosome_groups in the config."
+                    )
+
                 # Fail loud on a chromosome-name mismatch: the chunk bed's chromosome(s)
                 # must exist in the MAF block index, or mafutils silently extracts nothing.
                 INTERVALS.assert_bed_chroms_in_index(input.bed3, input.maf_index_block, "maf_split_chunks")
+
+                # Fail loud on chunk MAFs from an earlier run with other chunk boundaries:
+                # the manifest below lists every chunk MAF in this directory, so they would
+                # be scored as extra chunks. Checked before fetch so it fails fast.
+                leftover = INTERVALS.leftover_chunk_mafs(split_outdir, input.bed3)
+                if leftover:
+                    for fname in leftover:
+                        log_stream.write(f"LEFTOVER: {os.path.join(split_outdir, fname)}\n")
+                    raise ValueError(
+                        f"{len(leftover)} chunk MAF(s) in {split_outdir} are not chunks of the current "
+                        f"chunk bed {input.bed3}: " + ", ".join(leftover[:10])
+                        + (f" ... and {len(leftover) - 10} more (all listed in the job log)" if len(leftover) > 10 else "")
+                        + ". They are left over from an earlier run with different chunk boundaries "
+                        f"(one that stopped before phastcons_concat_chr removed this directory, or ran "
+                        f"with cleanup_chunk_intermediates off) and would be scored as extra chunks. "
+                        f"Delete {split_outdir} and rerun."
+                    )
 
                 cmd = [
                     "mafutils", "fetch",
@@ -765,6 +849,35 @@ rule maf_split_chunks:
 
 ####################
 
+def too_few_seqs_message(too_few, chunk_dir, wc):
+    # Error text for kept chunks that phastCons cannot score (see PHASTCONS_MIN_SEQS).
+    shown = ", ".join(f"{f} (max {n} per block)" for f, n in too_few[:20])
+    more = f" ... and {len(too_few) - 20} more (all listed in the job log)" if len(too_few) > 20 else ""
+    msg = (
+        f"{len(too_few)} chunk(s) of {wc.chromosome_group}/{wc.ref_chromosome} in {chunk_dir} have fewer "
+        f"than {PHASTCONS_MIN_SEQS} aligned sequences (s lines) in every block: {shown}{more}. phastCons "
+        f"cannot fit its phylogenetic model to 1-2 sequences: it either crashes (segfault after "
+        f"mu/nu = -nan) or calls the whole chunk a single conserved element. "
+    )
+    if SPLIT_STRATEGY == "num_seqs" and NUM_SEQS_MAX_FOR_GAP >= PHASTCONS_MIN_SEQS - 1:
+        msg += (
+            f"With split_strategy num_seqs and num_seqs_max_for_gap = {NUM_SEQS_MAX_FOR_GAP}, stretches "
+            f"this sparse become gaps between chunks, so a chunk made only of them means the block "
+            f"index's per-block sequence counts (column 6) do not match this chromosome's MAF. "
+            f"num_seqs_chunk_bed_chr already requires a format>={INTERVALS.MIN_SEQ_COUNT_INDEX_FORMAT} "
+            f"index (s lines only), so check that the index was built from this MAF - or the whole "
+            f"chromosome has no block with more than {NUM_SEQS_MAX_FOR_GAP} sequences."
+        )
+    else:
+        msg += (
+            f"These chunks come from low-coverage stretches of the alignment. split_strategy num_seqs "
+            f"with num_seqs_max_for_gap >= {PHASTCONS_MIN_SEQS - 1} turns such stretches into gaps "
+            f"between chunks (current: split_strategy = {SPLIT_STRATEGY}, "
+            f"num_seqs_max_for_gap = {NUM_SEQS_MAX_FOR_GAP})."
+        )
+    return msg
+
+
 checkpoint filter_maf_by_gap:
     input:
         manifest = rules.maf_split_chunks.output.manifest
@@ -788,15 +901,32 @@ checkpoint filter_maf_by_gap:
                 with open(input.manifest) as mf:
                     all_lines = [l.strip() for l in mf if l.strip()]
 
+                # maf_split_chunks builds the manifest by globbing the chunk files it wrote,
+                # so a listed chunk that is now missing was removed by something else. Fail
+                # instead of scoring fewer chunks than were extracted.
+                missing = [f for f in all_lines if not os.path.exists(os.path.join(params.outdir, f))]
+                if missing:
+                    for fname in missing:
+                        log_stream.write(f"MISSING: {os.path.join(params.outdir, fname)}\n")
+                    raise FileNotFoundError(
+                        f"{len(missing)} chunk MAF(s) listed in {input.manifest} are missing from "
+                        f"{params.outdir}: " + ", ".join(missing[:20])
+                        + (f" ... and {len(missing) - 20} more (all listed in the job log)" if len(missing) > 20 else "")
+                    )
+
                 kept = []
+                too_few = []  # (fname, max_seqs): kept chunks phastCons cannot score
                 for fname in all_lines:
-                    maf_path = os.path.join(params.outdir, fname)
-                    if not os.path.exists(maf_path):
-                        log_stream.write(f"MISSING: {maf_path}\n")
-                        continue
-                    gap = gap_pct_other(maf_path)
+                    gap, max_seqs = chunk_maf_stats(os.path.join(params.outdir, fname))
                     if gap <= params.max_gap_pct:
                         kept.append(fname)
+                        if max_seqs < PHASTCONS_MIN_SEQS:
+                            too_few.append((fname, max_seqs))
+
+                if too_few:
+                    for fname, n in too_few:
+                        log_stream.write(f"TOO FEW SEQUENCES: {fname} (max {n} per block)\n")
+                    raise ValueError(too_few_seqs_message(too_few, params.outdir, wildcards))
 
                 with open(output.filtered_manifest, "w") as out:
                     for k in kept:
@@ -1142,10 +1272,34 @@ rule phastcons_concat_chr:
 
                 tmp = output.chr_bed + ".tmp"
 
-                # Concatenate only non-empty chunk beds discovered on disk
+                # Concatenate the chunk beds of exactly the chunks in manifest.filtered.txt.
+                # The .state directory is not specific to the split settings, so it can still
+                # hold chunk beds from an earlier run with other chunk boundaries.
                 chunk_dir = os.path.join(CONSERVE_DIR, wildcards.chromosome_group, wildcards.ref_chromosome + ".state")
-                bed_files = sorted(glob.glob(os.path.join(chunk_dir, "*.conserved.bed")))
-                log_stream.write(f"Found {len(bed_files)} chunk bed files in {chunk_dir}\n")
+                with open(input.manifest) as mf:
+                    chunks = [os.path.splitext(l.strip())[0] for l in mf if l.strip()]
+                bed_files = [os.path.join(chunk_dir, f"{c}.conserved.bed") for c in chunks]
+
+                # run_phastcons_chr writes a bed for every chunk (empty if nothing is
+                # conserved), so a missing one means a chunk was never scored.
+                missing = [b for b in bed_files if not os.path.exists(b)]
+                if missing:
+                    for b in missing:
+                        log_stream.write(f"MISSING: {b}\n")
+                    raise FileNotFoundError(
+                        f"{len(missing)} of {len(bed_files)} chunk bed(s) for the chunks in "
+                        f"{input.manifest} are missing from {chunk_dir}: "
+                        + ", ".join(os.path.basename(b) for b in missing[:20])
+                        + (f" ... and {len(missing) - 20} more (all listed in the job log)" if len(missing) > 20 else "")
+                    )
+
+                listed = {os.path.basename(b) for b in bed_files}
+                n_other = sum(1 for f in os.listdir(chunk_dir) if f.endswith(".conserved.bed") and f not in listed)
+                log_stream.write(
+                    f"Concatenating {len(bed_files)} chunk bed files from {chunk_dir}"
+                    + (f"; ignoring {n_other} other chunk bed(s) there (earlier run, other chunk boundaries)" if n_other else "")
+                    + "\n"
+                )
 
                 with open(tmp, "w") as out:
                     for bedf in bed_files:
