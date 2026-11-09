@@ -668,6 +668,39 @@ rule fixed_windows_bed:
 
 ####################
 
+def no_chunks_message(chrom, rows, max_for_gap, min_gap_bp, min_keep, index_path):
+    # Error text for a chromosome where num_seqs chunking (INTERVALS.complement_gaps) keeps
+    # no chunk. rows = (ref_start, ref_len, num_seqs) from the block index. mafutils fetch
+    # would stop on the empty chunk bed ("no usable regions") without saying why.
+    max_n = max(r[2] for r in rows)
+    msg = f"num_seqs_chunk_bed_chr: {chrom} has no region for phastCons to score: "
+    if max_n <= max_for_gap:
+        msg += (
+            f"all {len(rows):,} of its MAF blocks have at most {max_n} aligned sequences "
+            f"(num_seqs_max_for_gap = {max_for_gap}), so the whole chromosome is one "
+            f"low-coverage gap (num_seqs_min_gap_bp = {min_gap_bp}). "
+        )
+        if max_n < PHASTCONS_MIN_SEQS:
+            msg += (
+                f"No block has the {PHASTCONS_MIN_SEQS}+ sequences phastCons needs, so this "
+                f"chromosome cannot be scored: remove it from ref_chromosome_groups in the config. "
+            )
+        else:
+            msg += (
+                f"Remove it from ref_chromosome_groups in the config, or lower "
+                f"num_seqs_max_for_gap below {max_n} to score blocks this sparse. "
+            )
+    else:
+        msg += (
+            f"blocks with more than num_seqs_max_for_gap = {max_for_gap} sequences exist (up to "
+            f"{max_n}), but every stretch between low-coverage gaps is shorter than "
+            f"num_seqs_min_keep_region_len = {min_keep} bp. Remove the chromosome from "
+            f"ref_chromosome_groups, or lower num_seqs_min_keep_region_len. "
+        )
+    msg += f"If this is unexpected, check that {index_path} was built from this chromosome's MAF."
+    return msg
+
+
 rule num_seqs_chunk_bed_chr:
     input:
         maf_index_block = rules.maf_index_chr.output.maf_index_block
@@ -709,6 +742,11 @@ rule num_seqs_chunk_bed_chr:
                 chunks = INTERVALS.complement_gaps(
                     rows, params.max_num_seqs_for_gap, params.min_gap_bp, params.min_keep_region_len
                 )
+                if not chunks:
+                    raise ValueError(no_chunks_message(
+                        maf_chrom(wildcards.ref_chromosome), rows, params.max_num_seqs_for_gap,
+                        params.min_gap_bp, params.min_keep_region_len, input.maf_index_block,
+                    ))
 
                 with open(output.chr_bed, "w") as out:
                     for s, e in chunks:
@@ -746,6 +784,19 @@ rule maf_split_chunks:
                 # create output directory
                 split_outdir = os.path.dirname(output.manifest)
                 os.makedirs(split_outdir, exist_ok=True)
+
+                # Fail loud on an empty chunk bed: mafutils fetch (>= 0.9.0) exits 1 with
+                # "no usable regions" and no reason. Under num_seqs, num_seqs_chunk_bed_chr
+                # already fails first with the cause; this covers the other split strategies.
+                with open(input.bed3) as bf:
+                    n_regions = sum(1 for l in bf if l.strip() and not l.startswith(("#", "track", "browser")))
+                if n_regions == 0:
+                    raise ValueError(
+                        f"maf_split_chunks: the chunk bed {input.bed3} has no regions, so there is "
+                        f"nothing to extract or score on {maf_chrom(wildcards.ref_chromosome)} "
+                        f"(split_strategy = {SPLIT_STRATEGY}). Check the chunk bed step for this "
+                        f"chromosome, or remove it from ref_chromosome_groups in the config."
+                    )
 
                 # Fail loud on a chromosome-name mismatch: the chunk bed's chromosome(s)
                 # must exist in the MAF block index, or mafutils silently extracts nothing.
