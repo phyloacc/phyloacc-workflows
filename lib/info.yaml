@@ -1,7 +1,7 @@
-version: 2.5.0
+version: 2.5.1
 releasedate-major: July 21, 2026
 releasedate-minor: September 22, 2026
-releasedate-patch: September 22, 2026
+releasedate-patch: November 9, 2026
 latest-commit-date: 2026-11-09
 doi:
 link: https://github.com/phyloacc/phyloacc-workflows
