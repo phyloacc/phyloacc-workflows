@@ -281,6 +281,48 @@ def assert_bed_chroms_in_index(bed_path, block_index_path, rule_name):
         )
 
 
+# First mafutils index format whose per-block sequence count (block.idx column 6) counts
+# only s lines (written by mafutils >= 0.9.0). Formats 1-2 (mafutils < 0.9.0) also counted
+# i/e/q lines, which inflates the count up to ~2x on UCSC multiz MAFs (cactus MAFs have no
+# i/e lines).
+MIN_SEQ_COUNT_INDEX_FORMAT = 3
+
+
+def read_index_format(path):
+    # Format number from a mafutils index header ("# mafutils-index format=N ..." on line
+    # 1); 0 for an index with no header (written before mafutils added one).
+    with open(path) as fh:
+        first = fh.readline()
+    if not first.startswith("# mafutils-index"):
+        return 0
+    for token in first.split():
+        if token.startswith("format="):
+            value = token.split("=", 1)[1]
+            if value.isdigit():
+                return int(value)
+            break
+    raise ValueError(f"{path}: mafutils index header has no valid format=N field: {first.strip()}")
+
+
+def assert_index_seq_counts_exact(block_index_path, rule_name):
+    # Raise unless the block index's per-block sequence count (column 6) counts only s
+    # lines, i.e. the index is format >= MIN_SEQ_COUNT_INDEX_FORMAT. Call before using
+    # column 6; the other columns are the same in every format.
+    fmt = read_index_format(block_index_path)
+    if fmt < MIN_SEQ_COUNT_INDEX_FORMAT:
+        found = f"format={fmt}" if fmt else "an unversioned index (no header line)"
+        raise ValueError(
+            f"{rule_name}: the MAF block index {block_index_path} is {found}, but its "
+            f"per-block sequence count (column 6) is only reliable from format="
+            f"{MIN_SEQ_COUNT_INDEX_FORMAT}. Older formats also count i/e/q lines as sequences "
+            f"(up to ~2x too high on UCSC multiz MAFs), so split_strategy num_seqs would keep "
+            f"stretches with only 1-2 aligned sequences as chunks, which phastCons cannot "
+            f"score. Upgrade mafutils to a version that writes format={MIN_SEQ_COUNT_INDEX_FORMAT} "
+            f"indexes (0.9.0 or newer) and rebuild this index, e.g. rerun with "
+            f"--forcerun maf_index_chr."
+        )
+
+
 def maf_symlink_target_for_group(scaffold_index_path, group_bed_path):
     # Decide whether maf_split_chr_by_group can just SYMLINK the input MAF for this group
     # instead of re-running `mafutils fetch` (which, for a single-scaffold input, merely
